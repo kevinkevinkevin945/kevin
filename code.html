@@ -70,10 +70,10 @@
     <div id="mainBlock" class="hidden">
         
         <button id="adminViewBtn" class="btn-admin-view hidden" onclick="showAllPasswords()">👁️ 檢視成員目前金鑰密碼</button>
-         
+          
         <div class="form-group">
             <label for="inputText">📝 輸入文字：</label>
-            <textarea id="inputText" placeholder="加密：輸入文字&#10;解密：直接貼上密文，系統會自動辨識並解密..."></textarea>
+            <textarea id="inputText" placeholder="加密：輸入文字&#10;解密：貼上純二進位密文..."></textarea>
         </div>
 
         <div class="btn-group">
@@ -97,30 +97,6 @@
     </div>
 
 <script>
-// ==========================================
-// 🛡️ 強效防 F12 毀滅者指令碼
-// ==========================================
-document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('keydown', function(e) {
-    if (e.key === "F12" || 
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i','j'].includes(e.key.toLowerCase())) ||
-        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u')) {
-        e.preventDefault();
-        return false;
-    }
-});
-(function() {
-    function banConsole() {
-        const startTime = new Date().getTime();
-        debugger; 
-        const endTime = new Date().getTime();
-        if (endTime - startTime > 100) {
-            document.body.innerHTML = '<h1 style="color:red;text-align:center;margin-top:200px;">⚠️ 偵測到非法安全檢查，系統已鎖定！</h1>';
-            setTimeout(() => { window.location.reload(); }, 1000);
-        }
-    }
-    setInterval(banConsole, 400);
-})();
 
 // ==========================================
 // 📊 基礎 64 字元對照清單與功能邏輯
@@ -138,10 +114,10 @@ for (let i = 0; i < 64; i++) {
     BASE_BINARIES.push(i.toString(2).padStart(6, '0'));
 }
 
-// 👑 管理員最高權限萬用金鑰 (明文比對，方便管理員登入)
+// 👑 管理員最高權限萬用金鑰
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
 
-// 👤 初始化預設密碼表 (如果瀏覽器內還沒有紀錄，就用這些預設值)
+// 👤 初始化預設密碼表
 const DEFAULT_PASSWORDS = {
     "000000": "userpass1", 
     "111111": "userpass2",  
@@ -153,7 +129,6 @@ const DEFAULT_PASSWORDS = {
     "001100": "userpass8"
 };
 
-// 讀取目前的密碼設定狀態（優先從本機緩存拿，實現動態改密碼）
 function getLatestPasswords() {
     const localData = localStorage.getItem('SYSTEM_MEMBER_KEYS');
     if (!localData) {
@@ -164,8 +139,8 @@ function getLatestPasswords() {
 }
 
 let currentRole = "user"; 
-let loggedInPrefix = ""; // 紀錄目前是哪一個成員登入 (如 "000000")
-let savedRawKey = "";    // 暫存登入時使用的密碼
+let loggedInPrefix = "";
+let savedRawKey = "";    
 
 // 🔑 驗證金鑰登入
 function verifyPassword() {
@@ -182,14 +157,12 @@ function verifyPassword() {
         currentRole = "admin";
         document.getElementById('authBlock').classList.add('hidden'); 
         document.getElementById('mainBlock').classList.remove('hidden'); 
-        document.getElementById('adminMenuBlock').classList.remove('hidden'); 
-        document.getElementById('adminViewBtn').classList.remove('hidden'); // ✨ 顯示管理員看密碼按鈕
+        document.getElementById('adminViewBtn').classList.remove('hidden'); 
     } else {
-        // 尋找是哪一個成員的密碼符合
         const matchedPrefix = Object.keys(currentPasswords).find(prefix => currentPasswords[prefix] === inputKey);
         if (matchedPrefix) {
             currentRole = "user";
-            loggedInPrefix = matchedPrefix; // 標記目前登入者的身份
+            loggedInPrefix = matchedPrefix;
             document.getElementById('authBlock').classList.add('hidden'); 
             document.getElementById('mainBlock').classList.remove('hidden'); 
         } else {
@@ -238,25 +211,13 @@ function getDynamicMap(key) {
     return { charToBin, binToChar };
 }
 
-// 加密處理
+// 加密處理（已移除前綴）
 function encodeProcess() {
-    let mode = "";
-    let encryptionKey = "";
-    const currentPasswords = getLatestPasswords();
-    
-    if (currentRole === "admin") {
-        mode = document.getElementById('encryptMode').value;
-        encryptionKey = mode; 
-    } else {
-        mode = loggedInPrefix;
-        encryptionKey = savedRawKey;
-    }
-    
     const input = document.getElementById('inputText').value;
-    const { charToBin } = getDynamicMap(encryptionKey);
+    const { charToBin } = getDynamicMap(savedRawKey);
     
     let cleanInput = input.toLowerCase().replace(/\?/g, "？").replace(/,/g, "，").replace(/\./g, "。").replace(/!/g, "！");
-    let result = mode; 
+    let result = ""; // 不再加上 mode/前綴
     for (let char of cleanInput) {
         if (charToBin[char] !== undefined) result += charToBin[char];
         else result += "??????";
@@ -264,37 +225,25 @@ function encodeProcess() {
     document.getElementById('outputText').value = result;
 }
 
-// 解密處理
+// 解密處理（改為使用登入時的密碼進行解密，從第 0 位開始讀取）
 function decodeProcess() {
     const input = document.getElementById('inputText').value;
     let cleanInput = input.replace(/[^01]/g, "");
     
-    if (cleanInput.length < 6) {
+    if (cleanInput.length === 0 || cleanInput.length % 6 !== 0) {
         document.getElementById('outputText').value = "？？？";
         return;
     }
     
-    const detectedHeader = cleanInput.substring(0, 6);
-    const currentPasswords = getLatestPasswords();
-    const targetPassword = currentPasswords[detectedHeader];
-    
-    // 🔒 權限檢核：如果不對就靜默吐問號
-    if (!targetPassword || (currentRole !== "admin" && savedRawKey !== targetPassword)) {
-        let questionMarkResult = "";
-        let charCount = Math.floor((cleanInput.length - 6) / 6);
-        for (let i = 0; i < charCount; i++) questionMarkResult += "？";
-        document.getElementById('outputText').value = questionMarkResult || "？？？";
-        return;
-    }
-    
-    const decodingKey = (currentRole === "admin") ? detectedHeader : savedRawKey;
-    const { binToChar } = getDynamicMap(decodingKey);
+    // 使用當前登入的使用者密碼（savedRawKey）進行對照表還原
+    const { binToChar } = getDynamicMap(savedRawKey);
     let result = "";
     
-    for (let i = 6; i < cleanInput.length; i += 6) {
+    // 從 index 0 開始，每 6 位為一組解密
+    for (let i = 0; i < cleanInput.length; i += 6) {
         let bin = cleanInput.substring(i, i + 6);
-        if (bin.length === 6 && binToChar[bin] !== undefined) result += binToChar[bin];
-        else if (bin.length === 6) result += "？";
+        if (binToChar[bin] !== undefined) result += binToChar[bin];
+        else result += "？";
     }
     document.getElementById('outputText').value = result;
 }
