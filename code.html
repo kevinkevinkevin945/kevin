@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧安全加解密系統</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: #fff;
+        }
+        h2 { text-align: center; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        textarea { height: 100px; resize: vertical; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-encode { background-color: #3498db; }
+        .btn-encode:hover { background-color: #2980b9; }
+        .btn-decode { background-color: #2ecc71; }
+        .btn-decode:hover { background-color: #27ae60; }
+        .btn-copy { background-color: #e67e22; }
+        .btn-copy:hover { background-color: #d35400; }
+        .btn-verify { background-color: #9b59b6; margin-top: 10px; width: 100%; }
+        .btn-verify:hover { background-color: #8e44ad; }
+        
+        /* 👑 管理員專屬與改密碼進階按鈕樣式 */
+        .btn-admin-view { background-color: #e74c3c; margin-bottom: 15px; width: 100%; }
+        .btn-admin-view:hover { background-color: #c0392b; }
+        .btn-change-pw { background-color: #34495e; margin-top: 5px; width: 100%; }
+        .btn-change-pw:hover { background-color: #2c3e50; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <h2>🔐 加解密系統</h2>
+
+    <div id="authBlock" class="form-group">
+        <label for="userKey">🔑 請輸入存取安全金鑰密碼：</label>
+        <input type="password" id="userKey" placeholder="請先輸入密碼以解鎖主功能系統...">
+        <button class="btn-verify" onclick="verifyPassword()">🔓 登入系統</button>
+    </div>
+
+    <div id="mainBlock" class="hidden">
+        
+        <button id="adminViewBtn" class="btn-admin-view hidden" onclick="showAllPasswords()">👁️ 檢視成員目前金鑰密碼</button>
+         
+        <div class="form-group">
+            <label for="inputText">📝 輸入文字：</label>
+            <textarea id="inputText" placeholder="加密：輸入文字&#10;解密：直接貼上密文，系統會自動辨識並解密..."></textarea>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-encode" onclick="encodeProcess()">加密</button>
+            <button class="btn-decode" onclick="decodeProcess()">解密</button>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="outputText">✨ 輸出結果：</label>
+            <textarea id="outputText" readonly placeholder="結果會顯示在這裡..."></textarea>
+        </div>
+
+        <button class="btn-copy" onclick="copyResult()">📋 一鍵複製結果</button>
+        
+        <br><br>
+        <div class="form-group" style="border-top: 1px dashed #ccc; padding-top: 15px;">
+            <label>🛠️ 帳號安全：修改您目前的專屬金鑰密碼</label>
+            <input type="password" id="newPasswordInput" placeholder="輸入想要變更的新密碼...">
+            <button class="btn-change-pw" onclick="changeCurrentPassword()">💾 確認修改密碼</button>
+        </div>
+    </div>
+
+<script>
+// ==========================================
+// 🛡️ 強效防 F12 毀滅者指令碼
+// ==========================================
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.key === "F12" || 
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i','j'].includes(e.key.toLowerCase())) ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u')) {
+        e.preventDefault();
+        return false;
+    }
+});
+(function() {
+    function banConsole() {
+        const startTime = new Date().getTime();
+        debugger; 
+        const endTime = new Date().getTime();
+        if (endTime - startTime > 100) {
+            document.body.innerHTML = '<h1 style="color:red;text-align:center;margin-top:200px;">⚠️ 偵測到非法安全檢查，系統已鎖定！</h1>';
+            setTimeout(() => { window.location.reload(); }, 1000);
+        }
+    }
+    setInterval(banConsole, 400);
+})();
+
+// ==========================================
+// 📊 基礎 64 字元對照清單與功能邏輯
+// ==========================================
+const CHARS = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
+    'q','r','s','t','u','v','w','x','y','z',
+    '0','1','2','3','4','5','6','7','8','9',
+    ' ','。','？','，','[',']','!','！','-','_','+','=','/','*',
+    '@','#','$','%','^','&','(',')','{','}','<','>'
+];
+
+const BASE_BINARIES = [];
+for (let i = 0; i < 64; i++) {
+    BASE_BINARIES.push(i.toString(2).padStart(6, '0'));
+}
+
+// 👑 管理員最高權限萬用金鑰 (明文比對，方便管理員登入)
+const SUPER_ADMIN_KEY = "";
+
+// 👤 初始化預設密碼表 (如果瀏覽器內還沒有紀錄，就用這些預設值)
+const DEFAULT_PASSWORDS = {
+    "000000": "userpass1", 
+    "111111": "Kris@Lucy",  
+    "101010": "userpass3",
+    "010101": "userpass4",
+    "111000": "userpass5",
+    "000111": "userpass6",
+    "110011": "userpass7",
+    "001100": "userpass8"
+};
+
+// 讀取目前的密碼設定狀態（優先從本機緩存拿，實現動態改密碼）
+function getLatestPasswords() {
+    const localData = localStorage.getItem('SYSTEM_MEMBER_KEYS');
+    if (!localData) {
+        localStorage.setItem('SYSTEM_MEMBER_KEYS', JSON.stringify(DEFAULT_PASSWORDS));
+        return DEFAULT_PASSWORDS;
+    }
+    return JSON.parse(localData);
+}
+
+let currentRole = "user"; 
+let loggedInPrefix = ""; // 紀錄目前是哪一個成員登入 (如 "000000")
+let savedRawKey = "";    // 暫存登入時使用的密碼
+
+// 🔑 驗證金鑰登入
+function verifyPassword() {
+    const inputKey = document.getElementById('userKey').value.trim();
+    if (!inputKey) {
+        alert("請輸入金鑰密碼！");
+        return;
+    }
+
+    savedRawKey = inputKey;
+    const currentPasswords = getLatestPasswords();
+
+    if (inputKey === SUPER_ADMIN_KEY) {
+        currentRole = "admin";
+        document.getElementById('authBlock').classList.add('hidden'); 
+        document.getElementById('mainBlock').classList.remove('hidden'); 
+        document.getElementById('adminMenuBlock').classList.remove('hidden'); 
+        document.getElementById('adminViewBtn').classList.remove('hidden'); // ✨ 顯示管理員看密碼按鈕
+    } else {
+        // 尋找是哪一個成員的密碼符合
+        const matchedPrefix = Object.keys(currentPasswords).find(prefix => currentPasswords[prefix] === inputKey);
+        if (matchedPrefix) {
+            currentRole = "user";
+            loggedInPrefix = matchedPrefix; // 標記目前登入者的身份
+            document.getElementById('authBlock').classList.add('hidden'); 
+            document.getElementById('mainBlock').classList.remove('hidden'); 
+        } else {
+            alert("❌ 密碼驗證失敗，拒絕存取！");
+        }
+    }
+}
+
+// 偽隨機數產生器
+function cyrb128(str) {
+    let h1 = 1779033703, h2 = 3024734765, h3 = 3362453663, h4 = 502494325;
+    for (let i = 0, k; i < str.length; i++) {
+        k = str.charCodeAt(i);
+        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+        h3 = h4 ^ Math.imul(h3 ^ k, 2869860233);
+        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+    }
+    return [(h1^h2)>>>0, h2>>>0, h3>>>0, h4>>>0];
+}
+function sfc32(a, b, c, d) {
+    return function() {
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        var t = (a + b) | 0;
+        a = b ^ (b >>> 9); b = (c + (c << 3)) | 0;
+        c = (c << 21) | (c >>> 11); d = (d + 1) | 0;
+        t = (t + d) | 0; c = (c + t) | 0;
+        return (t >>> 0) / 4294967296;
+    }
+}
+function getDynamicMap(key) {
+    let binaries = [...BASE_BINARIES];
+    if (key.trim() !== "") {
+        let seed = cyrb128(key);
+        let rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+        for (let i = binaries.length - 1; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            [binaries[i], binaries[j]] = [binaries[j], binaries[i]];
+        }
+    }
+    let charToBin = {}; let binToChar = {};
+    CHARS.forEach((char, index) => {
+        charToBin[char] = binaries[index];
+        binToChar[binaries[index]] = char;
+    });
+    return { charToBin, binToChar };
+}
+
+// 加密處理
+function encodeProcess() {
+    let mode = "";
+    let encryptionKey = "";
+    const currentPasswords = getLatestPasswords();
+    
+    if (currentRole === "admin") {
+        mode = document.getElementById('encryptMode').value;
+        encryptionKey = mode; 
+    } else {
+        mode = loggedInPrefix;
+        encryptionKey = savedRawKey;
+    }
+    
+    const input = document.getElementById('inputText').value;
+    const { charToBin } = getDynamicMap(encryptionKey);
+    
+    let cleanInput = input.toLowerCase().replace(/\?/g, "？").replace(/,/g, "，").replace(/\./g, "。").replace(/!/g, "！");
+    let result = mode; 
+    for (let char of cleanInput) {
+        if (charToBin[char] !== undefined) result += charToBin[char];
+        else result += "??????";
+    }
+    document.getElementById('outputText').value = result;
+}
+
+// 解密處理
+function decodeProcess() {
+    const input = document.getElementById('inputText').value;
+    let cleanInput = input.replace(/[^01]/g, "");
+    
+    if (cleanInput.length < 6) {
+        document.getElementById('outputText').value = "？？？";
+        return;
+    }
+    
+    const detectedHeader = cleanInput.substring(0, 6);
+    const currentPasswords = getLatestPasswords();
+    const targetPassword = currentPasswords[detectedHeader];
+    
+    // 🔒 權限檢核：如果不對就靜默吐問號
+    if (!targetPassword || (currentRole !== "admin" && savedRawKey !== targetPassword)) {
+        let questionMarkResult = "";
+        let charCount = Math.floor((cleanInput.length - 6) / 6);
+        for (let i = 0; i < charCount; i++) questionMarkResult += "？";
+        document.getElementById('outputText').value = questionMarkResult || "？？？";
+        return;
+    }
+    
+    const decodingKey = (currentRole === "admin") ? detectedHeader : savedRawKey;
+    const { binToChar } = getDynamicMap(decodingKey);
+    let result = "";
+    
+    for (let i = 6; i < cleanInput.length; i += 6) {
+        let bin = cleanInput.substring(i, i + 6);
+        if (bin.length === 6 && binToChar[bin] !== undefined) result += binToChar[bin];
+        else if (bin.length === 6) result += "？";
+    }
+    document.getElementById('outputText').value = result;
+}
+
+function copyResult() {
+    const outputText = document.getElementById('outputText');
+    if (!outputText.value) { alert("沒有內容可以複製！"); return; }
+    outputText.select();
+    navigator.clipboard.writeText(outputText.value).then(() => alert("📋 已成功複製！"));
+}
+</script>
+</body>
+</html>
