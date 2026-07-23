@@ -300,7 +300,7 @@ function decodeProcess() {
     const isAdmin = (currentRole === "admin");
 
     if (!isAdmin && !isPublic && !isOwner) {
-        alert(`❌ 解密失敗：此密文指定給前綴 [${cipherPrefix}]，您無權限存取！`);
+        alert(`❌ 解密失敗：您無權限存取！`);
         document.getElementById('outputText').value = "❌ 無解密權限";
         return;
     }
