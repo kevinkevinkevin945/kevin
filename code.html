@@ -48,13 +48,19 @@
         .btn-verify { background-color: #9b59b6; margin-top: 10px; width: 100%; }
         .btn-verify:hover { background-color: #8e44ad; }
         
-        /* 👑 管理員專屬與改密碼進階按鈕樣式 */
         .btn-admin-view { background-color: #e74c3c; margin-bottom: 15px; width: 100%; }
         .btn-admin-view:hover { background-color: #c0392b; }
         .btn-change-pw { background-color: #34495e; margin-top: 5px; width: 100%; }
         .btn-change-pw:hover { background-color: #2c3e50; }
         
         .hidden { display: none !important; }
+        .permission-box {
+            background-color: #eef7fc;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #bce8f1;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -73,7 +79,21 @@
           
         <div class="form-group">
             <label for="inputText">📝 輸入文字：</label>
-            <textarea id="inputText" placeholder="加密：輸入文字&#10;解密：貼上帶有前綴的純二進位密文..."></textarea>
+            <textarea id="inputText" placeholder="加密：輸入文字&#10;解密：貼上純二進位密文..."></textarea>
+        </div>
+
+        <div class="permission-box">
+            <label for="accessScope">🔒 設定誰可以解密此文字（僅加密時有效）：</label>
+            <select id="accessScope" onchange="toggleTargetInput()">
+                <option value="self">僅我自己 (預設)</option>
+                <option value="public">🌐 開放所有人可解密</option>
+                <option value="specific">👤 指定特定成員 (輸入對方 6 位前綴)</option>
+            </select>
+
+            <div id="targetPrefixGroup" class="hidden" style="margin-top: 10px;">
+                <label for="targetPrefix">🎯 請輸入接收者的 6 位專屬前綴：</label>
+                <input type="text" id="targetPrefix" placeholder="例如：111111" maxlength="6">
+            </div>
         </div>
 
         <div class="btn-group">
@@ -98,9 +118,6 @@
 
 <script>
 
-// ==========================================
-// 📊 基礎 64 字元對照清單與功能邏輯
-// ==========================================
 const CHARS = [
     'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
     'q','r','s','t','u','v','w','x','y','z',
@@ -114,10 +131,9 @@ for (let i = 0; i < 64; i++) {
     BASE_BINARIES.push(i.toString(2).padStart(6, '0'));
 }
 
-// 👑 管理員最高權限萬用金鑰
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
+const PUBLIC_PREFIX = "999999"; // 公開解密專屬二進位前綴
 
-// 👤 初始化預設密碼表（ Key 為 6 位二進位前綴）
 const DEFAULT_PASSWORDS = {
     "000000": "userpass1", 
     "111111": "userpass2",  
@@ -142,7 +158,6 @@ let currentRole = "user";
 let loggedInPrefix = "";
 let savedRawKey = "";    
 
-// 🔑 驗證金鑰登入
 function verifyPassword() {
     const inputKey = document.getElementById('userKey').value.trim();
     if (!inputKey) {
@@ -167,14 +182,23 @@ function verifyPassword() {
             loggedInPrefix = matchedPrefix;
             document.getElementById('authBlock').classList.add('hidden'); 
             document.getElementById('mainBlock').classList.remove('hidden'); 
-            alert(`🔓 登入成功！您的專屬識別前綴為：${loggedInPrefix}`);
+            alert(`🔓 登入成功！您的專屬識別前綴為：[${loggedInPrefix}]`);
         } else {
             alert("❌ 密碼驗證失敗，拒絕存取！");
         }
     }
 }
 
-// 偽隨機數產生器
+function toggleTargetInput() {
+    const scope = document.getElementById('accessScope').value;
+    const targetGroup = document.getElementById('targetPrefixGroup');
+    if (scope === 'specific') {
+        targetGroup.classList.remove('hidden');
+    } else {
+        targetGroup.classList.add('hidden');
+    }
+}
+
 function cyrb128(str) {
     let h1 = 1779033703, h2 = 3024734765, h3 = 3362453663, h4 = 502494325;
     for (let i = 0, k; i < str.length; i++) {
@@ -218,15 +242,29 @@ function getDynamicMap(key) {
 function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
-        alert("⚠️ 請先在「輸入文字」方塊中輸入要加密的內容！");
+        alert("⚠️ 請先輸入要加密的內容！");
         return;
+    }
+
+    const scope = document.getElementById('accessScope').value;
+    let targetPrefix = "";
+
+    if (scope === "self") {
+        targetPrefix = (currentRole === "admin") ? "000000" : loggedInPrefix;
+    } else if (scope === "public") {
+        targetPrefix = PUBLIC_PREFIX; // 大家都可以解
+    } else if (scope === "specific") {
+        targetPrefix = document.getElementById('targetPrefix').value.trim();
+        if (targetPrefix.length !== 6) {
+            alert("⚠️ 指定對象的前綴必須正好是 6 位數字/二進位編碼！");
+            return;
+        }
     }
 
     const { charToBin } = getDynamicMap(savedRawKey);
     let cleanInput = input.toLowerCase().replace(/\?/g, "？").replace(/,/g, "，").replace(/\./g, "。").replace(/!/g, "！");
     
-    let prefix = (currentRole === "admin") ? "000000" : loggedInPrefix;
-    let result = prefix;
+    let result = targetPrefix; // 前 6 位為權限前綴
 
     for (let char of cleanInput) {
         if (charToBin[char] !== undefined) result += charToBin[char];
@@ -239,23 +277,30 @@ function encodeProcess() {
 function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
-        alert("⚠️ 請先在「輸入文字」方塊中貼上要解密的二進位密文！");
+        alert("⚠️ 請先貼上要解密的密文！");
         return;
     }
 
-    let cleanInput = input.replace(/[^01]/g, "");
+    let cleanInput = input.replace(/[^019]/g, ""); // 包含 0, 1 與 廣播碼 9
     
     if (cleanInput.length <= 6 || cleanInput.length % 6 !== 0) {
         alert("❌ 密文格式錯誤或長度不足！");
-        document.getElementById('outputText').value = "？？？ (密文無效)";
+        document.getElementById('outputText').value = "？？？ (無效密文)";
         return;
     }
     
     let cipherPrefix = cleanInput.substring(0, 6);
     
-    // 前綴與身分驗證
-    if (currentRole !== "admin" && cipherPrefix !== loggedInPrefix) {
-        alert("❌ 解密失敗：此密文不屬於您的專屬前綴身份！");
+    // 解密權限驗證：
+    // 1. 管理員 (admin)
+    // 2. 廣播公開密文 (PUBLIC_PREFIX)
+    // 3. 前綴符合當前使用者 (loggedInPrefix)
+    const isPublic = (cipherPrefix === PUBLIC_PREFIX);
+    const isOwner = (cipherPrefix === loggedInPrefix);
+    const isAdmin = (currentRole === "admin");
+
+    if (!isAdmin && !isPublic && !isOwner) {
+        alert(`❌ 解密失敗：此密文指定給前綴 [${cipherPrefix}]，您無權限存取！`);
         document.getElementById('outputText').value = "❌ 無解密權限";
         return;
     }
@@ -271,7 +316,6 @@ function decodeProcess() {
     document.getElementById('outputText').value = result;
 }
 
-// 📋 複製結果
 function copyResult() {
     const outputText = document.getElementById('outputText');
     if (!outputText.value) { 
@@ -282,12 +326,8 @@ function copyResult() {
     navigator.clipboard.writeText(outputText.value).then(() => alert("📋 已成功複製到剪貼簿！"));
 }
 
-// 👁️ 管理員檢視所有成員密碼
 function showAllPasswords() {
-    if (currentRole !== "admin") {
-        alert("❌ 只有管理員可以檢視所有成員密碼！");
-        return;
-    }
+    if (currentRole !== "admin") return;
     const passwords = getLatestPasswords();
     let displayStr = "📋 目前成員金鑰與前綴對照表：\n\n";
     for (const [prefix, pass] of Object.entries(passwords)) {
@@ -296,11 +336,10 @@ function showAllPasswords() {
     alert(displayStr);
 }
 
-// 💾 修改當前使用者密碼
 function changeCurrentPassword() {
     const newPass = document.getElementById('newPasswordInput').value.trim();
     if (!newPass) {
-        alert("⚠️ 請在輸入框輸入想要變更的新密碼！");
+        alert("⚠️ 請輸入新密碼！");
         return;
     }
 
@@ -315,7 +354,7 @@ function changeCurrentPassword() {
         localStorage.setItem('SYSTEM_MEMBER_KEYS', JSON.stringify(passwords));
         savedRawKey = newPass; 
         document.getElementById('newPasswordInput').value = "";
-        alert("🎉 密碼修改成功！當前加解密金鑰已同步更新。");
+        alert("🎉 密碼修改成功！當前金鑰已更新。");
     }
 }
 </script>
