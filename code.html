@@ -110,4 +110,300 @@
         <button class="btn-copy" onclick="copyResult()">📋 一鍵複製結果</button>
         
         <br><br>
-        <div class="form-group" style="border-top: 1px dashed #ccc; padding
+        <div class="form-group" style="border-top: 1px dashed #ccc; padding-top: 15px;">
+            <label>🛠️ 帳號安全：修改您目前的專屬金鑰密碼</label>
+            <input type="password" id="newPasswordInput" placeholder="輸入想要變更的新密碼...">
+            <button class="btn-change-pw" onclick="changeCurrentPassword()">💾 確認修改密碼</button>
+        </div>
+    </div>
+
+<script>
+
+const CHARS = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p',
+    'q','r','s','t','u','v','w','x','y','z',
+    '0','1','2','3','4','5','6','7','8','9',
+    ' ','。','？','，','[',']','!','！','-','_','+','=','/','*',
+    '@','#','$','%','^','&','(',')','{','}','<','>'
+];
+
+const BASE_NUMS = [];
+for (let i = 0; i < 64; i++) {
+    BASE_NUMS.push(i.toString().padStart(2, '0'));
+}
+
+const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
+
+// 👥 修改成簡短直覺的成員標籤：成員 1、成員 2、成員 3...
+const DEFAULT_PASSWORDS = {
+    "1": "userpass1", 
+    "2": "userpass2",  
+    "3": "userpass3",
+    "4": "userpass4",
+    "5": "userpass5",
+    "6": "userpass6",
+    "7": "userpass7",
+    "8": "userpass8"
+};
+
+function getLatestPasswords() {
+    const localData = localStorage.getItem('SYSTEM_MEMBER_KEYS');
+    // 如果本機有舊格式資料，自動清除重新寫入新格式
+    if (!localData || localData.includes("000000") || localData.includes("101010")) {
+        localStorage.setItem('SYSTEM_MEMBER_KEYS', JSON.stringify(DEFAULT_PASSWORDS));
+        return DEFAULT_PASSWORDS;
+    }
+    return JSON.parse(localData);
+}
+
+let currentRole = "user"; 
+let loggedInPrefix = "";
+let savedRawKey = "";    
+
+function verifyPassword() {
+    const inputKey = document.getElementById('userKey').value.trim();
+    if (!inputKey) {
+        alert("⚠️ 請先輸入金鑰密碼！");
+        return;
+    }
+
+    savedRawKey = inputKey;
+    const currentPasswords = getLatestPasswords();
+
+    if (inputKey === SUPER_ADMIN_KEY) {
+        currentRole = "admin";
+        loggedInPrefix = "0";
+        document.getElementById('authBlock').classList.add('hidden'); 
+        document.getElementById('mainBlock').classList.remove('hidden'); 
+        document.getElementById('adminViewBtn').classList.remove('hidden'); 
+        populateMemberDropdown();
+        alert("👑 管理員登入成功！");
+    } else {
+        const matchedPrefix = Object.keys(currentPasswords).find(prefix => currentPasswords[prefix] === inputKey);
+        if (matchedPrefix) {
+            currentRole = "user";
+            loggedInPrefix = matchedPrefix;
+            document.getElementById('authBlock').classList.add('hidden'); 
+            document.getElementById('mainBlock').classList.remove('hidden'); 
+            populateMemberDropdown();
+            alert(`🔓 登入成功！您的身分為：[成員 ${loggedInPrefix}]`);
+        } else {
+            alert("❌ 密碼驗證失敗，拒絕存取！");
+        }
+    }
+}
+
+// 動態繪製選單名稱為「成員 X」
+function populateMemberDropdown() {
+    const passwords = getLatestPasswords();
+    const select = document.getElementById('targetMemberSelect');
+    select.innerHTML = "";
+    
+    for (const [prefix] of Object.entries(passwords)) {
+        if (prefix !== loggedInPrefix) {
+            const opt = document.createElement('option');
+            opt.value = prefix;
+            opt.textContent = `👤 成員 ${prefix}`;
+            select.appendChild(opt);
+        }
+    }
+}
+
+function toggleTargetSelect() {
+    const scope = document.getElementById('accessScope').value;
+    const targetGroup = document.getElementById('targetMemberGroup');
+    if (scope === 'specific') {
+        targetGroup.classList.remove('hidden');
+    } else {
+        targetGroup.classList.add('hidden');
+    }
+}
+
+function generateRandomDigits(length) {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += Math.floor(Math.random() * 10).toString();
+    }
+    return result;
+}
+
+function cyrb128(str) {
+    let h1 = 1779033703, h2 = 3024734765, h3 = 3362453663, h4 = 502494325;
+    for (let i = 0, k; i < str.length; i++) {
+        k = str.charCodeAt(i);
+        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+        h3 = h4 ^ Math.imul(h3 ^ k, 2869860233);
+        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+    }
+    return [(h1^h2)>>>0, h2>>>0, h3>>>0, h4>>>0];
+}
+
+function sfc32(a, b, c, d) {
+    return function() {
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        var t = (a + b) | 0;
+        a = b ^ (b >>> 9); b = (c + (c << 3)) | 0;
+        c = (c << 21) | (c >>> 11); d = (d + 1) | 0;
+        t = (t + d) | 0; c = (c + t) | 0;
+        return (t >>> 0) / 4294967296;
+    }
+}
+
+function getAuthCode(key, salt) {
+    let seed = cyrb128(key + salt);
+    return (seed[0] % 10000).toString().padStart(4, '0');
+}
+
+function getDynamicMap(key) {
+    let numList = [...BASE_NUMS];
+    if (key.trim() !== "") {
+        let seed = cyrb128(key);
+        let rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+        for (let i = numList.length - 1; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            [numList[i], numList[j]] = [numList[j], numList[i]];
+        }
+    }
+    let charToNum = {}; let numToChar = {};
+    CHARS.forEach((char, index) => {
+        charToNum[char] = numList[index];
+        numToChar[numList[index]] = char;
+    });
+    return { charToNum, numToChar };
+}
+
+// 🔒 加密處理
+function encodeProcess() {
+    const input = document.getElementById('inputText').value.trim();
+    if (!input) {
+        alert("⚠️ 請先輸入要加密的內容！");
+        return;
+    }
+
+    const scope = document.getElementById('accessScope').value;
+    const passwords = getLatestPasswords();
+    
+    let randomPrefix = generateRandomDigits(10);
+    let targetKey = "";
+
+    if (scope === "self") {
+        targetKey = savedRawKey;
+    } else if (scope === "public") {
+        targetKey = "PUBLIC_BROADCAST_KEY_2026";
+    } else if (scope === "specific") {
+        const targetPrefix = document.getElementById('targetMemberSelect').value;
+        targetKey = passwords[targetPrefix];
+        if (!targetKey) {
+            alert("⚠️ 找不到該目標成員的金鑰！");
+            return;
+        }
+    }
+
+    let authCode = getAuthCode(targetKey, randomPrefix);
+    const { charToNum } = getDynamicMap(targetKey);
+    let cleanInput = input.toLowerCase().replace(/\?/g, "？").replace(/,/g, "，").replace(/\./g, "。").replace(/!/g, "！");
+    
+    let result = randomPrefix + authCode;
+
+    for (let char of cleanInput) {
+        if (charToNum[char] !== undefined) result += charToNum[char];
+        else result += "99";
+    }
+    document.getElementById('outputText').value = result;
+}
+
+// 🔓 解密處理
+function decodeProcess() {
+    const input = document.getElementById('inputText').value.trim();
+    if (!input) {
+        alert("⚠️ 請先貼上要解密的數字密文！");
+        return;
+    }
+
+    let cleanInput = input.replace(/[^0-9]/g, ""); 
+    
+    if (cleanInput.length <= 14 || cleanInput.length % 2 !== 0) {
+        alert("❌ 密文格式錯誤或長度不足！");
+        document.getElementById('outputText').value = "？？？ (無效密文)";
+        return;
+    }
+    
+    let randomPrefix = cleanInput.substring(0, 10);
+    let authCodeInCipher = cleanInput.substring(10, 14);
+    
+    let publicAuthCode = getAuthCode("PUBLIC_BROADCAST_KEY_2026", randomPrefix);
+    let isPublic = (publicAuthCode === authCodeInCipher);
+    
+    let myAuthCode = getAuthCode(savedRawKey, randomPrefix);
+    let isForMe = (myAuthCode === authCodeInCipher);
+    
+    let activeKey = "";
+
+    if (currentRole === "admin") {
+        activeKey = savedRawKey;
+    } else if (isPublic) {
+        activeKey = "PUBLIC_BROADCAST_KEY_2026";
+    } else if (isForMe) {
+        activeKey = savedRawKey;
+    } else {
+        alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
+        document.getElementById('outputText').value = "❌ 無解密權限";
+        return;
+    }
+    
+    const { numToChar } = getDynamicMap(activeKey);
+    let result = "";
+    
+    for (let i = 14; i < cleanInput.length; i += 2) {
+        let numCode = cleanInput.substring(i, i + 2);
+        if (numToChar[numCode] !== undefined) result += numToChar[numCode];
+        else result += "？";
+    }
+    document.getElementById('outputText').value = result;
+}
+
+function copyResult() {
+    const outputText = document.getElementById('outputText');
+    if (!outputText.value) { 
+        alert("⚠️ 目前沒有任何結果可以複製！"); 
+        return; 
+    }
+    outputText.select();
+    navigator.clipboard.writeText(outputText.value).then(() => alert("📋 已成功複製到剪貼簿！"));
+}
+
+function showAllPasswords() {
+    if (currentRole !== "admin") return;
+    const passwords = getLatestPasswords();
+    let displayStr = "📋 目前成員金鑰與編號對照表：\n\n";
+    for (const [prefix, pass] of Object.entries(passwords)) {
+        displayStr += `成員 ${prefix}: 密碼 ${pass}\n`;
+    }
+    alert(displayStr);
+}
+
+function changeCurrentPassword() {
+    const newPass = document.getElementById('newPasswordInput').value.trim();
+    if (!newPass) {
+        alert("⚠️ 請輸入新密碼！");
+        return;
+    }
+
+    if (currentRole === "admin") {
+        alert("⚠️ 最高管理員金鑰無法透過此介面修改。");
+        return;
+    }
+
+    const passwords = getLatestPasswords();
+    if (loggedInPrefix && passwords[loggedInPrefix] !== undefined) {
+        passwords[loggedInPrefix] = newPass;
+        localStorage.setItem('SYSTEM_MEMBER_KEYS', JSON.stringify(passwords));
+        savedRawKey = newPass; 
+        document.getElementById('newPasswordInput').value = "";
+        alert("🎉 密碼修改成功！當前金鑰已更新。");
+    }
+}
+</script>
+</body>
+</html>
