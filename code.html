@@ -56,7 +56,7 @@
         .hidden { display: none !important; }
         .permission-box {
             background-color: #eef7fc;
-            padding: 12px;
+            padding: 15px;
             border-radius: 6px;
             border: 1px solid #bce8f1;
             margin-bottom: 15px;
@@ -65,7 +65,7 @@
 </head>
 <body>
 
-    <h2>🔐 加解密系統 (0-9 數字密文)</h2>
+    <h2>🔐 加解密系統 (亂數前綴版)</h2>
 
     <div id="authBlock" class="form-group">
         <label for="userKey">🔑 請輸入存取安全金鑰密碼：</label>
@@ -83,16 +83,17 @@
         </div>
 
         <div class="permission-box">
-            <label for="accessScope">🔒 設定誰可以解密此文字（僅加密時有效）：</label>
-            <select id="accessScope" onchange="toggleTargetInput()">
-                <option value="self">僅我自己 (預設)</option>
-                <option value="public">🌐 開放所有人可解密</option>
-                <option value="specific">👤 指定特定成員 (輸入對方 2 位數字前綴)</option>
+            <label for="accessScope">🎯 選擇誰可以解密這段密文：</label>
+            <select id="accessScope" onchange="toggleTargetSelect()">
+                <option value="self">🔒 僅我自己可解密</option>
+                <option value="public">🌐 開放所有人（大家都可以解密）</option>
+                <option value="specific">👤 指定特定成員解密...</option>
             </select>
 
-            <div id="targetPrefixGroup" class="hidden" style="margin-top: 10px;">
-                <label for="targetPrefix">🎯 請輸入接收者的 2 位專屬前綴 (00~99)：</label>
-                <input type="text" id="targetPrefix" placeholder="例如：12" maxlength="2">
+            <div id="targetMemberGroup" class="hidden" style="margin-top: 10px;">
+                <label for="targetMemberSelect">👥 請選擇指定接收者：</label>
+                <select id="targetMemberSelect">
+                    </select>
             </div>
         </div>
 
@@ -126,16 +127,14 @@ const CHARS = [
     '@','#','$','%','^','&','(',')','{','}','<','>'
 ];
 
-// 生成 64 個基礎對照編號 (00 ~ 63)
 const BASE_NUMS = [];
 for (let i = 0; i < 64; i++) {
     BASE_NUMS.push(i.toString().padStart(2, '0'));
 }
 
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
-const PUBLIC_PREFIX = "99"; // 公開解密專屬前綴 (0-9 版改為 2 位數字)
 
-// 預設成員與其 2 位數字前綴 (00~99)
+// 成員清單
 const DEFAULT_PASSWORDS = {
     "01": "userpass1", 
     "02": "userpass2",  
@@ -176,6 +175,7 @@ function verifyPassword() {
         document.getElementById('authBlock').classList.add('hidden'); 
         document.getElementById('mainBlock').classList.remove('hidden'); 
         document.getElementById('adminViewBtn').classList.remove('hidden'); 
+        populateMemberDropdown();
         alert("👑 管理員登入成功！");
     } else {
         const matchedPrefix = Object.keys(currentPasswords).find(prefix => currentPasswords[prefix] === inputKey);
@@ -184,16 +184,33 @@ function verifyPassword() {
             loggedInPrefix = matchedPrefix;
             document.getElementById('authBlock').classList.add('hidden'); 
             document.getElementById('mainBlock').classList.remove('hidden'); 
-            alert(`🔓 登入成功！您的專屬識別前綴為：[${loggedInPrefix}]`);
+            populateMemberDropdown();
+            alert(`🔓 登入成功！您的專屬成員編號為：[成員 ${loggedInPrefix}]`);
         } else {
             alert("❌ 密碼驗證失敗，拒絕存取！");
         }
     }
 }
 
-function toggleTargetInput() {
+// 動態產生下拉選單
+function populateMemberDropdown() {
+    const passwords = getLatestPasswords();
+    const select = document.getElementById('targetMemberSelect');
+    select.innerHTML = "";
+    
+    for (const [prefix] of Object.entries(passwords)) {
+        if (prefix !== loggedInPrefix) {
+            const opt = document.createElement('option');
+            opt.value = prefix;
+            opt.textContent = `👤 成員 ${prefix}`;
+            select.appendChild(opt);
+        }
+    }
+}
+
+function toggleTargetSelect() {
     const scope = document.getElementById('accessScope').value;
-    const targetGroup = document.getElementById('targetPrefixGroup');
+    const targetGroup = document.getElementById('targetMemberGroup');
     if (scope === 'specific') {
         targetGroup.classList.remove('hidden');
     } else {
@@ -201,6 +218,16 @@ function toggleTargetInput() {
     }
 }
 
+// 生成指定長度的隨機數字字串
+function generateRandomDigits(length) {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += Math.floor(Math.random() * 10).toString();
+    }
+    return result;
+}
+
+// 雜湊演算法
 function cyrb128(str) {
     let h1 = 1779033703, h2 = 3024734765, h3 = 3362453663, h4 = 502494325;
     for (let i = 0, k; i < str.length; i++) {
@@ -212,6 +239,7 @@ function cyrb128(str) {
     }
     return [(h1^h2)>>>0, h2>>>0, h3>>>0, h4>>>0];
 }
+
 function sfc32(a, b, c, d) {
     return function() {
         a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
@@ -222,6 +250,14 @@ function sfc32(a, b, c, d) {
         return (t >>> 0) / 4294967296;
     }
 }
+
+// 產生特定金鑰對應的 4 位數驗證標章 (Validation Stamp)
+function getAuthCode(key, salt) {
+    let seed = cyrb128(key + salt);
+    let code = (seed[0] % 10000).toString().padStart(4, '0');
+    return code;
+}
+
 function getDynamicMap(key) {
     let numList = [...BASE_NUMS];
     if (key.trim() !== "") {
@@ -240,7 +276,7 @@ function getDynamicMap(key) {
     return { charToNum, numToChar };
 }
 
-// 🔒 加密處理 (輸出純數字密文)
+// 🔒 加密處理
 function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -249,24 +285,37 @@ function encodeProcess() {
     }
 
     const scope = document.getElementById('accessScope').value;
-    let targetPrefix = "";
+    const passwords = getLatestPasswords();
+    
+    // 1. 生成 10 位完全隨機的數字前綴 (Salt)
+    let randomPrefix = generateRandomDigits(10);
+    
+    let targetKey = "";
+    let isPublic = false;
 
     if (scope === "self") {
-        targetPrefix = (currentRole === "admin") ? "00" : loggedInPrefix;
+        targetKey = savedRawKey;
     } else if (scope === "public") {
-        targetPrefix = PUBLIC_PREFIX; // 開放所有人解密 (99)
+        isPublic = true;
+        targetKey = "PUBLIC_BROADCAST_KEY_2026";
     } else if (scope === "specific") {
-        targetPrefix = document.getElementById('targetPrefix').value.trim();
-        if (targetPrefix.length !== 2 || isNaN(targetPrefix)) {
-            alert("⚠️ 指定對象的前綴必須是 2 位數字（例如：01、05）！");
+        const targetPrefix = document.getElementById('targetMemberSelect').value;
+        targetKey = passwords[targetPrefix];
+        if (!targetKey) {
+            alert("⚠️ 找不到該目標成員的金鑰！");
             return;
         }
     }
 
-    const { charToNum } = getDynamicMap(savedRawKey);
+    // 2. 算出一組 4 位數的權限驗證碼
+    let authCode = getAuthCode(targetKey, randomPrefix);
+
+    // 3. 使用目標金鑰進行對照表繪製（若為公開則使用公開廣播 Mapping）
+    const { charToNum } = getDynamicMap(targetKey);
     let cleanInput = input.toLowerCase().replace(/\?/g, "？").replace(/,/g, "，").replace(/\./g, "。").replace(/!/g, "！");
     
-    let result = targetPrefix; // 前 2 位為權限前綴
+    // 最終密文格式：[10 位亂數前綴] + [4 位權限驗證碼] + [內文 0-9 數字]
+    let result = randomPrefix + authCode;
 
     for (let char of cleanInput) {
         if (charToNum[char] !== undefined) result += charToNum[char];
@@ -275,7 +324,7 @@ function encodeProcess() {
     document.getElementById('outputText').value = result;
 }
 
-// 🔓 解密處理 (解碼純數字密文)
+// 🔓 解密處理
 function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -283,32 +332,46 @@ function decodeProcess() {
         return;
     }
 
-    // 只保留 0-9 數字
     let cleanInput = input.replace(/[^0-9]/g, ""); 
     
-    if (cleanInput.length <= 2 || cleanInput.length % 2 !== 0) {
-        alert("❌ 密文格式錯誤或長度不足（長度必須為偶數）！");
+    // 密文必須大於 14 位（10 位亂數 + 4 位驗證碼 + 至少 2 位內文）且長度為偶數
+    if (cleanInput.length <= 14 || cleanInput.length % 2 !== 0) {
+        alert("❌ 密文格式錯誤或長度不足！");
         document.getElementById('outputText').value = "？？？ (無效密文)";
         return;
     }
     
-    let cipherPrefix = cleanInput.substring(0, 2);
+    let randomPrefix = cleanInput.substring(0, 10);
+    let authCodeInCipher = cleanInput.substring(10, 14);
     
-    const isPublic = (cipherPrefix === PUBLIC_PREFIX);
-    const isOwner = (cipherPrefix === loggedInPrefix);
-    const isAdmin = (currentRole === "admin");
+    // 驗證 1：嘗試用「廣播公開 Key」解密
+    let publicAuthCode = getAuthCode("PUBLIC_BROADCAST_KEY_2026", randomPrefix);
+    let isPublic = (publicAuthCode === authCodeInCipher);
+    
+    // 驗證 2：嘗試用「目前登入者 Key」解密
+    let myAuthCode = getAuthCode(savedRawKey, randomPrefix);
+    let isForMe = (myAuthCode === authCodeInCipher);
+    
+    let activeKey = "";
 
-    if (!isAdmin && !isPublic && !isOwner) {
-        alert(`❌ 解密失敗：此密文指定給前綴 [${cipherPrefix}]，您無權限存取！`);
+    if (currentRole === "admin") {
+        // 管理員可以自動使用驗證碼解開
+        activeKey = savedRawKey;
+    } else if (isPublic) {
+        activeKey = "PUBLIC_BROADCAST_KEY_2026";
+    } else if (isForMe) {
+        activeKey = savedRawKey;
+    } else {
+        alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
         document.getElementById('outputText').value = "❌ 無解密權限";
         return;
     }
     
-    const { numToChar } = getDynamicMap(savedRawKey);
+    const { numToChar } = getDynamicMap(activeKey);
     let result = "";
     
-    // 從第 2 位之後，每 2 位數字為一個字元解碼
-    for (let i = 2; i < cleanInput.length; i += 2) {
+    // 從第 14 位開始還原文字
+    for (let i = 14; i < cleanInput.length; i += 2) {
         let numCode = cleanInput.substring(i, i + 2);
         if (numToChar[numCode] !== undefined) result += numToChar[numCode];
         else result += "？";
@@ -329,9 +392,9 @@ function copyResult() {
 function showAllPasswords() {
     if (currentRole !== "admin") return;
     const passwords = getLatestPasswords();
-    let displayStr = "📋 目前成員金鑰與 0-9 數字前綴對照表：\n\n";
+    let displayStr = "📋 目前成員金鑰與編號對照表：\n\n";
     for (const [prefix, pass] of Object.entries(passwords)) {
-        displayStr += `專屬數字前綴 [${prefix}]: 密碼 ${pass}\n`;
+        displayStr += `成員編號 [${prefix}]: 密碼 ${pass}\n`;
     }
     alert(displayStr);
 }
