@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧安全加解密系統</title>
+    <title>智慧安全加解密系統 (完整成員版)</title>
     <style>
         body {
             font-family: 'Segoe UI', Microsoft JhengHei, Tahoma, Geneva, Verdana, sans-serif;
@@ -74,7 +74,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getDatabase, ref, get, child, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-        // 設定專屬 Firebase 資訊
         const firebaseConfig = {
             databaseURL: "https://kevin-73684-default-rtdb.firebaseio.com",
             projectId: "kevin-73684"
@@ -83,10 +82,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // 預設成員密碼對照表 (成員 1 ~ 8)
+        // 預設成員密碼對照表
         const DEFAULT_PASSWORDS = {
-            "1(Lily)": "userpass1", 
-            "2(Emily)": "userpass2",  
+            "1": "userpass1", 
+            "2": "userpass2",  
             "3": "userpass3",
             "4": "userpass4",
             "5": "userpass5",
@@ -95,7 +94,6 @@
             "8": "userpass8"
         };
 
-        // 從 Firebase 雲端讀取最新密碼
         window.getCloudPasswords = async function() {
             try {
                 const dbRef = ref(db);
@@ -108,12 +106,11 @@
                 }
             } catch (error) {
                 console.error("雲端讀取失敗:", error);
-                alert("⚠️ 連接 Firebase 失敗，請確認資料庫 Rules 權限已開放！");
+                alert("⚠️ 連接 Firebase 失敗，請確認 Rules 權限設定！");
                 return DEFAULT_PASSWORDS;
             }
         };
 
-        // 將最新密碼寫入 Firebase 雲端
         window.updateCloudPasswords = async function(newPasswords) {
             try {
                 await set(ref(db, "SYSTEM_MEMBER_KEYS"), newPasswords);
@@ -128,7 +125,7 @@
 </head>
 <body>
 
-    <h2>🔐 加解密系統 </h2>
+    <h2>🔐 加解密系統 (雲端同步版)</h2>
 
     <div id="authBlock" class="form-group">
         <label for="userKey">🔑 請輸入存取安全金鑰密碼：</label>
@@ -150,7 +147,7 @@
           
         <div class="form-group">
             <label for="inputText">📝 輸入文字（支援中文/英文/數字）：</label>
-            <textarea id="inputText" placeholder="加密：輸入中文或英文內容&#10;解密：貼上包含 0-9 數字的密文..."></textarea>
+            <textarea id="inputText" placeholder="加密：輸入內容&#10;解密：貼上包含 0-9 數字的密文..."></textarea>
         </div>
 
         <div class="permission-box">
@@ -191,12 +188,23 @@
 <script>
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
 
+// 成員編號對應的名稱設定
+const MEMBER_NAMES = {
+    "1": "成員1(Lily)",
+    "2": "成員2(Emily)",
+    "3": "成員3",
+    "4": "成員4",
+    "5": "成員5",
+    "6": "成員6",
+    "7": "成員7",
+    "8": "成員8"
+};
+
 let currentRole = "user"; 
 let loggedInPrefix = "";
 let savedRawKey = "";    
 let currentCloudPasswords = {};
 
-// 🔤 中文字元 UTF-8 Base64 轉換器
 function utf8ToBase64(str) {
     return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
         return String.fromCharCode('0x' + p1);
@@ -237,14 +245,15 @@ async function verifyPassword() {
             document.getElementById('authBlock').classList.add('hidden'); 
             document.getElementById('mainBlock').classList.remove('hidden'); 
             populateMemberDropdown();
-            alert(`🔓 登入成功！您的身分為：[成員 ${loggedInPrefix}]`);
+            let displayName = MEMBER_NAMES[loggedInPrefix] || `成員 ${loggedInPrefix}`;
+            alert(`🔓 登入成功！您的身分為：[${displayName}]`);
         } else {
             alert("❌ 密碼驗證失敗！請確認輸入是否正確。");
         }
     }
 }
 
-// 動態載入成員選單 (只顯示一般成員，絕不包含管理員)
+// 一般成員選擇接收者下拉選單
 function populateMemberDropdown() {
     const select = document.getElementById('targetMemberSelect');
     select.innerHTML = "";
@@ -253,12 +262,13 @@ function populateMemberDropdown() {
         if (prefix !== loggedInPrefix) {
             const opt = document.createElement('option');
             opt.value = prefix;
-            opt.textContent = `👤 成員 ${prefix}`;
+            opt.textContent = `👤 ${MEMBER_NAMES[prefix] || '成員 ' + prefix}`;
             select.appendChild(opt);
         }
     }
 }
 
+// 管理員控制台下拉選單
 function populateAdminDropdown() {
     const select = document.getElementById('adminTargetSelect');
     select.innerHTML = "";
@@ -266,7 +276,7 @@ function populateAdminDropdown() {
     for (const [prefix] of Object.entries(currentCloudPasswords)) {
         const opt = document.createElement('option');
         opt.value = prefix;
-        opt.textContent = `成員 ${prefix}`;
+        opt.textContent = MEMBER_NAMES[prefix] || `成員 ${prefix}`;
         select.appendChild(opt);
     }
     loadSelectedMemberPass();
@@ -293,7 +303,8 @@ async function adminChangeMemberPassword() {
     currentCloudPasswords[targetMember] = newPass;
     const success = await window.updateCloudPasswords(currentCloudPasswords);
     if (success) {
-        alert(`🎉 已成功將 [成員 ${targetMember}] 的密碼更新為「${newPass}」並同步至雲端！`);
+        let name = MEMBER_NAMES[targetMember] || `成員 ${targetMember}`;
+        alert(`🎉 已成功將 [${name}] 的密碼更新為「${newPass}」並同步至雲端！`);
     }
 }
 
@@ -360,7 +371,7 @@ function getAuthCode(key, salt) {
 async function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
-        alert("⚠️ 請先輸入要加密的中文或英文內容！");
+        alert("⚠️ 請先輸入要加密的內容！");
         return;
     }
 
@@ -377,7 +388,6 @@ async function encodeProcess() {
     } else if (scope === "specific") {
         const targetPrefix = document.getElementById('targetMemberSelect').value;
         
-        // 🚫 限制：無法選擇或指定給管理員
         if (targetPrefix === "0" || targetPrefix === "admin") {
             alert("⚠️ 無法指定給管理員！");
             return;
@@ -437,7 +447,6 @@ function decodeProcess() {
     } else if (isForMe) {
         activeKey = savedRawKey;
     } else if (currentRole === "admin") {
-        // 管理員可以解密私人訊息或特定給其他人的訊息
         activeKey = savedRawKey;
     } else {
         alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
