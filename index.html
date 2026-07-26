@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧安全加解密系統 </title>
+    <title>智慧安全加解密系統</title>
     <style>
         body {
             font-family: 'Segoe UI', Microsoft JhengHei, Tahoma, Geneva, Verdana, sans-serif;
@@ -85,8 +85,8 @@
 
         // 預設成員密碼對照表 (成員 1 ~ 8)
         const DEFAULT_PASSWORDS = {
-            "1": "userpass1", 
-            "2": "userpass2",  
+            "1(Lily)": "userpass1", 
+            "2(Emily)": "userpass2",  
             "3": "userpass3",
             "4": "userpass4",
             "5": "userpass5",
@@ -244,6 +244,7 @@ async function verifyPassword() {
     }
 }
 
+// 動態載入成員選單 (只顯示一般成員，絕不包含管理員)
 function populateMemberDropdown() {
     const select = document.getElementById('targetMemberSelect');
     select.innerHTML = "";
@@ -375,6 +376,13 @@ async function encodeProcess() {
         targetKey = "PUBLIC_BROADCAST_KEY_2026";
     } else if (scope === "specific") {
         const targetPrefix = document.getElementById('targetMemberSelect').value;
+        
+        // 🚫 限制：無法選擇或指定給管理員
+        if (targetPrefix === "0" || targetPrefix === "admin") {
+            alert("⚠️ 無法指定給管理員！");
+            return;
+        }
+
         targetKey = currentCloudPasswords[targetPrefix];
         if (!targetKey) {
             alert("⚠️ 找不到該目標成員的金鑰！");
@@ -397,7 +405,7 @@ async function encodeProcess() {
     document.getElementById('outputText').value = randomPrefix + authCode + cipherDigits;
 }
 
-// 🔓 解密處理 (包含管理員可解開公開與特定密文)
+// 🔓 解密處理
 function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -424,44 +432,12 @@ function decodeProcess() {
     
     let activeKey = "";
 
-    // 順序修正：優先判斷公開密文，確保管理員也能成功還原
     if (isPublic) {
         activeKey = "PUBLIC_BROADCAST_KEY_2026";
-    } else if (isForMe || currentRole === "admin") {
+    } else if (isForMe) {
+        activeKey = savedRawKey;
+    } else if (currentRole === "admin") {
+        // 管理員可以解密私人訊息或特定給其他人的訊息
         activeKey = savedRawKey;
     } else {
-        alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
-        document.getElementById('outputText').value = "❌ 無解密權限";
-        return;
-    }
-    
-    let keySeed = cyrb128(activeKey)[0];
-    let base64Text = "";
-
-    try {
-        for (let i = 14; i < cleanInput.length; i += 3) {
-            let numCode = parseInt(cleanInput.substring(i, i + 3), 10);
-            let charCode = numCode ^ (keySeed % 256);
-            base64Text += String.fromCharCode(charCode);
-        }
-        
-        let originalText = base64ToUtf8(base64Text);
-        document.getElementById('outputText').value = originalText;
-    } catch (e) {
-        alert("❌ 解密失敗：密文已被篡改或無法還原！");
-        document.getElementById('outputText').value = "❌ 解密失敗";
-    }
-}
-
-function copyResult() {
-    const outputText = document.getElementById('outputText');
-    if (!outputText.value) { 
-        alert("⚠️ 目前沒有任何結果可以複製！"); 
-        return; 
-    }
-    outputText.select();
-    navigator.clipboard.writeText(outputText.value).then(() => alert("📋 已成功複製到剪貼簿！"));
-}
-</script>
-</body>
-</html>
+        alert("❌ 解密失敗：此
