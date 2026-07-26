@@ -82,8 +82,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // 預設成員密碼對照表
+        // 預設密碼對照表 (包含管理員 0 與成員 1~8)
         const DEFAULT_PASSWORDS = {
+            "0": "kevinisbabybear@Kevin945",
             "1": "userpass1", 
             "2": "userpass2",  
             "3": "userpass3",
@@ -188,8 +189,9 @@
 <script>
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
 
-// 成員編號對應的名稱設定
+// 全員名稱對照表 (包含管理員)
 const MEMBER_NAMES = {
+    "0": "👑 管理員",
     "1": "成員1(Lily)",
     "2": "成員2(Emily)",
     "3": "成員3",
@@ -253,16 +255,16 @@ async function verifyPassword() {
     }
 }
 
-// 一般成員選擇接收者下拉選單
+// 選擇接收者選單：除本人外，所有對象（包含管理員）皆可選擇
 function populateMemberDropdown() {
     const select = document.getElementById('targetMemberSelect');
     select.innerHTML = "";
     
-    for (const [prefix] of Object.entries(currentCloudPasswords)) {
+    for (const [prefix] of Object.entries(MEMBER_NAMES)) {
         if (prefix !== loggedInPrefix) {
             const opt = document.createElement('option');
             opt.value = prefix;
-            opt.textContent = `👤 ${MEMBER_NAMES[prefix] || '成員 ' + prefix}`;
+            opt.textContent = MEMBER_NAMES[prefix];
             select.appendChild(opt);
         }
     }
@@ -273,11 +275,13 @@ function populateAdminDropdown() {
     const select = document.getElementById('adminTargetSelect');
     select.innerHTML = "";
     
-    for (const [prefix] of Object.entries(currentCloudPasswords)) {
-        const opt = document.createElement('option');
-        opt.value = prefix;
-        opt.textContent = MEMBER_NAMES[prefix] || `成員 ${prefix}`;
-        select.appendChild(opt);
+    for (const [prefix] of Object.entries(MEMBER_NAMES)) {
+        if (prefix !== "0") { // 管理員不需要改自己
+            const opt = document.createElement('option');
+            opt.value = prefix;
+            opt.textContent = MEMBER_NAMES[prefix];
+            select.appendChild(opt);
+        }
     }
     loadSelectedMemberPass();
 }
@@ -367,7 +371,7 @@ function getAuthCode(key, salt) {
     return (seed[0] % 10000).toString().padStart(4, '0');
 }
 
-// 🔒 加密處理
+// 🔒 加密處理 (已允許加密給管理員)
 async function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -388,14 +392,15 @@ async function encodeProcess() {
     } else if (scope === "specific") {
         const targetPrefix = document.getElementById('targetMemberSelect').value;
         
-        if (targetPrefix === "0" || targetPrefix === "admin") {
-            alert("⚠️ 無法指定給管理員！");
-            return;
+        // 若指定給管理員，直接使用管理員超級金鑰
+        if (targetPrefix === "0") {
+            targetKey = SUPER_ADMIN_KEY;
+        } else {
+            targetKey = currentCloudPasswords[targetPrefix];
         }
 
-        targetKey = currentCloudPasswords[targetPrefix];
         if (!targetKey) {
-            alert("⚠️ 找不到該目標成員的金鑰！");
+            alert("⚠️ 找不到該目標對象的金鑰！");
             return;
         }
     }
