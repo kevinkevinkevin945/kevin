@@ -440,4 +440,38 @@ function decodeProcess() {
         // 管理員可以解密私人訊息或特定給其他人的訊息
         activeKey = savedRawKey;
     } else {
-        alert("❌ 解密失敗：此
+        alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
+        document.getElementById('outputText').value = "❌ 無解密權限";
+        return;
+    }
+    
+    let keySeed = cyrb128(activeKey)[0];
+    let base64Text = "";
+
+    try {
+        for (let i = 14; i < cleanInput.length; i += 3) {
+            let numCode = parseInt(cleanInput.substring(i, i + 3), 10);
+            let charCode = numCode ^ (keySeed % 256);
+            base64Text += String.fromCharCode(charCode);
+        }
+        
+        let originalText = base64ToUtf8(base64Text);
+        document.getElementById('outputText').value = originalText;
+    } catch (e) {
+        alert("❌ 解密失敗：密文已被篡改或無法還原！");
+        document.getElementById('outputText').value = "❌ 解密失敗";
+    }
+}
+
+function copyResult() {
+    const outputText = document.getElementById('outputText');
+    if (!outputText.value) { 
+        alert("⚠️ 目前沒有任何結果可以複製！"); 
+        return; 
+    }
+    outputText.select();
+    navigator.clipboard.writeText(outputText.value).then(() => alert("📋 已成功複製到剪貼簿！"));
+}
+</script>
+</body>
+</html>
