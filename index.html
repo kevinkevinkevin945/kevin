@@ -71,6 +71,13 @@
             border: 1px solid #bce8f1;
             margin-bottom: 15px;
         }
+        .decrypt-box {
+            background-color: #eef9f1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #c3e6cb;
+            margin-top: 10px;
+        }
     </style>
 
     <script type="module">
@@ -85,7 +92,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // 預設密碼對照表 (包含管理員 0 與成員 1~8)
         const DEFAULT_PASSWORDS = {
             "0": "kevinisbabybear@Kevin945",
             "1": "userpass1", 
@@ -110,7 +116,6 @@
                 }
             } catch (error) {
                 console.error("雲端讀取失敗:", error);
-                alert("⚠️ 連接 Firebase 失敗，請確認 Rules 權限設定！");
                 return DEFAULT_PASSWORDS;
             }
         };
@@ -121,7 +126,6 @@
                 return true;
             } catch (error) {
                 console.error("雲端更新失敗:", error);
-                alert("❌ 雲端密碼寫入失敗！");
                 return false;
             }
         };
@@ -150,8 +154,8 @@
         </div>
           
         <div class="form-group">
-            <label for="inputText">📝 輸入文字（支援中文/英文/數字）：</label>
-            <textarea id="inputText" placeholder="加密：輸入內容&#10;解密：貼上密文..."></textarea>
+            <label for="inputText">📝 輸入文字（加密或解密內文）：</label>
+            <textarea id="inputText" placeholder="加密：輸入要加密的文字&#10;解密：貼上密文..."></textarea>
         </div>
 
         <div class="permission-box">
@@ -167,6 +171,11 @@
                 <select id="targetMemberSelect">
                 </select>
             </div>
+        </div>
+
+        <div class="decrypt-box">
+            <label for="decryptCustomKey">🔑 解密專用金鑰（解密時若對方有自訂金鑰請填寫，留空則自動使用目前登入金鑰）：</label>
+            <input type="password" id="decryptCustomKey" placeholder="非必填：若為特定自訂金鑰請在此輸入...">
         </div>
 
         <div class="btn-group">
@@ -192,7 +201,6 @@
 <script>
 const SUPER_ADMIN_KEY = "kevinisbabybear@Kevin945";
 
-// 全員名稱對照表 (包含管理員與自訂名稱成員)
 const MEMBER_NAMES = {
     "0": "管理員(Kevin)",
     "1": "成員1(Lily)",
@@ -229,7 +237,7 @@ async function verifyPassword() {
         
         populateAdminDropdown();
         populateMemberDropdown();
-        alert("👑 最高管理員登入成功！您可以檢視並修改所有成員密碼。");
+        alert("👑 最高管理員登入成功！");
     } else {
         const matchedPrefix = Object.keys(currentCloudPasswords).find(prefix => currentCloudPasswords[prefix] === inputKey);
         if (matchedPrefix) {
@@ -239,14 +247,13 @@ async function verifyPassword() {
             document.getElementById('mainBlock').classList.remove('hidden'); 
             populateMemberDropdown();
             let displayName = MEMBER_NAMES[loggedInPrefix] || `成員 ${loggedInPrefix}`;
-            alert(`🔓 登入成功！您的身分為：[${displayName}]`);
+            alert(`🔓 登入成功！身分：[${displayName}]`);
         } else {
             alert("❌ 密碼驗證失敗！請確認輸入是否正確。");
         }
     }
 }
 
-// 選擇接收者選單：除本人外，所有對象（包含管理員）皆可選擇
 function populateMemberDropdown() {
     const select = document.getElementById('targetMemberSelect');
     select.innerHTML = "";
@@ -261,7 +268,6 @@ function populateMemberDropdown() {
     }
 }
 
-// 管理員控制台下拉選單
 function populateAdminDropdown() {
     const select = document.getElementById('adminTargetSelect');
     select.innerHTML = "";
@@ -284,7 +290,6 @@ function loadSelectedMemberPass() {
     }
 }
 
-// 👑 管理員修改任意成員密碼
 async function adminChangeMemberPassword() {
     if (currentRole !== "admin") return;
     const targetMember = document.getElementById('adminTargetSelect').value;
@@ -299,11 +304,10 @@ async function adminChangeMemberPassword() {
     const success = await window.updateCloudPasswords(currentCloudPasswords);
     if (success) {
         let name = MEMBER_NAMES[targetMember] || `成員 ${targetMember}`;
-        alert(`🎉 已成功將 [${name}] 的密碼更新為「${newPass}」並同步至雲端！`);
+        alert(`🎉 已成功將 [${name}] 的密碼更新為「${newPass}」！`);
     }
 }
 
-// 👤 一般成員修改自己密碼
 async function changeMyPassword() {
     const newPass = document.getElementById('newPasswordInput').value.trim();
     if (!newPass) {
@@ -337,7 +341,7 @@ function toggleTargetSelect() {
     }
 }
 
-// 🛡️ 軍事級加密核心：PBKDF2 衍生 256-bit AES-GCM 金鑰
+// 🛡️ 核心加密演算：PBKDF2 衍生 256-bit AES-GCM 金鑰
 async function deriveKey(password, salt) {
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey(
@@ -361,7 +365,7 @@ async function deriveKey(password, salt) {
     );
 }
 
-// 🔒 高強度 AES-256-GCM 加密處理
+// 🔒 加密處理
 async function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -388,8 +392,8 @@ async function encodeProcess() {
 
     try {
         const enc = new TextEncoder();
-        const salt = window.crypto.getRandomValues(new Uint8Array(16)); // 16 bytes Salt
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));   // 12 bytes IV
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
         
         const cryptoKey = await deriveKey(targetKey, salt);
         const encryptedContent = await window.crypto.subtle.encrypt(
@@ -398,7 +402,6 @@ async function encodeProcess() {
             enc.encode(input)
         );
 
-        // 組合 Salt + IV + 密文
         const combined = new Uint8Array(salt.length + iv.length + encryptedContent.byteLength);
         combined.set(salt, 0);
         combined.set(iv, salt.length);
@@ -412,7 +415,7 @@ async function encodeProcess() {
     }
 }
 
-// 🔓 高強度 AES-256-GCM 解密處理
+// 🔓 解密處理 (輸入對應金鑰才能還原)
 async function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -420,7 +423,15 @@ async function decodeProcess() {
         return;
     }
 
-    let activeKeys = [savedRawKey, "PUBLIC_BROADCAST_KEY_2026"];
+    // 優先使用「解密專用金鑰」，未填寫則採用「目前登入者金鑰」或「公共金鑰」
+    const customKey = document.getElementById('decryptCustomKey').value.trim();
+    let candidateKeys = [];
+
+    if (customKey) {
+        candidateKeys.push(customKey);
+    } else {
+        candidateKeys.push(savedRawKey, "PUBLIC_BROADCAST_KEY_2026");
+    }
 
     try {
         const combined = new Uint8Array(atob(input).split("").map(c => c.charCodeAt(0)));
@@ -434,7 +445,7 @@ async function decodeProcess() {
 
         let decryptedText = null;
 
-        for (const keyCandidate of activeKeys) {
+        for (const keyCandidate of candidateKeys) {
             try {
                 const cryptoKey = await deriveKey(keyCandidate, salt);
                 const decryptedContent = await window.crypto.subtle.decrypt(
@@ -446,18 +457,19 @@ async function decodeProcess() {
                 decryptedText = dec.decode(decryptedContent);
                 break;
             } catch (err) {
-                // 嘗試下一個金鑰
+                // 金鑰不對，繼續嘗試
             }
         }
 
         if (decryptedText !== null) {
             document.getElementById('outputText').value = decryptedText;
+            alert("🔓 金鑰正確，解密成功！");
         } else {
-            alert("❌ 解密失敗：此密文不是指定給您的，或密碼錯誤！");
-            document.getElementById('outputText').value = "❌ 無解密權限";
+            alert("❌ 解密失敗！");
+            document.getElementById('outputText').value = "❌ 解密失敗";
         }
     } catch (e) {
-        alert("❌ 解密失敗：密文格式不正確或已被篡改！");
+        alert("❌ 解密失敗");
         document.getElementById('outputText').value = "❌ 解密失敗";
     }
 }
