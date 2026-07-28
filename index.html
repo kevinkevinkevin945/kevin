@@ -151,7 +151,7 @@
           
         <div class="form-group">
             <label for="inputText">📝 輸入文字（支援中文/英文/數字）：</label>
-            <textarea id="inputText" placeholder="加密：輸入內容&#10;解密：貼上包含 0-9 數字的密文..."></textarea>
+            <textarea id="inputText" placeholder="加密：輸入內容&#10;解密：貼上密文..."></textarea>
         </div>
 
         <div class="permission-box">
@@ -210,18 +210,6 @@ let loggedInPrefix = "";
 let savedRawKey = "";    
 let currentCloudPasswords = {};
 
-function utf8ToBase64(str) {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-        return String.fromCharCode('0x' + p1);
-    }));
-}
-
-function base64ToUtf8(str) {
-    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
-        return '%' + ('0' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-}
-
 async function verifyPassword() {
     const inputKey = document.getElementById('userKey').value.trim();
     if (!inputKey) {
@@ -279,7 +267,7 @@ function populateAdminDropdown() {
     select.innerHTML = "";
     
     for (const [prefix] of Object.entries(MEMBER_NAMES)) {
-        if (prefix !== "0") { // 管理員不需要改自己
+        if (prefix !== "0") {
             const opt = document.createElement('option');
             opt.value = prefix;
             opt.textContent = MEMBER_NAMES[prefix];
@@ -349,32 +337,31 @@ function toggleTargetSelect() {
     }
 }
 
-function generateRandomDigits(length) {
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += Math.floor(Math.random() * 10).toString();
-    }
-    return result;
+// 🛡️ 軍事級加密核心：PBKDF2 衍生 256-bit AES-GCM 金鑰
+async function deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+        "raw",
+        enc.encode(password),
+        { name: "PBKDF2" },
+        false,
+        ["deriveKey"]
+    );
+    return window.crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 100000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
 }
 
-function cyrb128(str) {
-    let h1 = 1779033703, h2 = 3024734765, h3 = 3362453663, h4 = 502494325;
-    for (let i = 0, k; i < str.length; i++) {
-        k = str.charCodeAt(i);
-        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-        h3 = h4 ^ Math.imul(h3 ^ k, 2869860233);
-        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-    }
-    return [(h1^h2)>>>0, h2>>>0, h3>>>0, h4>>>0];
-}
-
-function getAuthCode(key, salt) {
-    let seed = cyrb128(key + salt);
-    return (seed[0] % 10000).toString().padStart(4, '0');
-}
-
-// 🔒 加密處理 (已允許加密給管理員)
+// 🔒 高強度 AES-256-GCM 加密處理
 async function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -383,9 +370,7 @@ async function encodeProcess() {
     }
 
     currentCloudPasswords = await window.getCloudPasswords();
-
     const scope = document.getElementById('accessScope').value;
-    let randomPrefix = generateRandomDigits(10);
     let targetKey = "";
 
     if (scope === "self") {
@@ -394,88 +379,85 @@ async function encodeProcess() {
         targetKey = "PUBLIC_BROADCAST_KEY_2026";
     } else if (scope === "specific") {
         const targetPrefix = document.getElementById('targetMemberSelect').value;
-        
-        // 若指定給管理員，直接使用管理員超級金鑰
-        if (targetPrefix === "0") {
-            targetKey = SUPER_ADMIN_KEY;
-        } else {
-            targetKey = currentCloudPasswords[targetPrefix];
-        }
-
+        targetKey = (targetPrefix === "0") ? SUPER_ADMIN_KEY : currentCloudPasswords[targetPrefix];
         if (!targetKey) {
             alert("⚠️ 找不到該目標對象的金鑰！");
             return;
         }
     }
 
-    let authCode = getAuthCode(targetKey, randomPrefix);
-    let base64Text = utf8ToBase64(input);
-    
-    let keySeed = cyrb128(targetKey)[0];
-    let cipherDigits = "";
+    try {
+        const enc = new TextEncoder();
+        const salt = window.crypto.getRandomValues(new Uint8Array(16)); // 16 bytes Salt
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));   // 12 bytes IV
+        
+        const cryptoKey = await deriveKey(targetKey, salt);
+        const encryptedContent = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            cryptoKey,
+            enc.encode(input)
+        );
 
-    for (let i = 0; i < base64Text.length; i++) {
-        let charCode = base64Text.charCodeAt(i);
-        let obfuscated = (charCode ^ (keySeed % 256)) % 256;
-        cipherDigits += obfuscated.toString().padStart(3, '0');
+        // 組合 Salt + IV + 密文
+        const combined = new Uint8Array(salt.length + iv.length + encryptedContent.byteLength);
+        combined.set(salt, 0);
+        combined.set(iv, salt.length);
+        combined.set(new Uint8Array(encryptedContent), salt.length + iv.length);
+
+        const base64Cipher = btoa(String.fromCharCode(...combined));
+        document.getElementById('outputText').value = base64Cipher;
+    } catch (e) {
+        console.error(e);
+        alert("❌ 加密失敗！");
     }
-    
-    document.getElementById('outputText').value = randomPrefix + authCode + cipherDigits;
 }
 
-// 🔓 解密處理
-function decodeProcess() {
+// 🔓 高強度 AES-256-GCM 解密處理
+async function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
-        alert("⚠️ 請先貼上要解密的數字密文！");
+        alert("⚠️ 請先貼上要解密的密文！");
         return;
     }
 
-    let cleanInput = input.replace(/[^0-9]/g, ""); 
-    
-    if (cleanInput.length <= 14 || (cleanInput.length - 14) % 3 !== 0) {
-        alert("❌ 密文格式錯誤或長度不正確！");
-        document.getElementById('outputText').value = "？？？ (無效密文)";
-        return;
-    }
-    
-    let randomPrefix = cleanInput.substring(0, 10);
-    let authCodeInCipher = cleanInput.substring(10, 14);
-    
-    let publicAuthCode = getAuthCode("PUBLIC_BROADCAST_KEY_2026", randomPrefix);
-    let isPublic = (publicAuthCode === authCodeInCipher);
-    
-    let myAuthCode = getAuthCode(savedRawKey, randomPrefix);
-    let isForMe = (myAuthCode === authCodeInCipher);
-    
-    let activeKey = "";
-
-    if (isPublic) {
-        activeKey = "PUBLIC_BROADCAST_KEY_2026";
-    } else if (isForMe) {
-        activeKey = savedRawKey;
-    } else if (currentRole === "admin") {
-        activeKey = savedRawKey;
-    } else {
-        alert("❌ 解密失敗：此密文不是指定給您的，您沒有解密權限！");
-        document.getElementById('outputText').value = "❌ 無解密權限";
-        return;
-    }
-    
-    let keySeed = cyrb128(activeKey)[0];
-    let base64Text = "";
+    let activeKeys = [savedRawKey, "PUBLIC_BROADCAST_KEY_2026"];
 
     try {
-        for (let i = 14; i < cleanInput.length; i += 3) {
-            let numCode = parseInt(cleanInput.substring(i, i + 3), 10);
-            let charCode = numCode ^ (keySeed % 256);
-            base64Text += String.fromCharCode(charCode);
+        const combined = new Uint8Array(atob(input).split("").map(c => c.charCodeAt(0)));
+        if (combined.length < 28) {
+            throw new Error("Invalid cipher length");
         }
-        
-        let originalText = base64ToUtf8(base64Text);
-        document.getElementById('outputText').value = originalText;
+
+        const salt = combined.slice(0, 16);
+        const iv = combined.slice(16, 28);
+        const data = combined.slice(28);
+
+        let decryptedText = null;
+
+        for (const keyCandidate of activeKeys) {
+            try {
+                const cryptoKey = await deriveKey(keyCandidate, salt);
+                const decryptedContent = await window.crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv },
+                    cryptoKey,
+                    data
+                );
+                const dec = new TextDecoder();
+                decryptedText = dec.decode(decryptedContent);
+                break;
+            } catch (err) {
+                // 嘗試下一個金鑰
+            }
+        }
+
+        if (decryptedText !== null) {
+            document.getElementById('outputText').value = decryptedText;
+        } else {
+            alert("❌ 解密失敗：此密文不是指定給您的，或密碼錯誤！");
+            document.getElementById('outputText').value = "❌ 無解密權限";
+        }
     } catch (e) {
-        alert("❌ 解密失敗：密文已被篡改或無法還原！");
+        alert("❌ 解密失敗：密文格式不正確或已被篡改！");
         document.getElementById('outputText').value = "❌ 解密失敗";
     }
 }
