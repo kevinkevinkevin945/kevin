@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱殭屍射擊遊戲 - 槍枝與多血量版</title>
+    <title>3D 第一人稱殭屍射擊 - RPG與手榴彈升級版</title>
     <style>
         body {
             margin: 0;
@@ -40,6 +40,18 @@
             z-index: 10;
         }
 
+        #weapon-status {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #ffcc00;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+            z-index: 10;
+        }
+
         #instructions {
             position: absolute;
             top: 0;
@@ -63,8 +75,8 @@
         }
 
         #instructions p {
-            font-size: 20px;
-            margin: 5px 0;
+            font-size: 18px;
+            margin: 4px 0;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -77,50 +89,54 @@
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span>
     </div>
+    <div id="weapon-status">當前武器: 連發步槍 (1/滾輪)</div>
 
     <div id="instructions">
-        <h1>殭屍包圍戰 - 持槍突擊</h1>
+        <h1>殭屍包圍戰 - 火力升級</h1>
         <p>點擊螢幕開始遊戲</p>
-        <p>【W, A, S, D】移動</p>
-        <p>【滑鼠】控制視角</p>
-        <p>【滑鼠左鍵】開槍射擊（每隻殭屍需射擊 3 發）</p>
+        <p>【W, A, S, D】前後左右移動（W向前）</p>
+        <p>【滾輪 / 數字鍵 1, 2】切換武器（步槍 / RPG火箭筒）</p>
+        <p>【滑鼠左鍵】開槍射擊</p>
+        <p>【F 鍵】投擲手榴彈</p>
     </div>
 
     <script>
-        // --- 變數宣告 ---
         let camera, scene, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isMouseDown = false;
+        let lastShotTime = 0;
         let prevTime = performance.now();
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
 
         const MAP_SIZE = 80;
+        const PLAYER_HEIGHT = 1.6;
         const zombies = [];
         const obstacles = [];
+        const bullets = [];
+        const grenades = [];
+        const explosions = [];
+
         let health = 100;
         let score = 0;
         let isGameOver = false;
 
-        // 槍枝與射擊效果變數
-        let gunGroup;
-        let muzzleFlash;
-        let recoilTime = 0;
+        // 武器系統
+        let currentWeapon = 'rifle'; // 'rifle' 或 'rpg'
+        let rifleMesh, rpgMesh, muzzleFlash;
 
         const hudHealth = document.getElementById('health');
         const hudScore = document.getElementById('score');
+        const weaponStatus = document.getElementById('weapon-status');
         const instructions = document.getElementById('instructions');
 
-        // --- 初始化遊戲場景 ---
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x111122);
-            scene.fog = new THREE.FogExp2(0x111122, 0.03);
+            scene.fog = new THREE.FogExp2(0x111122, 0.025);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.y = 1.6;
 
             // 光源
-            const ambientLight = new THREE.AmbientLight(0x555555);
+            const ambientLight = new THREE.AmbientLight(0x666666);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -129,24 +145,20 @@
 
             // 地面
             const floorGeometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x1f1f1f });
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
 
-            // 地圖邊界與障礙物
             createMapBoundaries();
             createObstacles();
 
-            // 控制器
             controls = new THREE.PointerLockControls(camera, document.body);
+            controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
 
             instructions.addEventListener('click', () => {
-                if (!isGameOver) {
-                    controls.lock();
-                } else {
-                    restartGame();
-                }
+                if (!isGameOver) controls.lock();
+                else restartGame();
             });
 
             controls.addEventListener('lock', () => instructions.style.display = 'none');
@@ -156,77 +168,212 @@
 
             scene.add(controls.getObject());
 
-            // 建立玩家槍枝並綁定至鏡頭
-            createGun();
+            createWeapons();
 
-            // 鍵盤與射擊事件
-            document.addEventListener('keydown', (e) => setMovement(e.code, true));
-            document.addEventListener('keyup', (e) => setMovement(e.code, false));
+            // 事件監聽
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
             document.addEventListener('mousedown', (e) => {
-                if (controls.isLocked && e.button === 0 && !isGameOver) shoot();
+                if (controls.isLocked && e.button === 0 && !isGameOver) {
+                    isMouseDown = true;
+                    tryShoot();
+                }
             });
+            document.addEventListener('mouseup', (e) => {
+                if (e.button === 0) isMouseDown = false;
+            });
+            document.addEventListener('wheel', onMouseWheel);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
-
-            // 定時生成殭屍
-            setInterval(spawnZombie, 2000);
+            setInterval(spawnZombie, 1800);
 
             animate();
         }
 
-        function setMovement(code, state) {
-            switch (code) {
-                case 'KeyW': moveForward = state; break;
-                case 'KeyA': moveLeft = state; break;
-                case 'KeyS': moveBackward = state; break;
-                case 'KeyD': moveRight = state; break;
-            }
-        }
+        // --- 建立槍枝 3D 模型 ---
+        function createWeapons() {
+            const weaponGroup = new THREE.Group();
 
-        // --- 建立槍枝模型 ---
-        function createGun() {
-            gunGroup = new THREE.Group();
+            // 1. 連發步槍
+            rifleMesh = new THREE.Group();
+            const rifleBody = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.6), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+            const rifleBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.4), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            rifleBarrel.position.set(0, 0.02, -0.4);
+            rifleMesh.add(rifleBody, rifleBarrel);
+            rifleMesh.position.set(0.25, -0.2, -0.45);
 
-            // 槍身 (黑色矩形)
-            const bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.6);
-            const gunMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const gunBody = new THREE.Mesh(bodyGeo, gunMat);
-            gunBody.position.set(0, 0, 0);
+            // 2. RPG 火箭筒
+            rpgMesh = new THREE.Group();
+            const rpgTube = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 12), new THREE.MeshLambertMaterial({ color: 0x2d4f1e }));
+            rpgTube.rotation.x = Math.PI / 2;
+            const rpgRocketHead = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.25, 12), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
+            rpgRocketHead.rotation.x = -Math.PI / 2;
+            rpgRocketHead.position.set(0, 0, -0.55);
+            rpgMesh.add(rpgTube, rpgRocketHead);
+            rpgMesh.position.set(0.3, -0.25, -0.5);
+            rpgMesh.visible = false;
 
-            // 槍管 (灰色長方體)
-            const barrelGeo = new THREE.BoxGeometry(0.06, 0.06, 0.4);
-            const barrelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-            const barrel = new THREE.Mesh(barrelGeo, barrelMat);
-            barrel.position.set(0, 0.04, -0.4);
-
-            // 槍柄
-            const handleGeo = new THREE.BoxGeometry(0.1, 0.25, 0.1);
-            const handle = new THREE.Mesh(handleGeo, gunMat);
-            handle.position.set(0, -0.15, 0.15);
-            handle.rotation.x = -0.2;
-
-            // 槍口火花 (發光黃色小球，預設隱藏)
+            // 槍口閃光
             const flashGeo = new THREE.SphereGeometry(0.08, 8, 8);
             const flashMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
             muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
-            muzzleFlash.position.set(0, 0.04, -0.62);
+            muzzleFlash.position.set(0.25, -0.18, -0.9);
             muzzleFlash.visible = false;
 
-            gunGroup.add(gunBody);
-            gunGroup.add(barrel);
-            gunGroup.add(handle);
-            gunGroup.add(muzzleFlash);
-
-            // 將槍放置於畫面的右下角視角
-            gunGroup.position.set(0.3, -0.25, -0.5);
-            camera.add(gunGroup);
+            weaponGroup.add(rifleMesh, rpgMesh, muzzleFlash);
+            camera.add(weaponGroup);
         }
 
-        // --- 地圖邊界牆壁 ---
+        // --- 控制與武器切換 ---
+        function onKeyDown(e) {
+            switch (e.code) {
+                case 'KeyW': moveForward = true; break; // W 往前
+                case 'KeyS': moveBackward = true; break; // S 往後
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Digit1': switchWeapon('rifle'); break;
+                case 'Digit2': switchWeapon('rpg'); break;
+                case 'KeyF': throwGrenade(); break;
+            }
+        }
+
+        function onKeyUp(e) {
+            switch (e.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        }
+
+        function onMouseWheel(e) {
+            if (!controls.isLocked) return;
+            if (e.deltaY > 0) switchWeapon('rpg');
+            else switchWeapon('rifle');
+        }
+
+        function switchWeapon(type) {
+            currentWeapon = type;
+            if (type === 'rifle') {
+                rifleMesh.visible = true;
+                rpgMesh.visible = false;
+                weaponStatus.textContent = "當前武器: 連發步槍 (1/滾輪)";
+            } else {
+                rifleMesh.visible = false;
+                rpgMesh.visible = true;
+                weaponStatus.textContent = "當前武器: RPG火箭筒 (2/滾輪)";
+            }
+        }
+
+        // --- 射擊邏輯 (包含可見子彈) ---
+        function tryShoot() {
+            const now = performance.now();
+            const fireRate = (currentWeapon === 'rifle') ? 120 : 1000; // 步槍快速連發，RPG 慢速
+
+            if (now - lastShotTime < fireRate) return;
+            lastShotTime = now;
+
+            muzzleFlash.visible = true;
+            setTimeout(() => { muzzleFlash.visible = false; }, 40);
+
+            // 取得發射方向
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
+
+            if (currentWeapon === 'rifle') {
+                // 產生步槍黃色細長子彈
+                const bulletGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.3);
+                const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+                const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+                bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                bullet.position.copy(spawnPos);
+
+                bullets.push({
+                    mesh: bullet,
+                    dir: dir,
+                    speed: 70,
+                    type: 'bullet',
+                    life: 2.0
+                });
+                scene.add(bullet);
+            } else if (currentWeapon === 'rpg') {
+                // 產生 RPG 火箭彈
+                const rpgGeo = new THREE.ConeGeometry(0.08, 0.3, 8);
+                const rpgMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+                const rocket = new THREE.Mesh(rpgGeo, rpgMat);
+                rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                rocket.position.copy(spawnPos);
+
+                bullets.push({
+                    mesh: rocket,
+                    dir: dir,
+                    speed: 35,
+                    type: 'rpg',
+                    life: 3.0
+                });
+                scene.add(rocket);
+            }
+        }
+
+        // --- 投擲手榴彈 (按 F) ---
+        function throwGrenade() {
+            if (!controls.isLocked || isGameOver) return;
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            const nadeGeo = new THREE.SphereGeometry(0.12, 8, 8);
+            const nadeMat = new THREE.MeshLambertMaterial({ color: 0x114411 });
+            const nade = new THREE.Mesh(nadeGeo, nadeMat);
+
+            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.5));
+            nade.position.copy(spawnPos);
+
+            // 初始速度 (向前與稍微向上)
+            const velocity = dir.clone().multiplyScalar(15);
+            velocity.y += 4;
+
+            grenades.push({
+                mesh: nade,
+                velocity: velocity,
+                timer: 2.0 // 2秒後爆炸
+            });
+            scene.add(nade);
+        }
+
+        // --- 觸發區域爆炸效應 ---
+        function createExplosion(pos, radius, damage) {
+            // 爆炸視覺效果
+            const expGeo = new THREE.SphereGeometry(radius, 16, 16);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.8 });
+            const expMesh = new THREE.Mesh(expGeo, expMat);
+            expMesh.position.copy(pos);
+            scene.add(expMesh);
+
+            explosions.push({ mesh: expMesh, timer: 0.3 });
+
+            // 對區域內殭屍造成傷害
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const z = zombies[i];
+                if (z.position.distanceTo(pos) <= radius) {
+                    z.userData.health -= damage;
+                    if (z.userData.health <= 0) {
+                        scene.remove(z);
+                        zombies.splice(i, 1);
+                        score += 30;
+                        hudScore.textContent = score;
+                    }
+                }
+            }
+        }
+
+        // --- 地圖邊界牆與障礙物 ---
         function createMapBoundaries() {
             const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x444455 });
             const wallThickness = 2;
@@ -249,116 +396,60 @@
             });
         }
 
-        // --- 場景內部障礙物 ---
         function createObstacles() {
             const boxMaterial = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
             const obstacleData = [
-                [ -10, -10, 4, 3, 4 ],
-                [  12,  15, 6, 4, 2 ],
-                [ -15,  10, 2, 3, 8 ],
-                [  10, -15, 5, 3, 5 ],
-                [   0,  18, 8, 3, 2 ],
-                [ -20, -20, 6, 5, 6 ],
-                [  20, -20, 4, 3, 4 ]
+                [ -10, -10, 4, 3, 4 ], [ 12, 15, 6, 4, 2 ],
+                [ -15, 10, 2, 3, 8 ],  [ 10, -15, 5, 3, 5 ],
+                [ 0, 18, 8, 3, 2 ],    [ -20, -20, 6, 5, 6 ]
             ];
 
             obstacleData.forEach(d => {
-                const geo = new THREE.BoxGeometry(d[2], d[3], d[4]);
-                const box = new THREE.Mesh(geo, boxMaterial);
+                const box = new THREE.Mesh(new THREE.BoxGeometry(d[2], d[3], d[4]), boxMaterial);
                 box.position.set(d[0], d[3] / 2, d[1]);
                 scene.add(box);
                 obstacles.push(box);
             });
         }
 
-        // --- 生成殭屍 (包含血量與狀態設定) ---
         function spawnZombie() {
             if (!controls.isLocked || isGameOver) return;
 
-            const zombieGeo = new THREE.BoxGeometry(1, 2, 1);
-            // 深綠色殭屍
-            const zombieMat = new THREE.MeshLambertMaterial({ color: 0x22aa44 });
-            const zombie = new THREE.Mesh(zombieGeo, zombieMat);
+            const zombie = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 2, 1),
+                new THREE.MeshLambertMaterial({ color: 0x22aa44 })
+            );
 
-            // 自訂屬性：血量設為 3 (需擊中 3 槍)
-            zombie.userData = { 
-                health: 3,
-                maxHealth: 3
-            };
+            zombie.userData = { health: 3 };
 
             const half = MAP_SIZE / 2 - 5;
             zombie.position.x = (Math.random() - 0.5) * half * 2;
             zombie.position.z = (Math.random() - 0.5) * half * 2;
             zombie.position.y = 1;
 
-            const playerPos = controls.getObject().position;
-            if (zombie.position.distanceTo(playerPos) < 8) return;
+            if (zombie.position.distanceTo(controls.getObject().position) < 10) return;
 
             scene.add(zombie);
             zombies.push(zombie);
         }
 
-        // --- 射擊邏輯與血量扣除 ---
-        function shoot() {
-            // 觸發槍口閃光與後座力
-            muzzleFlash.visible = true;
-            recoilTime = 0.08;
-            setTimeout(() => { muzzleFlash.visible = false; }, 50);
-
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-
-            const targets = [...zombies, ...obstacles];
-            const intersects = raycaster.intersectObjects(targets);
-
-            if (intersects.length > 0) {
-                const hitObject = intersects[0].object;
-                
-                if (zombies.includes(hitObject)) {
-                    // 扣除殭屍血量
-                    hitObject.userData.health -= 1;
-
-                    // 受傷視覺回饋：變紅
-                    hitObject.material.color.setHex(0xff3333);
-                    setTimeout(() => {
-                        if (hitObject.material) {
-                            // 依剩餘血量調整顏色，越傷越深色
-                            const ratio = hitObject.userData.health / hitObject.userData.maxHealth;
-                            if (ratio > 0.4) hitObject.material.color.setHex(0x22aa44);
-                            else hitObject.material.color.setHex(0x115522);
-                        }
-                    }, 100);
-
-                    // 殭屍血量歸零才死亡
-                    if (hitObject.userData.health <= 0) {
-                        scene.remove(hitObject);
-                        const index = zombies.indexOf(hitObject);
-                        if (index > -1) zombies.splice(index, 1);
-
-                        score += 30;
-                        hudScore.textContent = score;
-                    }
-                }
-            }
-        }
-
-        // --- 玩家碰撞檢查 ---
-        function checkCollision(newPos) {
+        // --- 精確防穿牆碰撞檢測 ---
+        function checkPlayerCollision(newPos) {
             const playerRadius = 0.6;
             const halfMap = MAP_SIZE / 2 - playerRadius;
 
+            // 地圖邊界限制
             if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return true;
 
             const playerBox = new THREE.Box3().setFromCenterAndSize(
-                newPos, 
-                new THREE.Vector3(playerRadius * 2, 1.8, playerRadius * 2)
+                newPos,
+                new THREE.Vector3(playerRadius * 2, PLAYER_HEIGHT * 2, playerRadius * 2)
             );
 
             for (let obs of obstacles) {
                 const obsBox = new THREE.Box3().setFromObject(obs);
                 if (playerBox.intersectsBox(obsBox)) return true;
             }
-
             return false;
         }
 
@@ -378,9 +469,13 @@
             hudScore.textContent = score;
 
             zombies.forEach(z => scene.remove(z));
+            bullets.forEach(b => scene.remove(b.mesh));
+            grenades.forEach(g => scene.remove(g.mesh));
             zombies.length = 0;
+            bullets.length = 0;
+            grenades.length = 0;
 
-            controls.getObject().position.set(0, 1.6, 0);
+            controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
             controls.lock();
         }
 
@@ -392,52 +487,123 @@
             const delta = (time - prevTime) / 1000;
 
             if (controls.isLocked && !isGameOver) {
-                // 玩家移動
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
+                if (isMouseDown && currentWeapon === 'rifle') tryShoot();
 
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
-
-                if (moveForward || moveBackward) velocity.z -= direction.z * 80.0 * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * 80.0 * delta;
-
+                // 1. 玩家移動（嚴格限制不可飛天、不穿牆、修正前後方向）
+                const moveSpeed = 12.0 * delta;
                 const playerObj = controls.getObject();
                 const oldPos = playerObj.position.clone();
 
-                playerObj.translateX(-velocity.x * delta);
-                if (checkCollision(playerObj.position)) playerObj.position.x = oldPos.x;
+                // 水平方向量計算 (忽略垂直 Y 軸，防止飛天)
+                const frontDir = new THREE.Vector3();
+                camera.getWorldDirection(frontDir);
+                frontDir.y = 0;
+                frontDir.normalize();
 
-                playerObj.translateZ(-velocity.z * delta);
-                if (checkCollision(playerObj.position)) playerObj.position.z = oldPos.z;
+                const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
 
-                const playerPos = playerObj.position;
+                // W 鍵往前 (+frontDir), S 鍵往後 (-frontDir)
+                if (moveForward) playerObj.position.addScaledVector(frontDir, moveSpeed);
+                if (moveBackward) playerObj.position.addScaledVector(frontDir, -moveSpeed);
+                if (moveLeft) playerObj.position.addScaledVector(sideDir, moveSpeed);
+                if (moveRight) playerObj.position.addScaledVector(sideDir, -moveSpeed);
 
-                // 槍枝後座力動畫復原
-                if (recoilTime > 0) {
-                    recoilTime -= delta;
-                    gunGroup.position.z = THREE.MathUtils.lerp(gunGroup.position.z, -0.4, 0.2);
-                    gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, 0.1, 0.2);
-                } else {
-                    gunGroup.position.z = THREE.MathUtils.lerp(gunGroup.position.z, -0.5, 0.1);
-                    gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, 0, 0.1);
+                // 碰撞判定，若穿牆則還原座標
+                if (checkPlayerCollision(playerObj.position)) {
+                    playerObj.position.copy(oldPos);
                 }
 
-                // 殭屍 AI 與追逐
+                // 鎖定垂直高度，嚴禁飛天
+                playerObj.position.y = PLAYER_HEIGHT;
+
+                // 2. 子彈與火箭飛行更新
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i];
+                    b.mesh.position.addScaledVector(b.dir, b.speed * delta);
+                    b.life -= delta;
+
+                    let hit = false;
+
+                    // 檢查命中殭屍
+                    for (let j = zombies.length - 1; j >= 0; j--) {
+                        const z = zombies[j];
+                        if (b.mesh.position.distanceTo(z.position) < 1.0) {
+                            hit = true;
+                            if (b.type === 'rifle') {
+                                z.userData.health -= 1;
+                                if (z.userData.health <= 0) {
+                                    scene.remove(z);
+                                    zombies.splice(j, 1);
+                                    score += 30;
+                                    hudScore.textContent = score;
+                                }
+                            } else if (b.type === 'rpg') {
+                                createExplosion(b.mesh.position, 5.0, 3);
+                            }
+                            break;
+                        }
+                    }
+
+                    // 檢查命中牆壁障礙物
+                    if (!hit) {
+                        for (let obs of obstacles) {
+                            const obsBox = new THREE.Box3().setFromObject(obs);
+                            if (obsBox.containsPoint(b.mesh.position)) {
+                                hit = true;
+                                if (b.type === 'rpg') createExplosion(b.mesh.position, 5.0, 3);
+                                break;
+                            }
+                        }
+                    }
+
+                    // 清除過期或命中的子彈
+                    if (hit || b.life <= 0) {
+                        scene.remove(b.mesh);
+                        bullets.splice(i, 1);
+                    }
+                }
+
+                // 3. 手榴彈物理拋物線更新
+                for (let i = grenades.length - 1; i >= 0; i--) {
+                    const g = grenades[i];
+                    g.velocity.y -= 9.8 * delta; // 重力加速度
+                    g.mesh.position.addScaledVector(g.velocity, delta);
+
+                    // 落地碰撞
+                    if (g.mesh.position.y <= 0.1) {
+                        g.mesh.position.y = 0.1;
+                        g.velocity.set(0, 0, 0);
+                    }
+
+                    g.timer -= delta;
+                    if (g.timer <= 0) {
+                        createExplosion(g.mesh.position, 6.0, 5); // 爆炸廣域傷害
+                        scene.remove(g.mesh);
+                        grenades.splice(i, 1);
+                    }
+                }
+
+                // 4. 爆炸視覺效果淡出
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    const exp = explosions[i];
+                    exp.timer -= delta;
+                    exp.mesh.material.opacity = exp.timer / 0.3;
+                    if (exp.timer <= 0) {
+                        scene.remove(exp.mesh);
+                        explosions.splice(i, 1);
+                    }
+                }
+
+                // 5. 殭屍 AI 與追逐
+                const playerPos = playerObj.position;
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const zombie = zombies[i];
-                    
                     zombie.lookAt(playerPos.x, zombie.position.y, playerPos.z);
-                    zombie.translateZ(2.8 * delta);
+                    zombie.translateZ(2.5 * delta);
 
-                    const dist = zombie.position.distanceTo(playerPos);
-                    if (dist < 1.2) {
+                    if (zombie.position.distanceTo(playerPos) < 1.2) {
                         health -= 10;
                         hudHealth.textContent = Math.max(0, health);
-
-                        if (health <= 50) hudHealth.style.color = '#ffff00';
-                        if (health <= 20) hudHealth.style.color = '#ff0000';
 
                         scene.remove(zombie);
                         zombies.splice(i, 1);
