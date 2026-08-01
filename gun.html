@@ -530,7 +530,7 @@
                         if (b.mesh.position.distanceTo(z.position) < 1.0) {
                             hit = true;
                             if (b.type === 'rifle') {
-                                z.userData.health -= 1;
+                                z.userData.health -= 2;
                                 if (z.userData.health <= 0) {
                                     scene.remove(z);
                                     zombies.splice(j, 1);
