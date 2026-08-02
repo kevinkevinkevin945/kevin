@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱殭屍射擊 - 全功能開鏡與地雷版</title>
+    <title>3D 第一人稱殭屍射擊 - 玩家技能版</title>
     <style>
         body {
             margin: 0;
@@ -47,6 +47,18 @@
             left: 20px;
             color: #fff;
             font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #skill-hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #55ffff;
+            font-size: 18px;
             font-weight: bold;
             text-shadow: 2px 2px 4px #000;
             pointer-events: none;
@@ -103,17 +115,20 @@
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span>
     </div>
+    <div id="skill-hud">
+        【Q】衝刺: <span id="cd-q">就緒</span> | 
+        【E】冰凍榴彈: <span id="cd-e">就緒</span> | 
+        【G】範圍秒殺: <span id="cd-g">就緒</span>
+    </div>
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>殭屍包圍戰 - 開鏡與地雷突擊</h1>
+        <h1>殭屍包圍戰 - 技能解放</h1>
         <p>點擊螢幕開始遊戲</p>
         <p>【W, A, S, D】移動 | 【Space】跳躍</p>
-        <p>【滑鼠右鍵】開鏡瞄準 (所有槍枝適用)</p>
-        <p>【數字鍵 1~6 / 滾輪】切換武器</p>
-        <p>1.步槍 | 2.RPG | 3.十字弓 | 4.榴彈砲 | 5.狙擊槍 | 6.地雷發射器</p>
-        <p>【爆頭機制】命中頭部造成 2 倍爆頭傷害！</p>
-        <p>【滑鼠左鍵】開槍 / 【F 鍵】投擲手榴彈</p>
+        <p>【Q】衝刺 | 【E】冰凍榴彈 | 【G】範圍秒殺絕招</p>
+        <p>【滑鼠右鍵】開鏡瞄準 | 【滑鼠左鍵】開槍 | 【F】手榴彈</p>
+        <p>【1~6 / 滾輪】切換武器 (含地雷發射器)</p>
     </div>
 
     <script>
@@ -141,6 +156,13 @@
         let score = 0;
         let isGameOver = false;
 
+        // 技能冷卻管理
+        const cooldowns = {
+            Q: { current: 0, max: 3.0 },
+            E: { current: 0, max: 8.0 },
+            G: { current: 0, max: 20.0 }
+        };
+
         // 武器設定
         const weaponList = ['rifle', 'rpg', 'crossbow', 'grenadeLauncher', 'sniper', 'mineLauncher'];
         const weaponNames = {
@@ -149,7 +171,7 @@
             'crossbow': '3. 十字弓',
             'grenadeLauncher': '4. 榴彈砲',
             'sniper': '5. 狙擊槍 (一擊必殺)',
-            'mineLauncher': '6. 地雷發射器 (近接爆炸)'
+            'mineLauncher': '6. 地雷發射器'
         };
         let currentWeaponIndex = 0;
         let weaponMeshes = {};
@@ -169,7 +191,6 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            // 光源
             const ambientLight = new THREE.AmbientLight(0x777777);
             scene.add(ambientLight);
 
@@ -177,7 +198,6 @@
             dirLight.position.set(20, 40, 20);
             scene.add(dirLight);
 
-            // 地面
             const floorGeometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
             const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -204,12 +224,11 @@
 
             createWeapons();
 
-            // 事件監聽
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
             document.addEventListener('mousedown', onMouseDown);
             document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('contextmenu', (e) => e.preventDefault()); // 禁用預設右鍵選單
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
             document.addEventListener('wheel', onMouseWheel);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -222,11 +241,9 @@
             animate();
         }
 
-        // --- 建立槍枝 3D 模型 ---
         function createWeapons() {
             weaponGroup = new THREE.Group();
 
-            // 1. 連發步槍
             const rifleGroup = new THREE.Group();
             rifleGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.6), new THREE.MeshLambertMaterial({ color: 0x333333 })));
             const rifleBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.4), new THREE.MeshLambertMaterial({ color: 0x111111 }));
@@ -235,7 +252,6 @@
             rifleGroup.position.set(0.25, -0.2, -0.45);
             weaponMeshes['rifle'] = rifleGroup;
 
-            // 2. RPG 火箭筒
             const rpgGroup = new THREE.Group();
             const rpgTube = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 12), new THREE.MeshLambertMaterial({ color: 0x2d4f1e }));
             rpgTube.rotation.x = Math.PI / 2;
@@ -246,7 +262,6 @@
             rpgGroup.position.set(0.3, -0.25, -0.5);
             weaponMeshes['rpg'] = rpgGroup;
 
-            // 3. 十字弓
             const cbGroup = new THREE.Group();
             const cbStock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.6), new THREE.MeshLambertMaterial({ color: 0x5c4033 }));
             const cbBow = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.04), new THREE.MeshLambertMaterial({ color: 0x888888 }));
@@ -255,7 +270,6 @@
             cbGroup.position.set(0.25, -0.2, -0.45);
             weaponMeshes['crossbow'] = cbGroup;
 
-            // 4. 榴彈砲
             const glGroup = new THREE.Group();
             const glBody = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 12), new THREE.MeshLambertMaterial({ color: 0x222222 }));
             glBody.rotation.x = Math.PI / 2;
@@ -265,7 +279,6 @@
             glGroup.position.set(0.25, -0.22, -0.45);
             weaponMeshes['grenadeLauncher'] = glGroup;
 
-            // 5. 狙擊槍
             const snpGroup = new THREE.Group();
             const snpBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.8), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
             const snpScope = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.35, 12), new THREE.MeshLambertMaterial({ color: 0x000000 }));
@@ -275,7 +288,6 @@
             snpGroup.position.set(0.25, -0.2, -0.5);
             weaponMeshes['sniper'] = snpGroup;
 
-            // 6. 地雷發射器
             const mlGroup = new THREE.Group();
             const mlBody = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.5), new THREE.MeshLambertMaterial({ color: 0x444422 }));
             const mlTop = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8), new THREE.MeshLambertMaterial({ color: 0xff0000 }));
@@ -284,7 +296,6 @@
             mlGroup.position.set(0.28, -0.22, -0.45);
             weaponMeshes['mineLauncher'] = mlGroup;
 
-            // 槍口閃光
             const flashGeo = new THREE.SphereGeometry(0.08, 8, 8);
             const flashMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
             muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
@@ -300,8 +311,9 @@
             camera.add(weaponGroup);
         }
 
-        // --- 移動與開鏡控制 ---
         function onKeyDown(e) {
+            if (!controls.isLocked || isGameOver) return;
+
             switch (e.code) {
                 case 'KeyW': moveForward = true; break;
                 case 'KeyS': moveBackward = true; break;
@@ -313,6 +325,9 @@
                         canJump = false;
                     }
                     break;
+                case 'KeyQ': useSkillQ(); break; // Q 衝刺
+                case 'KeyE': useSkillE(); break; // E 冰凍榴彈
+                case 'KeyG': useSkillG(); break; // G 範圍秒殺
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
                 case 'Digit3': selectWeapon(2); break;
@@ -332,17 +347,89 @@
             }
         }
 
+        // --- 玩家技能實現 ---
+        // 1. Q 鍵：衝刺
+        function useSkillQ() {
+            if (cooldowns.Q.current > 0) return;
+            cooldowns.Q.current = cooldowns.Q.max;
+
+            const playerObj = controls.getObject();
+            const frontDir = new THREE.Vector3();
+            camera.getWorldDirection(frontDir);
+            frontDir.y = 0;
+            frontDir.normalize();
+
+            const dashDistance = 8.0;
+            const targetPos = playerObj.position.clone().addScaledVector(frontDir, dashDistance);
+
+            if (!checkCollision(targetPos, 0.6)) {
+                playerObj.position.copy(targetPos);
+            }
+        }
+
+        // 2. E 鍵：冰凍榴彈
+        function useSkillE() {
+            if (cooldowns.E.current > 0) return;
+            cooldowns.E.current = cooldowns.E.max;
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            const iceBall = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0x00ffff })
+            );
+
+            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.5));
+            iceBall.position.copy(spawnPos);
+
+            const velocity = dir.clone().multiplyScalar(18);
+            velocity.y += 3;
+
+            grenades.push({ mesh: iceBall, velocity: velocity, timer: 1.5, isFreeze: true });
+            scene.add(iceBall);
+        }
+
+        // 3. G 鍵：範圍秒殺絕招
+        function useSkillG() {
+            if (cooldowns.G.current > 0) return;
+            cooldowns.G.current = cooldowns.G.max;
+
+            const playerPos = controls.getObject().position;
+            const radius = 15.0;
+
+            // 視覺特效：金黃色衝擊波
+            const shockwave = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 })
+            );
+            shockwave.position.copy(playerPos);
+            scene.add(shockwave);
+            explosions.push({ mesh: shockwave, timer: 0.5 });
+
+            // 秒殺範圍內所有敵人
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const zGroup = zombies[i];
+                if (zGroup.position.distanceTo(playerPos) <= radius) {
+                    scene.remove(zGroup);
+                    zombies.splice(i, 1);
+                    score += 50;
+                }
+            }
+            hudScore.textContent = score;
+        }
+
         function onMouseDown(e) {
             if (!controls.isLocked || isGameOver) return;
-            if (e.button === 0) { // 左鍵開槍
+            if (e.button === 0) {
                 isMouseDown = true;
                 tryShoot();
-            } else if (e.button === 2) { // 右鍵開鏡
+            } else if (e.button === 2) {
                 isAiming = true;
-                camera.fov = 30; // 放大視角
+                camera.fov = 30;
                 camera.updateProjectionMatrix();
                 scopeOverlay.style.display = 'block';
-                weaponGroup.position.set(-0.25, 0.02, 0.1); // 武器拉至中心
+                weaponGroup.position.set(-0.25, 0.02, 0.1);
             }
         }
 
@@ -351,7 +438,7 @@
                 isMouseDown = false;
             } else if (e.button === 2) {
                 isAiming = false;
-                camera.fov = 75; // 恢復標準視角
+                camera.fov = 75;
                 camera.updateProjectionMatrix();
                 scopeOverlay.style.display = 'none';
                 weaponGroup.position.set(0, 0, 0);
@@ -379,18 +466,13 @@
             weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey];
         }
 
-        // --- 射擊邏輯 ---
         function tryShoot() {
             const now = performance.now();
             const curWeapon = weaponList[currentWeaponIndex];
 
             const fireRates = {
-                'rifle': 120,
-                'rpg': 1000,
-                'crossbow': 600,
-                'grenadeLauncher': 700,
-                'sniper': 900,
-                'mineLauncher': 800
+                'rifle': 120, 'rpg': 1000, 'crossbow': 600,
+                'grenadeLauncher': 700, 'sniper': 900, 'mineLauncher': 800
             };
 
             if (now - lastShotTime < fireRates[curWeapon]) return;
@@ -435,7 +517,6 @@
                 bullets.push({ mesh: sniperBullet, dir: dir, speed: 130, type: 'sniper', damage: 999, life: 1.5 });
                 scene.add(sniperBullet);
             } else if (curWeapon === 'mineLauncher') {
-                // 發射地雷
                 const mineMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0x33aa33 }));
                 mineMesh.position.copy(spawnPos);
                 const vel = dir.clone().multiplyScalar(15);
@@ -444,7 +525,6 @@
             }
         }
 
-        // --- 投擲手榴彈 ---
         function throwGrenade() {
             if (!controls.isLocked || isGameOver) return;
             const dir = new THREE.Vector3();
@@ -481,7 +561,23 @@
             }
         }
 
-        // --- 生成多種類具體型態殭屍（包含頭部與四肢） ---
+        // 觸發冰凍爆破
+        function createFreezeExplosion(pos, radius) {
+            const freezeMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 })
+            );
+            freezeMesh.position.copy(pos);
+            scene.add(freezeMesh);
+            explosions.push({ mesh: freezeMesh, timer: 0.4 });
+
+            for (let zGroup of zombies) {
+                if (zGroup.position.distanceTo(pos) <= radius) {
+                    zGroup.userData.freezeTimer = 4.0; // 冰凍 4 秒
+                }
+            }
+        }
+
         function spawnZombie() {
             if (!controls.isLocked || isGameOver) return;
 
@@ -494,22 +590,19 @@
             const randType = types[Math.floor(Math.random() * types.length)];
             const zombieGroup = new THREE.Group();
 
-            // 1. 身體
             const bodyGeo = new THREE.BoxGeometry(0.8 * randType.scale, 1.2 * randType.scale, 0.4 * randType.scale);
             const bodyMat = new THREE.MeshLambertMaterial({ color: randType.color });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             body.position.y = 0.6 * randType.scale;
             zombieGroup.add(body);
 
-            // 2. 頭部（特別標記，用於爆頭檢測）
             const headGeo = new THREE.BoxGeometry(0.45 * randType.scale, 0.45 * randType.scale, 0.45 * randType.scale);
             const headMat = new THREE.MeshLambertMaterial({ color: 0x33ff66 });
             const head = new THREE.Mesh(headGeo, headMat);
             head.position.y = 1.45 * randType.scale;
-            head.userData.isHead = true; // 爆頭標記！
+            head.userData.isHead = true;
             zombieGroup.add(head);
 
-            // 3. 手臂
             const armGeo = new THREE.BoxGeometry(0.2 * randType.scale, 0.8 * randType.scale, 0.2 * randType.scale);
             const leftArm = new THREE.Mesh(armGeo, bodyMat);
             leftArm.position.set(-0.5 * randType.scale, 0.7 * randType.scale, -0.2 * randType.scale);
@@ -520,14 +613,14 @@
             rightArm.rotation.x = -Math.PI / 3;
             zombieGroup.add(leftArm, rightArm);
 
-            // 自訂數據
             zombieGroup.userData = {
                 type: randType.type,
                 speed: randType.speed,
                 health: randType.health,
                 scale: randType.scale,
                 headMesh: head,
-                bodyMesh: body
+                bodyMesh: body,
+                freezeTimer: 0
             };
 
             const half = MAP_SIZE / 2 - 5;
@@ -541,7 +634,6 @@
             zombies.push(zombieGroup);
         }
 
-        // --- 碰撞檢測系統 ---
         function checkCollision(newPos, radius) {
             const halfMap = MAP_SIZE / 2 - radius;
             if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return true;
@@ -634,7 +726,17 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown && weaponList[currentWeaponIndex] === 'rifle') tryShoot();
 
-                // 1. 玩家移動與跳躍物理
+                // 更新技能冷卻 UI
+                Object.keys(cooldowns).forEach(key => {
+                    if (cooldowns[key].current > 0) {
+                        cooldowns[key].current -= delta;
+                        document.getElementById(`cd-${key.toLowerCase()}`).textContent = `${Math.ceil(cooldowns[key].current)}s`;
+                    } else {
+                        document.getElementById(`cd-${key.toLowerCase()}`).textContent = "就緒";
+                    }
+                });
+
+                // 1. 移動與跳躍
                 const moveSpeed = 12.0 * delta;
                 const playerObj = controls.getObject();
                 const oldPos = playerObj.position.clone();
@@ -656,7 +758,6 @@
                     playerObj.position.z = oldPos.z;
                 }
 
-                // 重力與跳躍
                 playerVelocityY -= GRAVITY * delta;
                 playerObj.position.y += playerVelocityY * delta;
 
@@ -666,7 +767,7 @@
                     canJump = true;
                 }
 
-                // 2. 子彈飛行與爆頭打擊判定
+                // 2. 子彈更新
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
 
@@ -674,7 +775,6 @@
                         b.vel.y -= 9.8 * delta;
                         b.mesh.position.addScaledVector(b.vel, delta);
 
-                        // 地雷落地轉化為感應地雷
                         if (b.type === 'mineLauncher' && b.mesh.position.y <= 0.05) {
                             b.mesh.position.y = 0.05;
                             mines.push({ mesh: b.mesh });
@@ -688,7 +788,6 @@
                     b.life -= delta;
                     let hit = false;
 
-                    // 擊中殭屍判定 (精確區分頭部爆頭與身體)
                     for (let j = zombies.length - 1; j >= 0; j--) {
                         const zGroup = zombies[j];
                         const headPos = new THREE.Vector3();
@@ -706,11 +805,8 @@
                             if (b.type === 'rpg' || b.type === 'grenadeLauncher') {
                                 createExplosion(b.mesh.position, 5.0, b.damage);
                             } else {
-                                // 爆頭傷害判定：若離頭部更近，觸發 2 倍爆頭傷害！
                                 let finalDamage = b.damage;
-                                if (distToHead < distToBody) {
-                                    finalDamage *= 2; 
-                                }
+                                if (distToHead < distToBody) finalDamage *= 2; // 爆頭 2 倍傷害
 
                                 zGroup.userData.health -= finalDamage;
 
@@ -725,7 +821,6 @@
                         }
                     }
 
-                    // 牆壁碰撞
                     if (!hit) {
                         for (let obs of obstacles) {
                             const obsBox = new THREE.Box3().setFromObject(obs);
@@ -745,7 +840,7 @@
                     }
                 }
 
-                // 3. 地雷感應與爆炸檢測
+                // 3. 地雷觸發
                 for (let i = mines.length - 1; i >= 0; i--) {
                     const mine = mines[i];
                     for (let j = zombies.length - 1; j >= 0; j--) {
@@ -759,7 +854,7 @@
                     }
                 }
 
-                // 4. 手榴彈物理拋物線
+                // 4. 手榴彈與冰凍榴彈物理
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i];
                     g.velocity.y -= 9.8 * delta;
@@ -772,13 +867,17 @@
 
                     g.timer -= delta;
                     if (g.timer <= 0) {
-                        createExplosion(g.mesh.position, 6.0, 5);
+                        if (g.isFreeze) {
+                            createFreezeExplosion(g.mesh.position, 7.0);
+                        } else {
+                            createExplosion(g.mesh.position, 6.0, 5);
+                        }
                         scene.remove(g.mesh);
                         grenades.splice(i, 1);
                     }
                 }
 
-                // 5. 爆炸效果淡出
+                // 5. 爆炸視覺效果淡出
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
@@ -789,21 +888,26 @@
                     }
                 }
 
-                // 6. 殭屍 AI 與嚴格防穿牆追逐
+                // 6. 殭屍 AI 與狀態（含冰凍判定）
                 const playerPos = playerObj.position;
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const zGroup = zombies[i];
+
+                    // 檢查冰凍狀態
+                    if (zGroup.userData.freezeTimer > 0) {
+                        zGroup.userData.freezeTimer -= delta;
+                        continue; // 被冰凍時無法移動
+                    }
+
                     const oldZPos = zGroup.position.clone();
 
                     zGroup.lookAt(playerPos.x, zGroup.position.y, playerPos.z);
                     zGroup.translateZ(zGroup.userData.speed * delta);
 
-                    // 殭屍防穿牆物理判定
                     if (checkCollision(zGroup.position, 0.5 * zGroup.userData.scale)) {
                         zGroup.position.copy(oldZPos);
                     }
 
-                    // 玩家傷害判定
                     if (zGroup.position.distanceTo(playerPos) < 1.3) {
                         health -= 10;
                         hudHealth.textContent = Math.max(0, health);
