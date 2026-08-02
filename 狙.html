@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>靶場準心訓練遊戲</title>
+    <title>3D 怪物獵殺訓練</title>
     <style>
         * {
             box-sizing: border-box;
@@ -12,42 +12,83 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a1a;
-            color: #ffffff;
+            background-color: #000;
+            color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
             overflow: hidden;
         }
         #game-container {
             position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid #333;
+            width: 100vw;
+            height: 100vh;
         }
         #hud {
             position: absolute;
-            top: 15px;
+            top: 20px;
             left: 20px;
             right: 20px;
             display: flex;
             justify-content: space-between;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
             pointer-events: none;
             z-index: 10;
         }
-        canvas {
-            display: block;
-            background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
-            cursor: none; /* 隱藏原生滑鼠游標 */
+        #headshot-feed {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff3333;
+            font-size: 28px;
+            font-weight: 900;
+            text-shadow: 0 0 10px #ff0000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 15;
         }
-        #start-overlay {
+        /* 2D 準心 */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: rgba(0, 255, 204, 0.9);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+            box-shadow: 0 0 8px #00ffcc;
+        }
+        /* 狙擊鏡遮罩 */
+        #scope-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 6;
+            background: radial-gradient(circle at center, transparent 28%, black 32%, black 100%);
+        }
+        #scope-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%; width: 2px; height: 100%;
+            background: rgba(0,255,204,0.5);
+        }
+        #scope-overlay::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 0; width: 100%; height: 2px;
+            background: rgba(0,255,204,0.5);
+        }
+        /* 主選單 */
+        #menu-overlay {
             position: absolute;
             top: 0;
             left: 0;
@@ -63,211 +104,438 @@
         h1 {
             margin-bottom: 10px;
             color: #00ffcc;
-            letter-spacing: 2px;
+            font-size: 42px;
+            letter-spacing: 3px;
         }
         p {
-            color: #cccccc;
-            margin-bottom: 25px;
+            color: #ccc;
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.6;
         }
         .btn {
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 15px 40px;
+            font-size: 20px;
             font-weight: bold;
-            color: #1a1a1a;
+            color: #111;
             background-color: #00ffcc;
             border: none;
-            border-radius: 25px;
+            border-radius: 30px;
             cursor: pointer;
             transition: all 0.2s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
         }
         .btn:hover {
             background-color: #00cca3;
             transform: scale(1.05);
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
 <div id="game-container">
     <div id="hud">
         <div>得分: <span id="score">0</span></div>
-        <div>剩餘時間: <span id="timer">30</span> 秒</div>
+        <div>擊殺怪物數: <span id="kills">0</span></div>
     </div>
     
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <div id="headshot-feed">💥 爆頭一擊必殺！ (HEADSHOT)</div>
+    <div id="crosshair"></div>
+    <div id="scope-overlay"></div>
 
-    <div id="start-overlay">
-        <h1 id="title-text">狙擊靶場訓練</h1>
-        <p id="sub-text">移動滑鼠瞄準，點擊左鍵擊中目標靶！</p>
-        <button class="btn" id="start-btn" onclick="startGame()">開始遊戲</button>
+    <div id="menu-overlay">
+        <h1 id="title-text">3D 怪物獵殺訓練</h1>
+        <p id="sub-text">
+            【遊戲特色】不限時間，盡情射擊！<br><br>
+            <b>[W][A][S][D]</b>：控制人物移動<br>
+            <b>[移動滑鼠]</b>：轉動視角<br>
+            <b>[按住滑鼠右鍵]</b>：開鏡瞄準<br>
+            <b>[點擊滑鼠左鍵]</b>：開火射擊<br><br>
+            🎯 <b>打身體 2 槍 death</b> | 🎯 <b>爆頭 1 槍一擊必殺！</b>
+        </p>
+        <button class="btn" id="start-btn" onclick="startGame()">進入戰場</button>
     </div>
 </div>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const timerEl = document.getElementById('timer');
-    const overlay = document.getElementById('start-overlay');
-    const titleText = document.getElementById('title-text');
-    const startBtn = document.getElementById('start-btn');
-
+    let scene, camera, renderer;
+    let monsters = [];
     let score = 0;
-    let timeLeft = 30;
-    let gameInterval = null;
-    let timerInterval = null;
+    let kills = 0;
     let isPlaying = false;
+    let raycaster, mouse;
+    let isScoped = false;
+    let gunGroup;
 
-    // 滑鼠位置
-    const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+    // 移動相關變數
+    const keys = { w: false, a: false, s: false, d: false };
+    const moveSpeed = 0.15;
 
-    // 目標靶設定
-    let targets = [];
-    const targetCount = 3;
+    const normalFOV = 60;
+    const scopedFOV = 15;
 
-    class Target {
-        constructor() {
-            this.reset();
-        }
+    const scoreEl = document.getElementById('score');
+    const killsEl = document.getElementById('kills');
+    const headshotFeed = document.getElementById('headshot-feed');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const scopeOverlay = document.getElementById('scope-overlay');
+    const crosshair = document.getElementById('crosshair');
 
-        reset() {
-            this.radius = Math.random() * 12 + 18; // 靶的大小
-            this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
-            this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
-            this.vx = (Math.random() - 0.5) * 4; // 移動速度 X
-            this.vy = (Math.random() - 0.5) * 4; // 移動速度 Y
-        }
+    function init3D() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0e17);
+        scene.fog = new THREE.FogExp2(0x0a0e17, 0.015);
 
-        update() {
-            this.x += this.vx;
-            this.y += this.vy;
+        camera = new THREE.PerspectiveCamera(normalFOV, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.8, 0); // 玩家眼部高度
 
-            // 碰到邊界反彈
-            if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) this.vx *= -1;
-            if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) this.vy *= -1;
-        }
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('game-container').appendChild(renderer.domElement);
 
-        draw() {
-            // 繪製多層靶心（紅白相間）
-            const rings = [1, 0.7, 0.4, 0.15];
-            const colors = ['#e74c3c', '#ffffff', '#e74c3c', '#ffff00'];
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
 
-            for (let i = 0; i < rings.length; i++) {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * rings[i], 0, Math.PI * 2);
-                ctx.fillStyle = colors[i];
-                ctx.fill();
-                ctx.closePath();
-            }
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 50, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 地面 (格紋地面)
+        const floorGeo = new THREE.PlaneGeometry(200, 200);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // 網格線增加視覺深度
+        const grid = new THREE.GridHelper(200, 50, 0x00ffcc, 0x334455);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // 建立槍械模型並綁定在攝影機下方
+        gunGroup = createGunModel();
+        camera.add(gunGroup);
+        scene.add(camera);
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2(0, 0);
+
+        // 監聽事件
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('keydown', e => handleKey(e, true));
+        window.addEventListener('keyup', e => handleKey(e, false));
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        animate();
+    }
+
+    // 建立精致的 3D 步槍模型
+    function createGunModel() {
+        const gun = new THREE.Group();
+
+        // 槍身材料
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
+        const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
+        const scopeMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x003322 });
+
+        // 槍管 (Barrel)
+        const barrelGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.8, 16);
+        const barrel = new THREE.Mesh(barrelGeo, metalMat);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 0, -0.4);
+        gun.add(barrel);
+
+        // 槍主體 (Receiver)
+        const bodyGeo = new THREE.BoxGeometry(0.06, 0.09, 0.35);
+        const body = new THREE.Mesh(bodyGeo, darkMetalMat);
+        body.position.set(0, -0.02, -0.1);
+        gun.add(body);
+
+        // 彈匣 (Magazine)
+        const magGeo = new THREE.BoxGeometry(0.04, 0.18, 0.07);
+        const mag = new THREE.Mesh(magGeo, metalMat);
+        mag.position.set(0, -0.12, -0.12);
+        mag.rotation.x = -0.2;
+        gun.add(mag);
+
+        // 瞄準鏡 (Scope)
+        const scopeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.25, 16);
+        const scope = new THREE.Mesh(scopeGeo, darkMetalMat);
+        scope.rotation.x = Math.PI / 2;
+        scope.position.set(0, 0.06, -0.1);
+        gun.add(scope);
+
+        // 瞄準鏡鏡片
+        const lensGeo = new THREE.CircleGeometry(0.023, 16);
+        const lens = new THREE.Mesh(lensGeo, scopeMat);
+        lens.position.set(0, 0.06, -0.225);
+        gun.add(lens);
+
+        // 槍托 (Stock)
+        const stockGeo = new THREE.BoxGeometry(0.05, 0.08, 0.25);
+        const stock = new THREE.Mesh(stockGeo, metalMat);
+        stock.position.set(0, -0.01, 0.18);
+        gun.add(stock);
+
+        // 擺放槍的位置（畫面右下角）
+        gun.position.set(0.25, -0.22, -0.45);
+
+        return gun;
+    }
+
+    // 建立在地上走動的 3D 怪物模型
+    function createMonster() {
+        const monster = new THREE.Group();
+
+        // 怪物材質
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xa82828, roughness: 0.6 });
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x330000, roughness: 0.3 });
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc });
+
+        // 1. 身體 (Body)
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.4, 12);
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.position.y = 0.7;
+        bodyMesh.castShadow = true;
+        bodyMesh.name = "body"; // 用於部位判定
+        monster.add(bodyMesh);
+
+        // 2. 頭部 (Head) - 一擊必殺目標
+        const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const headMesh = new THREE.Mesh(headGeo, headMat);
+        headMesh.position.y = 1.65;
+        headMesh.castShadow = true;
+        headMesh.name = "head"; // 用於部位判定
+        monster.add(headMesh);
+
+        // 發光的發紅眼睛
+        const eyeGeo = new THREE.BoxGeometry(0.12, 0.06, 0.06);
+        const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+        eye1.position.set(0.12, 1.7, -0.3);
+        const eye2 = eye1.clone();
+        eye2.position.x = -0.12;
+        monster.add(eye1);
+        monster.add(eye2);
+
+        // 四肢/腳 (腿部裝飾)
+        const legGeo = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+        const leg1 = new THREE.Mesh(legGeo, bodyMat);
+        leg1.position.set(0.25, 0.25, 0);
+        const leg2 = leg1.clone();
+        leg2.position.x = -0.25;
+        monster.add(leg1);
+        monster.add(leg2);
+
+        // 怪物血量與巡邏屬性
+        monster.userData = {
+            hp: 2, // 2 血量
+            speed: Math.random() * 0.04 + 0.02,
+            targetX: (Math.random() - 0.5) * 60,
+            targetZ: - (Math.random() * 40 + 10)
+        };
+
+        resetMonsterPosition(monster);
+
+        scene.add(monster);
+        monsters.push(monster);
+    }
+
+    function resetMonsterPosition(monster) {
+        monster.userData.hp = 2; // 重置血量
+        monster.position.x = (Math.random() - 0.5) * 70;
+        monster.position.z = - (Math.random() * 50 + 15);
+        monster.position.y = 0;
+        
+        // 重新繪製顏色（確保從上一輪擊中中復原）
+        monster.children.forEach(child => {
+            if (child.name === "body") child.material.color.setHex(0xa82828);
+        });
+    }
+
+    // 滑鼠游標與鏡頭控制
+    let yaw = 0, pitch = 0;
+    function onMouseMove(event) {
+        if (!isPlaying) return;
+
+        const sensitivity = isScoped ? 0.0006 : 0.002;
+
+        yaw -= event.movementX * sensitivity;
+        pitch -= event.movementY * sensitivity;
+
+        pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch));
+
+        camera.rotation.order = "YXZ";
+        camera.rotation.y = yaw;
+        camera.rotation.x = pitch;
+    }
+
+    // WASD 移動按鍵
+    function handleKey(event, isDown) {
+        const key = event.key.toLowerCase();
+        if (keys.hasOwnProperty(key)) {
+            keys[key] = isDown;
         }
     }
 
-    // 更新滑鼠座標
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top;
-    });
-
-    // 點擊射擊
-    canvas.addEventListener('mousedown', () => {
+    function updatePlayerMovement() {
         if (!isPlaying) return;
 
-        // 檢查是否命中任何靶
-        for (let target of targets) {
-            const dist = Math.hypot(mouse.x - target.x, mouse.y - target.y);
-            if (dist < target.radius) {
-                score += 100;
+        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+        if (keys.w) camera.position.addScaledVector(forward, moveSpeed);
+        if (keys.s) camera.position.addScaledVector(forward, -moveSpeed);
+        if (keys.a) camera.position.addScaledVector(side, -moveSpeed);
+        if (keys.d) camera.position.addScaledVector(side, moveSpeed);
+
+        // 確保玩家腳在地上
+        camera.position.y = 1.8;
+    }
+
+    // 開鏡與開火
+    function onMouseDown(event) {
+        if (!isPlaying) return;
+
+        // 右鍵：狙擊鏡
+        if (event.button === 2) {
+            isScoped = true;
+            camera.fov = scopedFOV;
+            camera.updateProjectionMatrix();
+            scopeOverlay.style.display = 'block';
+            crosshair.style.display = 'none';
+            gunGroup.visible = false; // 開鏡時隱藏槍身
+        }
+
+        // 左鍵：射擊
+        if (event.button === 0) {
+            shoot();
+        }
+    }
+
+    function onMouseUp(event) {
+        if (event.button === 2) {
+            isScoped = false;
+            camera.fov = normalFOV;
+            camera.updateProjectionMatrix();
+            scopeOverlay.style.display = 'none';
+            crosshair.style.display = 'block';
+            gunGroup.visible = true;
+        }
+    }
+
+    // 核心射擊判定 (區分爆頭與身體擊中)
+    function shoot() {
+        // 後座力槍身動畫
+        if (!isScoped) {
+            gunGroup.position.z += 0.05;
+            setTimeout(() => gunGroup.position.z -= 0.05, 50);
+        }
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+
+        for (let i = 0; i < intersects.length; i++) {
+            let hitMesh = intersects[i].object;
+            let monsterGroup = hitMesh.parent;
+
+            if (monsters.includes(monsterGroup)) {
+                // 1. 擊中頭部：爆頭一擊必殺
+                if (hitMesh.name === "head") {
+                    showHeadshotUI();
+                    score += 200;
+                    kills += 1;
+                    resetMonsterPosition(monsterGroup);
+                } 
+                // 2. 擊中身體：兩槍一個死
+                else if (hitMesh.name === "body") {
+                    monsterGroup.userData.hp -= 1;
+                    
+                    if (monsterGroup.userData.hp <= 0) {
+                        score += 100;
+                        kills += 1;
+                        resetMonsterPosition(monsterGroup);
+                    } else {
+                        // 挨第一槍，怪物顏色變深示警
+                        hitMesh.material.color.setHex(0x551111);
+                    }
+                }
+                
                 scoreEl.textContent = score;
-                target.reset(); // 擊中後重置目標位置
+                killsEl.textContent = kills;
                 break;
             }
         }
-    });
-
-    function drawCrosshair() {
-        const x = mouse.x;
-        const y = mouse.y;
-
-        // 狙擊鏡外圍圓圈
-        ctx.strokeStyle = '#00ffcc';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, 25, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // 準心十字線
-        ctx.strokeStyle = 'rgba(0, 255, 204, 0.8)';
-        ctx.lineWidth = 1.5;
-        
-        ctx.beginPath();
-        ctx.moveTo(x - 35, y); ctx.lineTo(x - 10, y);
-        ctx.moveTo(x + 10, y); ctx.lineTo(x + 35, y);
-        ctx.moveTo(x, y - 35); ctx.lineTo(x, y - 10);
-        ctx.moveTo(x, y + 10); ctx.lineTo(x, y + 35);
-        ctx.stroke();
-
-        // 中心點
-        ctx.fillStyle = '#ff0055';
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
-        ctx.fill();
     }
 
-    function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function showHeadshotUI() {
+        headshotFeed.style.opacity = '1';
+        setTimeout(() => {
+            headshotFeed.style.opacity = '0';
+        }, 1000);
+    }
 
-        // 更新與繪製目標
-        targets.forEach(target => {
-            target.update();
-            target.draw();
-        });
-
-        // 繪製準心
-        drawCrosshair();
+    function animate() {
+        requestAnimationFrame(animate);
 
         if (isPlaying) {
-            requestAnimationFrame(gameLoop);
+            updatePlayerMovement();
+
+            // 怪物巡邏與邊界 AI
+            monsters.forEach(monster => {
+                const dx = monster.userData.targetX - monster.position.x;
+                const dz = monster.userData.targetZ - monster.position.z;
+                const dist = Math.hypot(dx, dz);
+
+                if (dist < 1) {
+                    // 抵達目的地後隨機設定下一個巡邏點
+                    monster.userData.targetX = (Math.random() - 0.5) * 80;
+                    monster.userData.targetZ = - (Math.random() * 50 + 10);
+                } else {
+                    monster.position.x += (dx / dist) * monster.userData.speed;
+                    monster.position.z += (dz / dist) * monster.userData.speed;
+                    monster.lookAt(monster.userData.targetX, monster.position.y, monster.userData.targetZ);
+                }
+            });
         }
+
+        renderer.render(scene, camera);
     }
 
     function startGame() {
         score = 0;
-        timeLeft = 30;
+        kills = 0;
         scoreEl.textContent = score;
-        timerEl.textContent = timeLeft;
+        killsEl.textContent = kills;
         isPlaying = true;
 
-        targets = [];
-        for (let i = 0; i < targetCount; i++) {
-            targets.push(new Target());
+        document.body.requestPointerLock();
+
+        // 產生 8 隻地上隨機走動的怪物
+        monsters.forEach(m => scene.remove(m));
+        monsters = [];
+        for (let i = 0; i < 8; i++) {
+            createMonster();
         }
 
-        overlay.style.display = 'none';
-
-        // 倒數計時器
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            timerEl.textContent = timeLeft;
-
-            if (timeLeft <= 0) {
-                endGame();
-            }
-        }, 1000);
-
-        requestAnimationFrame(gameLoop);
+        menuOverlay.style.display = 'none';
     }
 
-    function endGame() {
-        isPlaying = false;
-        clearInterval(timerInterval);
-
-        titleText.textContent = "訓練結束！";
-        document.getElementById('sub-text').textContent = `你的最終得分為：${score} 分`;
-        startBtn.textContent = "再試一次";
-        overlay.style.display = 'flex';
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
     }
+
+    window.onload = init3D;
 </script>
 
 </body>
