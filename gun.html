@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱殭屍射擊 - 全武器軍火庫版</title>
+    <title>3D 第一人稱殭屍射擊 - 全功能開鏡與地雷版</title>
     <style>
         body {
             margin: 0;
@@ -26,6 +26,19 @@
             border: 2px solid rgba(0, 0, 0, 0.5);
             pointer-events: none;
             z-index: 10;
+        }
+
+        #scope-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 50px solid rgba(0, 0, 0, 0.7);
+            box-sizing: border-box;
+            pointer-events: none;
+            display: none;
+            z-index: 9;
         }
 
         #hud {
@@ -69,13 +82,13 @@
         }
 
         #instructions h1 {
-            font-size: 44px;
+            font-size: 42px;
             margin-bottom: 10px;
             color: #ff3333;
         }
 
         #instructions p {
-            font-size: 18px;
+            font-size: 16px;
             margin: 4px 0;
         }
     </style>
@@ -85,6 +98,7 @@
 <body>
 
     <div id="crosshair"></div>
+    <div id="scope-overlay"></div>
     <div id="hud">
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span>
@@ -92,18 +106,25 @@
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>殭屍包圍戰 - 軍火狂潮</h1>
+        <h1>殭屍包圍戰 - 開鏡與地雷突擊</h1>
         <p>點擊螢幕開始遊戲</p>
-        <p>【W, A, S, D】前後左右移動</p>
-        <p>【數字鍵 1~5 / 滾輪】切換 5 種武器</p>
-        <p>1.連發步槍 | 2.RPG | 3.十字弓 | 4.榴彈砲 | 5.狙擊槍(一擊必殺)</p>
+        <p>【W, A, S, D】移動 | 【Space】跳躍</p>
+        <p>【滑鼠右鍵】開鏡瞄準 (所有槍枝適用)</p>
+        <p>【數字鍵 1~6 / 滾輪】切換武器</p>
+        <p>1.步槍 | 2.RPG | 3.十字弓 | 4.榴彈砲 | 5.狙擊槍 | 6.地雷發射器</p>
+        <p>【爆頭機制】命中頭部造成 2 倍爆頭傷害！</p>
         <p>【滑鼠左鍵】開槍 / 【F 鍵】投擲手榴彈</p>
     </div>
 
     <script>
         let camera, scene, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false;
+        let playerVelocityY = 0;
+        const GRAVITY = 28;
+
         let isMouseDown = false;
+        let isAiming = false;
         let lastShotTime = 0;
         let prevTime = performance.now();
 
@@ -113,29 +134,33 @@
         const obstacles = [];
         const bullets = [];
         const grenades = [];
+        const mines = [];
         const explosions = [];
 
         let health = 100;
         let score = 0;
         let isGameOver = false;
 
-        // 武器名稱與對應清單
-        const weaponList = ['rifle', 'rpg', 'crossbow', 'grenadeLauncher', 'sniper'];
+        // 武器設定
+        const weaponList = ['rifle', 'rpg', 'crossbow', 'grenadeLauncher', 'sniper', 'mineLauncher'];
         const weaponNames = {
-            'rifle': '1. 連發步槍 (3發擊殺)',
-            'rpg': '2. RPG火箭筒 (範圍重創)',
-            'crossbow': '3. 十字弓 (2發擊殺)',
-            'grenadeLauncher': '4. 榴彈砲 (觸發爆炸)',
-            'sniper': '5. 狙擊槍 (一擊必殺)'
+            'rifle': '1. 連發步槍',
+            'rpg': '2. RPG火箭筒',
+            'crossbow': '3. 十字弓',
+            'grenadeLauncher': '4. 榴彈砲',
+            'sniper': '5. 狙擊槍 (一擊必殺)',
+            'mineLauncher': '6. 地雷發射器 (近接爆炸)'
         };
         let currentWeaponIndex = 0;
         let weaponMeshes = {};
+        let weaponGroup;
         let muzzleFlash;
 
         const hudHealth = document.getElementById('health');
         const hudScore = document.getElementById('score');
         const weaponStatus = document.getElementById('weapon-status');
         const instructions = document.getElementById('instructions');
+        const scopeOverlay = document.getElementById('scope-overlay');
 
         function init() {
             scene = new THREE.Scene();
@@ -145,7 +170,7 @@
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
             // 光源
-            const ambientLight = new THREE.AmbientLight(0x666666);
+            const ambientLight = new THREE.AmbientLight(0x777777);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -182,15 +207,9 @@
             // 事件監聽
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
-            document.addEventListener('mousedown', (e) => {
-                if (controls.isLocked && e.button === 0 && !isGameOver) {
-                    isMouseDown = true;
-                    tryShoot();
-                }
-            });
-            document.addEventListener('mouseup', (e) => {
-                if (e.button === 0) isMouseDown = false;
-            });
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('contextmenu', (e) => e.preventDefault()); // 禁用預設右鍵選單
             document.addEventListener('wheel', onMouseWheel);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -203,9 +222,9 @@
             animate();
         }
 
-        // --- 建立多款武器的模型 ---
+        // --- 建立槍枝 3D 模型 ---
         function createWeapons() {
-            const weaponGroup = new THREE.Group();
+            weaponGroup = new THREE.Group();
 
             // 1. 連發步槍
             const rifleGroup = new THREE.Group();
@@ -249,21 +268,29 @@
             // 5. 狙擊槍
             const snpGroup = new THREE.Group();
             const snpBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.8), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
-            const snpScope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 12), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            const snpScope = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.35, 12), new THREE.MeshLambertMaterial({ color: 0x000000 }));
             snpScope.rotation.x = Math.PI / 2;
             snpScope.position.set(0, 0.08, -0.1);
             snpGroup.add(snpBody, snpScope);
             snpGroup.position.set(0.25, -0.2, -0.5);
             weaponMeshes['sniper'] = snpGroup;
 
+            // 6. 地雷發射器
+            const mlGroup = new THREE.Group();
+            const mlBody = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.5), new THREE.MeshLambertMaterial({ color: 0x444422 }));
+            const mlTop = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8), new THREE.MeshLambertMaterial({ color: 0xff0000 }));
+            mlTop.position.set(0, 0.1, 0);
+            mlGroup.add(mlBody, mlTop);
+            mlGroup.position.set(0.28, -0.22, -0.45);
+            weaponMeshes['mineLauncher'] = mlGroup;
+
             // 槍口閃光
             const flashGeo = new THREE.SphereGeometry(0.08, 8, 8);
             const flashMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
             muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
-            muzzleFlash.position.set(0.25, -0.18, -0.9);
+            muzzleFlash.position.set(0, 0, -0.8);
             muzzleFlash.visible = false;
 
-            // 將所有模型加入鏡頭，預設只顯示步槍
             Object.keys(weaponMeshes).forEach(key => {
                 weaponMeshes[key].visible = (key === 'rifle');
                 weaponGroup.add(weaponMeshes[key]);
@@ -273,18 +300,25 @@
             camera.add(weaponGroup);
         }
 
-        // --- 控制與武器切換 ---
+        // --- 移動與開鏡控制 ---
         function onKeyDown(e) {
             switch (e.code) {
                 case 'KeyW': moveForward = true; break;
                 case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break;
                 case 'KeyD': moveRight = true; break;
+                case 'Space': 
+                    if (canJump) {
+                        playerVelocityY = 10.0;
+                        canJump = false;
+                    }
+                    break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
                 case 'Digit3': selectWeapon(2); break;
                 case 'Digit4': selectWeapon(3); break;
                 case 'Digit5': selectWeapon(4); break;
+                case 'Digit6': selectWeapon(5); break;
                 case 'KeyF': throwGrenade(); break;
             }
         }
@@ -295,6 +329,32 @@
                 case 'KeyS': moveBackward = false; break;
                 case 'KeyA': moveLeft = false; break;
                 case 'KeyD': moveRight = false; break;
+            }
+        }
+
+        function onMouseDown(e) {
+            if (!controls.isLocked || isGameOver) return;
+            if (e.button === 0) { // 左鍵開槍
+                isMouseDown = true;
+                tryShoot();
+            } else if (e.button === 2) { // 右鍵開鏡
+                isAiming = true;
+                camera.fov = 30; // 放大視角
+                camera.updateProjectionMatrix();
+                scopeOverlay.style.display = 'block';
+                weaponGroup.position.set(-0.25, 0.02, 0.1); // 武器拉至中心
+            }
+        }
+
+        function onMouseUp(e) {
+            if (e.button === 0) {
+                isMouseDown = false;
+            } else if (e.button === 2) {
+                isAiming = false;
+                camera.fov = 75; // 恢復標準視角
+                camera.updateProjectionMatrix();
+                scopeOverlay.style.display = 'none';
+                weaponGroup.position.set(0, 0, 0);
             }
         }
 
@@ -319,18 +379,18 @@
             weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey];
         }
 
-        // --- 射擊邏輯 (不同武器彈道與射速設定) ---
+        // --- 射擊邏輯 ---
         function tryShoot() {
             const now = performance.now();
             const curWeapon = weaponList[currentWeaponIndex];
 
-            // 射擊冷卻（時間毫秒）
             const fireRates = {
-                'rifle': 120,            // 步槍連發
-                'rpg': 1000,            // RPG 慢速
-                'crossbow': 600,        // 十字弓
-                'grenadeLauncher': 700, // 榴彈砲
-                'sniper': 900           // 狙擊槍
+                'rifle': 120,
+                'rpg': 1000,
+                'crossbow': 600,
+                'grenadeLauncher': 700,
+                'sniper': 900,
+                'mineLauncher': 800
             };
 
             if (now - lastShotTime < fireRates[curWeapon]) return;
@@ -344,92 +404,60 @@
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
 
             if (curWeapon === 'rifle') {
-                // 1. 連發步槍子彈
-                const bullet = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.02, 0.02, 0.3),
-                    new THREE.MeshBasicMaterial({ color: 0xffea00 })
-                );
+                const bullet = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
                 bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 bullet.position.copy(spawnPos);
-
-                bullets.push({ mesh: bullet, dir: dir, speed: 70, type: 'rifle', damage: 1, life: 2.0 });
+                bullets.push({ mesh: bullet, dir: dir, speed: 80, type: 'rifle', damage: 1, life: 2.0 });
                 scene.add(bullet);
-
             } else if (curWeapon === 'rpg') {
-                // 2. RPG 火箭彈
-                const rocket = new THREE.Mesh(
-                    new THREE.ConeGeometry(0.08, 0.3, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xff3300 })
-                );
+                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 8), new THREE.MeshBasicMaterial({ color: 0xff3300 }));
                 rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 rocket.position.copy(spawnPos);
-
                 bullets.push({ mesh: rocket, dir: dir, speed: 35, type: 'rpg', damage: 3, life: 3.0 });
                 scene.add(rocket);
-
             } else if (curWeapon === 'crossbow') {
-                // 3. 十字弓弩箭
-                const arrow = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.015, 0.015, 0.4),
-                    new THREE.MeshBasicMaterial({ color: 0xcccccc })
-                );
+                const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), new THREE.MeshBasicMaterial({ color: 0xcccccc }));
                 arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 arrow.position.copy(spawnPos);
-
-                bullets.push({ mesh: arrow, dir: dir, speed: 50, type: 'crossbow', damage: 2, life: 2.5 });
+                bullets.push({ mesh: arrow, dir: dir, speed: 55, type: 'crossbow', damage: 2, life: 2.5 });
                 scene.add(arrow);
-
             } else if (curWeapon === 'grenadeLauncher') {
-                // 4. 榴彈砲彈丸 (低速拋物線)
-                const grenadeBall = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.06, 8, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xff8800 })
-                );
+                const grenadeBall = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
                 grenadeBall.position.copy(spawnPos);
-
                 const vel = dir.clone().multiplyScalar(22);
-                vel.y += 2.0; // 帶點弧度
-
+                vel.y += 2.0;
                 bullets.push({ mesh: grenadeBall, vel: vel, type: 'grenadeLauncher', damage: 3, life: 3.0 });
                 scene.add(grenadeBall);
-
             } else if (curWeapon === 'sniper') {
-                // 5. 狙擊槍 (一擊必殺高強光線)
-                const sniperBullet = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.025, 0.025, 0.6),
-                    new THREE.MeshBasicMaterial({ color: 0x00ffff })
-                );
+                const sniperBullet = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.6), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
                 sniperBullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 sniperBullet.position.copy(spawnPos);
-
-                bullets.push({ mesh: sniperBullet, dir: dir, speed: 120, type: 'sniper', damage: 999, life: 1.5 });
+                bullets.push({ mesh: sniperBullet, dir: dir, speed: 130, type: 'sniper', damage: 999, life: 1.5 });
                 scene.add(sniperBullet);
+            } else if (curWeapon === 'mineLauncher') {
+                // 發射地雷
+                const mineMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0x33aa33 }));
+                mineMesh.position.copy(spawnPos);
+                const vel = dir.clone().multiplyScalar(15);
+                bullets.push({ mesh: mineMesh, vel: vel, type: 'mineLauncher', life: 5.0 });
+                scene.add(mineMesh);
             }
         }
 
-        // --- 投擲手榴彈 (F 鍵) ---
+        // --- 投擲手榴彈 ---
         function throwGrenade() {
             if (!controls.isLocked || isGameOver) return;
-
             const dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
-
-            const nade = new THREE.Mesh(
-                new THREE.SphereGeometry(0.12, 8, 8),
-                new THREE.MeshLambertMaterial({ color: 0x114411 })
-            );
-
+            const nade = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshLambertMaterial({ color: 0x114411 }));
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.5));
             nade.position.copy(spawnPos);
-
             const velocity = dir.clone().multiplyScalar(15);
             velocity.y += 4;
-
             grenades.push({ mesh: nade, velocity: velocity, timer: 2.0 });
             scene.add(nade);
         }
 
-        // --- 觸發爆炸傷害 ---
         function createExplosion(pos, radius, damage) {
             const expMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
@@ -437,15 +465,14 @@
             );
             expMesh.position.copy(pos);
             scene.add(expMesh);
-
             explosions.push({ mesh: expMesh, timer: 0.3 });
 
             for (let i = zombies.length - 1; i >= 0; i--) {
-                const z = zombies[i];
-                if (z.position.distanceTo(pos) <= radius) {
-                    z.userData.health -= damage;
-                    if (z.userData.health <= 0) {
-                        scene.remove(z);
+                const zGroup = zombies[i];
+                if (zGroup.position.distanceTo(pos) <= radius) {
+                    zGroup.userData.health -= damage;
+                    if (zGroup.userData.health <= 0) {
+                        scene.remove(zGroup);
                         zombies.splice(i, 1);
                         score += 30;
                         hudScore.textContent = score;
@@ -454,7 +481,83 @@
             }
         }
 
-        // --- 地圖與障礙物建立 ---
+        // --- 生成多種類具體型態殭屍（包含頭部與四肢） ---
+        function spawnZombie() {
+            if (!controls.isLocked || isGameOver) return;
+
+            const types = [
+                { type: 'normal', color: 0x22aa44, speed: 2.6, health: 3, scale: 1.0 },
+                { type: 'runner', color: 0xcc2222, speed: 4.8, health: 2, scale: 0.8 },
+                { type: 'tank', color: 0x224488, speed: 1.5, health: 10, scale: 1.6 }
+            ];
+
+            const randType = types[Math.floor(Math.random() * types.length)];
+            const zombieGroup = new THREE.Group();
+
+            // 1. 身體
+            const bodyGeo = new THREE.BoxGeometry(0.8 * randType.scale, 1.2 * randType.scale, 0.4 * randType.scale);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: randType.color });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.6 * randType.scale;
+            zombieGroup.add(body);
+
+            // 2. 頭部（特別標記，用於爆頭檢測）
+            const headGeo = new THREE.BoxGeometry(0.45 * randType.scale, 0.45 * randType.scale, 0.45 * randType.scale);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0x33ff66 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.45 * randType.scale;
+            head.userData.isHead = true; // 爆頭標記！
+            zombieGroup.add(head);
+
+            // 3. 手臂
+            const armGeo = new THREE.BoxGeometry(0.2 * randType.scale, 0.8 * randType.scale, 0.2 * randType.scale);
+            const leftArm = new THREE.Mesh(armGeo, bodyMat);
+            leftArm.position.set(-0.5 * randType.scale, 0.7 * randType.scale, -0.2 * randType.scale);
+            leftArm.rotation.x = -Math.PI / 3;
+
+            const rightArm = new THREE.Mesh(armGeo, bodyMat);
+            rightArm.position.set(0.5 * randType.scale, 0.7 * randType.scale, -0.2 * randType.scale);
+            rightArm.rotation.x = -Math.PI / 3;
+            zombieGroup.add(leftArm, rightArm);
+
+            // 自訂數據
+            zombieGroup.userData = {
+                type: randType.type,
+                speed: randType.speed,
+                health: randType.health,
+                scale: randType.scale,
+                headMesh: head,
+                bodyMesh: body
+            };
+
+            const half = MAP_SIZE / 2 - 5;
+            zombieGroup.position.x = (Math.random() - 0.5) * half * 2;
+            zombieGroup.position.z = (Math.random() - 0.5) * half * 2;
+            zombieGroup.position.y = 0;
+
+            if (zombieGroup.position.distanceTo(controls.getObject().position) < 10) return;
+
+            scene.add(zombieGroup);
+            zombies.push(zombieGroup);
+        }
+
+        // --- 碰撞檢測系統 ---
+        function checkCollision(newPos, radius) {
+            const halfMap = MAP_SIZE / 2 - radius;
+            if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return true;
+
+            const box = new THREE.Box3().setFromCenterAndSize(
+                newPos,
+                new THREE.Vector3(radius * 2, 2.0, radius * 2)
+            );
+
+            for (let obs of obstacles) {
+                const obsBox = new THREE.Box3().setFromObject(obs);
+                if (box.intersectsBox(obsBox)) return true;
+            }
+            return false;
+        }
+
         function createMapBoundaries() {
             const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x444455 });
             const wallThickness = 2;
@@ -492,45 +595,6 @@
             });
         }
 
-        function spawnZombie() {
-            if (!controls.isLocked || isGameOver) return;
-
-            const zombie = new THREE.Mesh(
-                new THREE.BoxGeometry(1, 2, 1),
-                new THREE.MeshLambertMaterial({ color: 0x22aa44 })
-            );
-
-            zombie.userData = { health: 3 };
-
-            const half = MAP_SIZE / 2 - 5;
-            zombie.position.x = (Math.random() - 0.5) * half * 2;
-            zombie.position.z = (Math.random() - 0.5) * half * 2;
-            zombie.position.y = 1;
-
-            if (zombie.position.distanceTo(controls.getObject().position) < 10) return;
-
-            scene.add(zombie);
-            zombies.push(zombie);
-        }
-
-        function checkPlayerCollision(newPos) {
-            const playerRadius = 0.6;
-            const halfMap = MAP_SIZE / 2 - playerRadius;
-
-            if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return true;
-
-            const playerBox = new THREE.Box3().setFromCenterAndSize(
-                newPos,
-                new THREE.Vector3(playerRadius * 2, PLAYER_HEIGHT * 2, playerRadius * 2)
-            );
-
-            for (let obs of obstacles) {
-                const obsBox = new THREE.Box3().setFromObject(obs);
-                if (playerBox.intersectsBox(obsBox)) return true;
-            }
-            return false;
-        }
-
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -549,9 +613,12 @@
             zombies.forEach(z => scene.remove(z));
             bullets.forEach(b => scene.remove(b.mesh));
             grenades.forEach(g => scene.remove(g.mesh));
+            mines.forEach(m => scene.remove(m.mesh));
+
             zombies.length = 0;
             bullets.length = 0;
             grenades.length = 0;
+            mines.length = 0;
 
             controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
             controls.lock();
@@ -567,7 +634,7 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown && weaponList[currentWeaponIndex] === 'rifle') tryShoot();
 
-                // 1. 玩家移動（嚴格限制防穿牆與防飛天）
+                // 1. 玩家移動與跳躍物理
                 const moveSpeed = 12.0 * delta;
                 const playerObj = controls.getObject();
                 const oldPos = playerObj.position.clone();
@@ -584,39 +651,71 @@
                 if (moveLeft) playerObj.position.addScaledVector(sideDir, moveSpeed);
                 if (moveRight) playerObj.position.addScaledVector(sideDir, -moveSpeed);
 
-                if (checkPlayerCollision(playerObj.position)) {
-                    playerObj.position.copy(oldPos);
+                if (checkCollision(playerObj.position, 0.6)) {
+                    playerObj.position.x = oldPos.x;
+                    playerObj.position.z = oldPos.z;
                 }
 
-                playerObj.position.y = PLAYER_HEIGHT;
+                // 重力與跳躍
+                playerVelocityY -= GRAVITY * delta;
+                playerObj.position.y += playerVelocityY * delta;
 
-                // 2. 子彈與各式飛行物更新
+                if (playerObj.position.y <= PLAYER_HEIGHT) {
+                    playerObj.position.y = PLAYER_HEIGHT;
+                    playerVelocityY = 0;
+                    canJump = true;
+                }
+
+                // 2. 子彈飛行與爆頭打擊判定
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
 
                     if (b.vel) {
-                        // 榴彈帶重力飛行
                         b.vel.y -= 9.8 * delta;
                         b.mesh.position.addScaledVector(b.vel, delta);
+
+                        // 地雷落地轉化為感應地雷
+                        if (b.type === 'mineLauncher' && b.mesh.position.y <= 0.05) {
+                            b.mesh.position.y = 0.05;
+                            mines.push({ mesh: b.mesh });
+                            bullets.splice(i, 1);
+                            continue;
+                        }
                     } else {
-                        // 直線子彈飛行
                         b.mesh.position.addScaledVector(b.dir, b.speed * delta);
                     }
 
                     b.life -= delta;
                     let hit = false;
 
-                    // 碰撞殭屍判定
+                    // 擊中殭屍判定 (精確區分頭部爆頭與身體)
                     for (let j = zombies.length - 1; j >= 0; j--) {
-                        const z = zombies[j];
-                        if (b.mesh.position.distanceTo(z.position) < 1.0) {
+                        const zGroup = zombies[j];
+                        const headPos = new THREE.Vector3();
+                        const bodyPos = new THREE.Vector3();
+
+                        zGroup.userData.headMesh.getWorldPosition(headPos);
+                        zGroup.userData.bodyMesh.getWorldPosition(bodyPos);
+
+                        const distToHead = b.mesh.position.distanceTo(headPos);
+                        const distToBody = b.mesh.position.distanceTo(bodyPos);
+
+                        if (distToHead < 0.4 * zGroup.userData.scale || distToBody < 0.7 * zGroup.userData.scale) {
                             hit = true;
+
                             if (b.type === 'rpg' || b.type === 'grenadeLauncher') {
                                 createExplosion(b.mesh.position, 5.0, b.damage);
                             } else {
-                                z.userData.health -= b.damage; // 狙擊槍為 999 (一擊必殺)
-                                if (z.userData.health <= 0) {
-                                    scene.remove(z);
+                                // 爆頭傷害判定：若離頭部更近，觸發 2 倍爆頭傷害！
+                                let finalDamage = b.damage;
+                                if (distToHead < distToBody) {
+                                    finalDamage *= 2; 
+                                }
+
+                                zGroup.userData.health -= finalDamage;
+
+                                if (zGroup.userData.health <= 0) {
+                                    scene.remove(zGroup);
                                     zombies.splice(j, 1);
                                     score += 30;
                                     hudScore.textContent = score;
@@ -626,7 +725,7 @@
                         }
                     }
 
-                    // 碰撞牆壁/障礙物判定
+                    // 牆壁碰撞
                     if (!hit) {
                         for (let obs of obstacles) {
                             const obsBox = new THREE.Box3().setFromObject(obs);
@@ -646,7 +745,21 @@
                     }
                 }
 
-                // 3. 手榴彈物理拋物線更新
+                // 3. 地雷感應與爆炸檢測
+                for (let i = mines.length - 1; i >= 0; i--) {
+                    const mine = mines[i];
+                    for (let j = zombies.length - 1; j >= 0; j--) {
+                        const zGroup = zombies[j];
+                        if (mine.mesh.position.distanceTo(zGroup.position) < 2.2) {
+                            createExplosion(mine.mesh.position, 6.0, 5);
+                            scene.remove(mine.mesh);
+                            mines.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+
+                // 4. 手榴彈物理拋物線
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i];
                     g.velocity.y -= 9.8 * delta;
@@ -665,7 +778,7 @@
                     }
                 }
 
-                // 4. 爆炸視覺效果淡出
+                // 5. 爆炸效果淡出
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
@@ -676,18 +789,26 @@
                     }
                 }
 
-                // 5. 殭屍 AI 與追逐
+                // 6. 殭屍 AI 與嚴格防穿牆追逐
                 const playerPos = playerObj.position;
                 for (let i = zombies.length - 1; i >= 0; i--) {
-                    const zombie = zombies[i];
-                    zombie.lookAt(playerPos.x, zombie.position.y, playerPos.z);
-                    zombie.translateZ(2.5 * delta);
+                    const zGroup = zombies[i];
+                    const oldZPos = zGroup.position.clone();
 
-                    if (zombie.position.distanceTo(playerPos) < 1.2) {
+                    zGroup.lookAt(playerPos.x, zGroup.position.y, playerPos.z);
+                    zGroup.translateZ(zGroup.userData.speed * delta);
+
+                    // 殭屍防穿牆物理判定
+                    if (checkCollision(zGroup.position, 0.5 * zGroup.userData.scale)) {
+                        zGroup.position.copy(oldZPos);
+                    }
+
+                    // 玩家傷害判定
+                    if (zGroup.position.distanceTo(playerPos) < 1.3) {
                         health -= 10;
                         hudHealth.textContent = Math.max(0, health);
 
-                        scene.remove(zombie);
+                        scene.remove(zGroup);
                         zombies.splice(i, 1);
 
                         if (health <= 0) {
