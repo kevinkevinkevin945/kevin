@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱射擊 - 專屬開鏡與血量生存版</title>
+    <title>3D 第一人稱射擊</title>
     <style>
         body {
             margin: 0;
@@ -28,7 +28,6 @@
             z-index: 10;
         }
 
-        /* 動態開鏡 Overlay 容器 */
         #scope-container {
             position: absolute;
             top: 0;
@@ -116,6 +115,7 @@
         得分: <span id="score">0</span>
     </div>
     <div id="skill-hud">
+         緊急補血: <span id="cd-heal">就緒</span> | 
         【Q】衝刺: <span id="cd-q">就緒</span> | 
         【E】冰凍榴彈: <span id="cd-e">就緒</span> | 
         【G】範圍秒殺: <span id="cd-g">就緒</span>
@@ -123,10 +123,8 @@
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>武裝敵軍戰 - 戰術瞄準生存</h1>
+        <h1>武裝敵軍戰 - 戰術補血生存</h1>
         <p>點擊螢幕開始遊戲</p>
-        <p>【警告】玩家會受到傷害扣血，血量歸零戰敗！</p>
-        <p>【特色】按右鍵開鏡，每把武器均有專屬圓形戰術瞄準鏡！</p>
         <p>【W, A, S, D】移動 | 【Space】跳躍</p>
         <p>【Q】衝刺 | 【E】冰凍榴彈 | 【G】範圍秒殺絕招</p>
         <p>【滑鼠右鍵】開鏡瞄準 | 【滑鼠左鍵】開槍 | 【F】手榴彈</p>
@@ -160,12 +158,12 @@
 
         // 技能冷卻管理
         const cooldowns = {
+            HEAL: { current: 0, max: 3.0 },
             Q: { current: 0, max: 3.0 },
             E: { current: 0, max: 8.0 },
             G: { current: 0, max: 20.0 }
         };
 
-        // 武器設定與開鏡參數 (FOV與開鏡視角差異)
         const weaponList = ['rifle', 'rpg', 'crossbow', 'grenadeLauncher', 'sniper', 'mineLauncher'];
         const weaponNames = {
             'rifle': '1. 連發步槍',
@@ -176,12 +174,8 @@
             'mineLauncher': '6. 地雷發射器'
         };
         const weaponZoomFov = {
-            'rifle': 45,
-            'rpg': 40,
-            'crossbow': 35,
-            'grenadeLauncher': 42,
-            'sniper': 15,
-            'mineLauncher': 50
+            'rifle': 45, 'rpg': 40, 'crossbow': 35,
+            'grenadeLauncher': 42, 'sniper': 15, 'mineLauncher': 50
         };
 
         let currentWeaponIndex = 0;
@@ -323,7 +317,6 @@
             camera.add(weaponGroup);
         }
 
-        // --- 生成各武器專屬的 SVG 圓形瞄準鏡（含輔助線） ---
         function getScopeSVG(weaponType) {
             const svgHeader = `<svg width="100%" height="100%" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -338,82 +331,66 @@
             let innerContent = "";
 
             if (weaponType === 'rifle') {
-                // 1. 步槍：戰術紅點圓鏡 (簡單四向輔助線)
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#00ffcc" stroke-width="3" opacity="0.6"/>
                     <circle cx="500" cy="500" r="5" fill="#ff0000"/>
                     <line x1="500" y1="180" x2="500" y2="460" stroke="#00ffcc" stroke-width="2"/>
                     <line x1="500" y1="540" x2="500" y2="820" stroke="#00ffcc" stroke-width="2"/>
                     <line x1="180" y1="500" x2="460" y2="500" stroke="#00ffcc" stroke-width="2"/>
-                    <line x1="540" y1="500" x2="820" y2="500" stroke="#00ffcc" stroke-width="2"/>
-                `;
+                    <line x1="540" y1="500" x2="820" y2="500" stroke="#00ffcc" stroke-width="2"/>`;
             } else if (weaponType === 'rpg') {
-                // 2. RPG：測距重型圓鏡 (測距刻度橫線)
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#ff5500" stroke-width="4"/>
-                    <circle cx="500" cy="500" r="180" fill="none" stroke="#ff5500" stroke-width="1" stroke-dasharray="8,8"/>
                     <line x1="150" y1="500" x2="850" y2="500" stroke="#ff5500" stroke-width="2"/>
-                    <line x1="500" y1="150" x2="500" y2="850" stroke="#ff5500" stroke-width="2"/>
-                    <line x1="400" y1="530" x2="400" y2="570" stroke="#ff5500" stroke-width="2"/>
-                    <line x1="300" y1="520" x2="300" y2="580" stroke="#ff5500" stroke-width="2"/>
-                    <line x1="600" y1="530" x2="600" y2="570" stroke="#ff5500" stroke-width="2"/>
-                    <line x1="700" y1="520" x2="700" y2="580" stroke="#ff5500" stroke-width="2"/>
-                    <polygon points="500,490 490,510 510,510" fill="#ff5500"/>
-                `;
+                    <line x1="500" y1="150" x2="500" y2="850" stroke="#ff5500" stroke-width="2"/>`;
             } else if (weaponType === 'crossbow') {
-                // 3. 十字弓：彈道下墜修正點 (縱向高低輔助線與降點)
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#aaff22" stroke-width="2"/>
                     <line x1="500" y1="150" x2="500" y2="850" stroke="#aaff22" stroke-width="1.5"/>
-                    <line x1="350" y1="500" x2="650" y2="500" stroke="#aaff22" stroke-width="1.5"/>
-                    <circle cx="500" cy="450" r="3" fill="#aaff22"/>
-                    <circle cx="500" cy="500" r="4" fill="#ff0000"/>
-                    <circle cx="500" cy="560" r="3.5" fill="#aaff22"/>
-                    <circle cx="500" cy="630" r="3" fill="#aaff22"/>
-                    <circle cx="500" cy="710" r="2.5" fill="#aaff22"/>
-                    <line x1="460" y1="560" x2="540" y2="560" stroke="#aaff22" stroke-width="1"/>
-                    <line x1="470" y1="630" x2="530" y2="630" stroke="#aaff22" stroke-width="1"/>
-                `;
+                    <circle cx="500" cy="500" r="4" fill="#ff0000"/>`;
             } else if (weaponType === 'grenadeLauncher') {
-                // 4. 榴彈砲：拋物線弧角圓鏡 (弧線輔助)
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#ffaa00" stroke-width="3"/>
-                    <path d="M 250 650 Q 500 450 750 650" fill="none" stroke="#ffaa00" stroke-width="2" stroke-dasharray="6,6"/>
-                    <circle cx="500" cy="500" r="8" fill="none" stroke="#ffaa00" stroke-width="2"/>
-                    <circle cx="500" cy="500" r="2" fill="#ffaa00"/>
-                    <line x1="500" y1="200" x2="500" y2="800" stroke="#ffaa00" stroke-width="1"/>
-                    <line x1="200" y1="500" x2="800" y2="500" stroke="#ffaa00" stroke-width="1"/>
-                `;
+                    <circle cx="500" cy="500" r="2" fill="#ffaa00"/>`;
             } else if (weaponType === 'sniper') {
-                // 5. 狙擊槍：精密軍用雙環密位圓鏡 (細緻 Crosshair 與密位點)
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#ffffff" stroke-width="3"/>
-                    <circle cx="500" cy="500" r="335" fill="none" stroke="#ffffff" stroke-width="1"/>
                     <line x1="150" y1="500" x2="850" y2="500" stroke="#ffffff" stroke-width="1.5"/>
                     <line x1="500" y1="150" x2="500" y2="850" stroke="#ffffff" stroke-width="1.5"/>
-                    <circle cx="420" cy="500" r="3" fill="#ffffff"/><circle cx="340" cy="500" r="3" fill="#ffffff"/><circle cx="260" cy="500" r="3" fill="#ffffff"/>
-                    <circle cx="580" cy="500" r="3" fill="#ffffff"/><circle cx="660" cy="500" r="3" fill="#ffffff"/><circle cx="740" cy="500" r="3" fill="#ffffff"/>
-                    <circle cx="500" cy="420" r="3" fill="#ffffff"/><circle cx="500" cy="340" r="3" fill="#ffffff"/><circle cx="500" cy="260" r="3" fill="#ffffff"/>
-                    <circle cx="500" cy="580" r="3" fill="#ffffff"/><circle cx="500" cy="660" r="3" fill="#ffffff"/><circle cx="500" cy="740" r="3" fill="#ffffff"/>
-                    <circle cx="500" cy="500" r="3" fill="#ff0000"/>
-                `;
+                    <circle cx="500" cy="500" r="3" fill="#ff0000"/>`;
             } else if (weaponType === 'mineLauncher') {
-                // 6. 地雷發射器：全息雷達鎖定網格圓鏡
                 innerContent = `
                     <circle cx="500" cy="500" r="348" fill="none" stroke="#00ff55" stroke-width="2"/>
-                    <circle cx="500" cy="500" r="260" fill="none" stroke="#00ff55" stroke-width="1" stroke-dasharray="10,5"/>
-                    <circle cx="500" cy="500" r="120" fill="none" stroke="#00ff55" stroke-width="2"/>
-                    <line x1="500" y1="150" x2="500" y2="850" stroke="#00ff55" stroke-width="1.5"/>
-                    <line x1="150" y1="500" x2="850" y2="500" stroke="#00ff55" stroke-width="1.5"/>
-                    <rect x="475" y="475" width="50" height="50" fill="none" stroke="#00ff55" stroke-width="2"/>
-                `;
+                    <rect x="475" y="475" width="50" height="50" fill="none" stroke="#00ff55" stroke-width="2"/>`;
             }
 
             return svgHeader + innerContent + `</svg>`;
         }
 
+        // --- 補血技能邏輯 ---
+        function healPlayer() {
+            if (cooldowns.HEAL.current > 0 || health >= 100 || isGameOver) return;
+            cooldowns.HEAL.current = cooldowns.HEAL.max;
+
+            health = Math.min(100, health + 30);
+            updateHealthHUD();
+        }
+
+        function updateHealthHUD() {
+            hudHealth.textContent = health;
+            if (health < 30) hudHealth.style.color = '#ff0000';
+            else if (health < 60) hudHealth.style.color = '#ffaa00';
+            else hudHealth.style.color = '#00ff00';
+        }
+
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
+
+            // 監測按 ! 鍵 (Shift + 1 或直接按感嘆號)
+            if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
+                healPlayer();
+                return;
+            }
 
             switch (e.code) {
                 case 'KeyW': moveForward = true; break;
@@ -520,20 +497,14 @@
                 isMouseDown = true;
                 tryShoot();
             } else if (e.button === 2) {
-                // 右鍵開鏡
                 isAiming = true;
                 const curWeapon = weaponList[currentWeaponIndex];
-
-                // 設置縮放 FOV
                 camera.fov = weaponZoomFov[curWeapon];
                 camera.updateProjectionMatrix();
 
-                // 載入該槍枝專屬的圓形瞄準鏡 SVG
                 scopeContainer.innerHTML = getScopeSVG(curWeapon);
                 scopeContainer.style.display = 'block';
                 crosshair.style.display = 'none';
-
-                // 開鏡時隱藏槍枝模型，獲得純淨瞄準視野
                 weaponGroup.visible = false;
             }
         }
@@ -542,7 +513,6 @@
             if (e.button === 0) {
                 isMouseDown = false;
             } else if (e.button === 2) {
-                // 取消開鏡
                 isAiming = false;
                 camera.fov = 75;
                 camera.updateProjectionMatrix();
@@ -573,7 +543,6 @@
 
             weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey];
 
-            // 如果在開鏡中切換武器，實時更新瞄準鏡樣式與倍率
             if (isAiming) {
                 camera.fov = weaponZoomFov[selectedKey];
                 camera.updateProjectionMatrix();
@@ -593,7 +562,6 @@
             if (now - lastShotTime < fireRates[curWeapon]) return;
             lastShotTime = now;
 
-            // 【開鏡時去掉開槍閃光】
             if (!isAiming) {
                 muzzleFlash.visible = true;
                 setTimeout(() => { muzzleFlash.visible = false; }, 40);
@@ -719,16 +687,12 @@
             }
         }
 
-        // 受傷邏輯
         function takeDamage(amount) {
             if (isGameOver) return;
             health -= amount;
             if (health < 0) health = 0;
 
-            hudHealth.textContent = health;
-            if (health < 30) hudHealth.style.color = '#ff0000';
-            else if (health < 60) hudHealth.style.color = '#ffaa00';
-            else hudHealth.style.color = '#00ff00';
+            updateHealthHUD();
 
             if (health <= 0) {
                 isGameOver = true;
@@ -869,8 +833,7 @@
             score = 0;
             isGameOver = false;
 
-            hudHealth.textContent = health;
-            hudHealth.style.color = '#00ff00';
+            updateHealthHUD();
             hudScore.textContent = score;
 
             zombies.forEach(z => scene.remove(z));
@@ -889,7 +852,6 @@
             controls.lock();
         }
 
-        // --- 遊戲主循環 ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -899,12 +861,17 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown && weaponList[currentWeaponIndex] === 'rifle') tryShoot();
 
+                // 更新所有冷卻時間
                 Object.keys(cooldowns).forEach(key => {
-                    if (cooldowns[key].current > 0) {
-                        cooldowns[key].current -= delta;
-                        document.getElementById(`cd-${key.toLowerCase()}`).textContent = `${Math.ceil(cooldowns[key].current)}s`;
-                    } else {
-                        document.getElementById(`cd-${key.toLowerCase()}`).textContent = "就緒";
+                    const elemId = key === 'HEAL' ? 'cd-heal' : `cd-${key.toLowerCase()}`;
+                    const targetElem = document.getElementById(elemId);
+                    if (targetElem) {
+                        if (cooldowns[key].current > 0) {
+                            cooldowns[key].current -= delta;
+                            targetElem.textContent = `${Math.ceil(cooldowns[key].current)}s`;
+                        } else {
+                            targetElem.textContent = "就緒";
+                        }
                     }
                 });
 
@@ -939,7 +906,7 @@
                     canJump = true;
                 }
 
-                // 2. 玩家子彈飛行與擊中處理
+                // 2. 玩家子彈
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
 
@@ -1012,7 +979,7 @@
                     }
                 }
 
-                // 3. 敵軍子彈飛行與玩家扣血判定
+                // 3. 敵軍子彈與扣血
                 for (let i = enemyBullets.length - 1; i >= 0; i--) {
                     const eb = enemyBullets[i];
                     eb.mesh.position.addScaledVector(eb.dir, eb.speed * delta);
@@ -1027,7 +994,6 @@
                         }
                     }
 
-                    // 擊中玩家：扣 10 血
                     if (eb.mesh.position.distanceTo(playerObj.position) < 0.8) {
                         takeDamage(10);
                         hit = true;
@@ -1087,7 +1053,7 @@
                     }
                 }
 
-                // 7. 敵軍 AI、開槍與近戰傷害
+                // 7. 敵軍 AI
                 const playerPos = playerObj.position;
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const zGroup = zombies[i];
@@ -1106,14 +1072,12 @@
                         zGroup.position.copy(oldZPos);
                     }
 
-                    // 敵軍定時開槍
                     zGroup.userData.shootTimer += delta;
                     if (zGroup.userData.shootTimer >= zGroup.userData.shootInterval) {
                         zGroup.userData.shootTimer = 0;
                         enemyShoot(zGroup);
                     }
 
-                    // 敵軍近身貼臉扣血
                     if (zGroup.position.distanceTo(playerPos) < 1.3) {
                         takeDamage(10);
                         scene.remove(zGroup);
