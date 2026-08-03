@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱射擊</title>
+    <title>3D 第一/第三人稱射擊 - 高空平台與蹲下版</title>
     <style>
         body {
             margin: 0;
@@ -115,7 +115,7 @@
         得分: <span id="score">0</span>
     </div>
     <div id="skill-hud">
-         緊急補血: <span id="cd-heal">就緒</span> | 
+        【!】緊急補血: <span id="cd-heal">就緒</span> | 
         【Q】衝刺: <span id="cd-q">就緒</span> | 
         【E】冰凍榴彈: <span id="cd-e">就緒</span> | 
         【G】範圍秒殺: <span id="cd-g">就緒</span>
@@ -123,8 +123,11 @@
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>武裝敵軍戰 - 戰術補血生存</h1>
+        <h1>高空戰術戰場 - 生存挑戰</h1>
         <p>點擊螢幕開始遊戲</p>
+        <p>【高空平台】小心不要掉落平台下方！</p>
+        <p>【Ctrl】按住蹲下 | 【V】切換第一/第三人稱視角</p>
+        <p>【!】（Shift + 1）緊急補血 +30 HP</p>
         <p>【W, A, S, D】移動 | 【Space】跳躍</p>
         <p>【Q】衝刺 | 【E】冰凍榴彈 | 【G】範圍秒殺絕招</p>
         <p>【滑鼠右鍵】開鏡瞄準 | 【滑鼠左鍵】開槍 | 【F】手榴彈</p>
@@ -133,6 +136,8 @@
     <script>
         let camera, scene, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isCrouching = false;
+        let isThirdPerson = false;
         let canJump = false;
         let playerVelocityY = 0;
         const GRAVITY = 28;
@@ -143,7 +148,11 @@
         let prevTime = performance.now();
 
         const MAP_SIZE = 80;
-        const PLAYER_HEIGHT = 1.6;
+        const PLATFORM_Y = 15; // 高空平台高度
+        const STAND_HEIGHT = 1.6;
+        const CROUCH_HEIGHT = 0.8;
+        let currentEyeHeight = STAND_HEIGHT;
+
         const zombies = [];
         const obstacles = [];
         const bullets = [];
@@ -182,6 +191,7 @@
         let weaponMeshes = {};
         let weaponGroup;
         let muzzleFlash;
+        let playerBodyMesh; // 第三人稱玩家模型
 
         const hudHealth = document.getElementById('health');
         const hudScore = document.getElementById('score');
@@ -193,7 +203,7 @@
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x111122);
-            scene.fog = new THREE.FogExp2(0x111122, 0.025);
+            scene.fog = new THREE.FogExp2(0x111122, 0.015);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -201,20 +211,18 @@
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(20, 40, 20);
+            dirLight.position.set(20, 60, 20);
             scene.add(dirLight);
 
-            const floorGeometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            scene.add(floor);
-
-            createMapBoundaries();
+            // 建立高空平台
+            createSkyPlatform();
             createObstacles();
 
             controls = new THREE.PointerLockControls(camera, document.body);
-            controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
+            controls.getObject().position.set(0, PLATFORM_Y + STAND_HEIGHT, 0);
+
+            // 建立第三人稱玩家本體模型
+            createPlayerBody();
 
             instructions.addEventListener('click', () => {
                 if (!isGameOver) controls.lock();
@@ -245,6 +253,32 @@
             setInterval(spawnZombie, 1800);
 
             animate();
+        }
+
+        // 高空平台建立
+        function createSkyPlatform() {
+            const platformGeo = new THREE.BoxGeometry(MAP_SIZE, 2, MAP_SIZE);
+            const platformMat = new THREE.MeshLambertMaterial({ color: 0x333344 });
+            const platform = new THREE.Mesh(platformGeo, platformMat);
+            platform.position.set(0, PLATFORM_Y - 1, 0);
+            scene.add(platform);
+        }
+
+        function createPlayerBody() {
+            playerBodyMesh = new THREE.Group();
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x0088ff });
+            const bodyGeo = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = -0.6;
+
+            const headGeo = new THREE.SphereGeometry(0.25, 12, 12);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 0.15;
+
+            playerBodyMesh.add(body, head);
+            playerBodyMesh.visible = false; // 第一人稱時隱藏
+            controls.getObject().add(playerBodyMesh);
         }
 
         function createWeapons() {
@@ -367,7 +401,6 @@
             return svgHeader + innerContent + `</svg>`;
         }
 
-        // --- 補血技能邏輯 ---
         function healPlayer() {
             if (cooldowns.HEAL.current > 0 || health >= 100 || isGameOver) return;
             cooldowns.HEAL.current = cooldowns.HEAL.max;
@@ -386,7 +419,6 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
-            // 監測按 ! 鍵 (Shift + 1 或直接按感嘆號)
             if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
                 healPlayer();
                 return;
@@ -397,6 +429,23 @@
                 case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break;
                 case 'KeyD': moveRight = true; break;
+                case 'ControlLeft':
+                case 'ControlRight':
+                    // 按下 Ctrl 蹲下
+                    isCrouching = true;
+                    currentEyeHeight = CROUCH_HEIGHT;
+                    break;
+                case 'KeyV':
+                    // 按 V 切換視角
+                    isThirdPerson = !isThirdPerson;
+                    if (isThirdPerson) {
+                        camera.position.set(0, 1.2, 3.5); // 第三人稱拉遠攝影機
+                        playerBodyMesh.visible = true;
+                    } else {
+                        camera.position.set(0, 0, 0); // 第一人稱重置
+                        playerBodyMesh.visible = false;
+                    }
+                    break;
                 case 'Space': 
                     if (canJump) {
                         playerVelocityY = 10.0;
@@ -422,6 +471,12 @@
                 case 'KeyS': moveBackward = false; break;
                 case 'KeyA': moveLeft = false; break;
                 case 'KeyD': moveRight = false; break;
+                case 'ControlLeft':
+                case 'ControlRight':
+                    // 鬆開 Ctrl 站立
+                    isCrouching = false;
+                    currentEyeHeight = STAND_HEIGHT;
+                    break;
             }
         }
 
@@ -695,12 +750,16 @@
             updateHealthHUD();
 
             if (health <= 0) {
-                isGameOver = true;
-                controls.unlock();
-                instructions.querySelector('h1').textContent = "戰敗！你已陣亡";
-                instructions.querySelector('p').textContent = `最終得分: ${score}！點擊重新開始`;
-                instructions.style.display = 'flex';
+                triggerGameOver("戰敗！你已陣亡");
             }
+        }
+
+        function triggerGameOver(reason) {
+            isGameOver = true;
+            controls.unlock();
+            instructions.querySelector('h1').textContent = reason;
+            instructions.querySelector('p').textContent = `最終得分: ${score}！點擊重新開始`;
+            instructions.style.display = 'flex';
         }
 
         function spawnZombie() {
@@ -761,7 +820,7 @@
             const half = MAP_SIZE / 2 - 5;
             zombieGroup.position.x = (Math.random() - 0.5) * half * 2;
             zombieGroup.position.z = (Math.random() - 0.5) * half * 2;
-            zombieGroup.position.y = 0;
+            zombieGroup.position.y = PLATFORM_Y; // 生成在高空平台上
 
             if (zombieGroup.position.distanceTo(controls.getObject().position) < 10) return;
 
@@ -770,8 +829,9 @@
         }
 
         function checkCollision(newPos, radius) {
+            // 地圖邊界檢測（落出高空平台）
             const halfMap = MAP_SIZE / 2 - radius;
-            if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return true;
+            if (Math.abs(newPos.x) > halfMap || Math.abs(newPos.z) > halfMap) return false;
 
             const box = new THREE.Box3().setFromCenterAndSize(
                 newPos,
@@ -785,27 +845,6 @@
             return false;
         }
 
-        function createMapBoundaries() {
-            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x444455 });
-            const wallThickness = 2;
-            const wallHeight = 6;
-            const halfSize = MAP_SIZE / 2;
-
-            const walls = [
-                { size: [MAP_SIZE, wallHeight, wallThickness], pos: [0, wallHeight / 2, -halfSize] },
-                { size: [MAP_SIZE, wallHeight, wallThickness], pos: [0, wallHeight / 2, halfSize] },
-                { size: [wallThickness, wallHeight, MAP_SIZE], pos: [halfSize, wallHeight / 2, 0] },
-                { size: [wallThickness, wallHeight, MAP_SIZE], pos: [-halfSize, wallHeight / 2, 0] }
-            ];
-
-            walls.forEach(w => {
-                const wall = new THREE.Mesh(new THREE.BoxGeometry(...w.size), wallMaterial);
-                wall.position.set(...w.pos);
-                scene.add(wall);
-                obstacles.push(wall);
-            });
-        }
-
         function createObstacles() {
             const boxMaterial = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
             const obstacleData = [
@@ -816,7 +855,7 @@
 
             obstacleData.forEach(d => {
                 const box = new THREE.Mesh(new THREE.BoxGeometry(d[2], d[3], d[4]), boxMaterial);
-                box.position.set(d[0], d[3] / 2, d[1]);
+                box.position.set(d[0], PLATFORM_Y + d[3] / 2, d[1]);
                 scene.add(box);
                 obstacles.push(box);
             });
@@ -848,7 +887,7 @@
             grenades.length = 0;
             mines.length = 0;
 
-            controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
+            controls.getObject().position.set(0, PLATFORM_Y + STAND_HEIGHT, 0);
             controls.lock();
         }
 
@@ -861,7 +900,6 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown && weaponList[currentWeaponIndex] === 'rifle') tryShoot();
 
-                // 更新所有冷卻時間
                 Object.keys(cooldowns).forEach(key => {
                     const elemId = key === 'HEAL' ? 'cd-heal' : `cd-${key.toLowerCase()}`;
                     const targetElem = document.getElementById(elemId);
@@ -875,8 +913,8 @@
                     }
                 });
 
-                // 1. 玩家移動
-                const moveSpeed = 12.0 * delta;
+                // 1. 玩家移動與蹲下速度調整
+                let moveSpeed = (isCrouching ? 6.0 : 12.0) * delta;
                 const playerObj = controls.getObject();
                 const oldPos = playerObj.position.clone();
 
@@ -897,13 +935,20 @@
                     playerObj.position.z = oldPos.z;
                 }
 
+                // 重力與高空平台墜落判定
                 playerVelocityY -= GRAVITY * delta;
                 playerObj.position.y += playerVelocityY * delta;
 
-                if (playerObj.position.y <= PLAYER_HEIGHT) {
-                    playerObj.position.y = PLAYER_HEIGHT;
+                const platformFloor = PLATFORM_Y + currentEyeHeight;
+                if (playerObj.position.y <= platformFloor && Math.abs(playerObj.position.x) <= MAP_SIZE/2 && Math.abs(playerObj.position.z) <= MAP_SIZE/2) {
+                    playerObj.position.y = platformFloor;
                     playerVelocityY = 0;
                     canJump = true;
+                }
+
+                // 掉出平台下方時陣亡
+                if (playerObj.position.y < PLATFORM_Y - 15) {
+                    takeDamage(100);
                 }
 
                 // 2. 玩家子彈
@@ -914,8 +959,8 @@
                         b.vel.y -= 9.8 * delta;
                         b.mesh.position.addScaledVector(b.vel, delta);
 
-                        if (b.type === 'mineLauncher' && b.mesh.position.y <= 0.05) {
-                            b.mesh.position.y = 0.05;
+                        if (b.type === 'mineLauncher' && b.mesh.position.y <= PLATFORM_Y + 0.05) {
+                            b.mesh.position.y = PLATFORM_Y + 0.05;
                             mines.push({ mesh: b.mesh });
                             bullets.splice(i, 1);
                             continue;
@@ -1025,8 +1070,8 @@
                     g.velocity.y -= 9.8 * delta;
                     g.mesh.position.addScaledVector(g.velocity, delta);
 
-                    if (g.mesh.position.y <= 0.1) {
-                        g.mesh.position.y = 0.1;
+                    if (g.mesh.position.y <= PLATFORM_Y + 0.1) {
+                        g.mesh.position.y = PLATFORM_Y + 0.1;
                         g.velocity.set(0, 0, 0);
                     }
 
@@ -1094,4 +1139,3 @@
     </script>
 </body>
 </html>
-
