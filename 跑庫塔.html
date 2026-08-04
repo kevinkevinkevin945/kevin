@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 極限跑酷塔 - 紀錄點與特殊平台版</title>
+    <title>3D 環塔跑酷 - 衝擊波與實體螺旋塔</title>
     <style>
         body {
             margin: 0;
@@ -85,7 +85,7 @@
         #instructions h1 {
             font-size: 42px;
             margin-bottom: 10px;
-            color: #00ffcc;
+            color: #ffaa00;
         }
 
         #instructions p {
@@ -103,18 +103,18 @@
     <div id="hud">
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span> | 
-        跑酷塔層數: <span id="level-display" style="color: #ffaa00;">1</span>
+        巨塔層數: <span id="level-display" style="color: #ffaa00;">1</span>
     </div>
-    <div id="checkpoint-msg">★ 踩到檢查點！復活位置已更新 ★</div>
+    <div id="checkpoint-msg">★ 檢查點已記錄！★</div>
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>3D 極限跑酷塔 (Parkour Tower)</h1>
-        <p>點擊螢幕開始挑戰跑酷塔</p>
-        <p>【特殊平台】綠色=高空彈簧 | 紅色=極速衝刺 | 藍色=紀錄點 (死亡在此重生)</p>
-        <p>【滑行機制】移動時按【Ctrl】或按【C】發動滑行！滑行中按【Space】可跳躍取消！</p>
-        <p>【塔頂目標】爬到塔頂觸發金黃色水晶即可通關！</p>
-        <p>【W, A, S, D】移動 | 【Space】跳躍 | 【滑鼠左鍵】射擊 | 【滑鼠滾輪】切換武器</p>
+        <h1>環形跑酷巨塔 (Tower Climb)</h1>
+        <p>點擊螢幕開始遊戲</p>
+        <p>【爆波物理】爆炸會產生衝擊波，強烈推動角色與怪物！</p>
+        <p>【巨塔跑酷】沿著中央巨塔外圍的螺旋步道向上攀爬！</p>
+        <p>【特殊平台】藍色=紀錄點 | 綠色=彈簧墊 | 紅色=加速步道</p>
+        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | 滑鼠滾輪換槍</p>
     </div>
 
     <script>
@@ -127,7 +127,9 @@
         let slideSpeedCurrent = 0;
         let slideDirection = new THREE.Vector3();
         let canJump = false;
-        let playerVelocityY = 0;
+        
+        // 玩家速度與向量 (包含衝擊波推力)
+        let playerVelocity = new THREE.Vector3();
         const GRAVITY = 28;
 
         let isMouseDown = false;
@@ -140,14 +142,14 @@
 
         let currentLevel = 1;
         let rewardCrystal = null;
+        let centerTower = null;
 
-        // 紀錄點位置
-        let respawnPosition = new THREE.Vector3(0, 3, 0);
+        let respawnPosition = new THREE.Vector3(0, 3, 14);
 
         const zombies = [];
         const obstacles = [];
         const bullets = [];
-        const enemyBullets = [];
+        const explosions = [];
 
         let health = 100;
         let score = 0;
@@ -156,7 +158,7 @@
         const weaponList = ['rifle', 'rpg', 'crossbow', 'sniper'];
         const weaponNames = {
             'rifle': '1. 連發步槍',
-            'rpg': '2. RPG火箭筒',
+            'rpg': '2. RPG火箭筒 (強烈爆波)',
             'crossbow': '3. 十字弓',
             'sniper': '4. 狙擊槍'
         };
@@ -174,16 +176,16 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a18);
-            scene.fog = new THREE.FogExp2(0x0a0a18, 0.008);
+            scene.background = new THREE.Color(0x0c0c1e);
+            scene.fog = new THREE.FogExp2(0x0c0c1e, 0.006);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0x999999);
+            const ambientLight = new THREE.AmbientLight(0xaaaaaa);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            dirLight.position.set(20, 100, 20);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(30, 100, 30);
             scene.add(dirLight);
 
             controls = new THREE.PointerLockControls(camera, document.body);
@@ -215,89 +217,101 @@
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
-            setInterval(spawnZombie, 2500);
+            setInterval(spawnZombie, 3000);
 
             animate();
         }
 
-        // 建造螺旋跑酷塔
+        // 建造圓柱形實體巨塔與環形螺旋廊道
         function buildTowerScene(level) {
             obstacles.forEach(obs => scene.remove(obs));
             obstacles.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
+            if (centerTower) scene.remove(centerTower);
 
             hudLevel.textContent = level;
 
-            // 1. 底層出生起始平台 (也是第一個檢查點)
-            const baseGeo = new THREE.BoxGeometry(12, 1.5, 12);
-            const baseMat = new THREE.MeshLambertMaterial({ color: 0x334455 });
-            const basePlatform = new THREE.Mesh(baseGeo, baseMat);
-            basePlatform.position.set(0, 1, 0);
-            basePlatform.userData = { type: 'checkpoint' };
-            scene.add(basePlatform);
-            obstacles.push(basePlatform);
+            const towerRadius = 12;
+            const towerHeight = 80 + level * 30;
 
-            respawnPosition.set(0, 3, 0);
+            // 1. 中央巨塔核心實體
+            const towerGeo = new THREE.CylinderGeometry(towerRadius - 0.5, towerRadius - 0.5, towerHeight, 32);
+            const towerMat = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
+            centerTower = new THREE.Mesh(towerGeo, towerMat);
+            centerTower.position.set(0, towerHeight / 2, 0);
+            scene.add(centerTower);
 
-            // 2. 螺旋向上生成跑酷平台
-            const totalSteps = 18 + level * 5; // 塔層數隨關卡增加
-            let currentRadius = 10;
-            let currentAngle = 0;
-            let currentY = 3;
+            // 2. 底層起跑平台（第一個檢查點）
+            const startPlat = new THREE.Mesh(
+                new THREE.BoxGeometry(8, 1.5, 8),
+                new THREE.MeshLambertMaterial({ color: 0x00ffff })
+            );
+            startPlat.position.set(0, 1, towerRadius + 3);
+            startPlat.userData = { type: 'checkpoint' };
+            scene.add(startPlat);
+            obstacles.push(startPlat);
 
-            for (let i = 0; i < totalSteps; i++) {
-                currentAngle += 0.45;
-                currentY += 2.2 + Math.random() * 0.8;
-                
-                const posX = Math.cos(currentAngle) * currentRadius;
-                const posZ = Math.sin(currentAngle) * currentRadius;
+            respawnPosition.set(0, 3, towerRadius + 3);
 
-                // 隨機選擇平台類型
-                let stepType = 'normal';
-                let stepColor = 0xff8800;
-                let stepWidth = Math.max(2.2, 4.0 - level * 0.2);
+            // 3. 沿著塔身建造連續環形廊道與階梯
+            const segmentCount = 30 + level * 8;
+            let angle = 0;
+            let currentY = 2;
 
-                const randVal = Math.random();
-                if (i > 0 && i % 6 === 0) {
-                    stepType = 'checkpoint'; // 每 6 階放置一個藍色檢查點
-                    stepColor = 0x00ffff;
-                    stepWidth = 5.0;
-                } else if (randVal < 0.2) {
-                    stepType = 'spring'; // 綠色彈簧墊
-                    stepColor = 0x00ff22;
-                } else if (randVal < 0.35) {
-                    stepType = 'boost'; // 紅色加速帶
-                    stepColor = 0xff0044;
+            for (let i = 0; i < segmentCount; i++) {
+                angle += 0.35;
+                currentY += 1.8 + Math.random() * 0.5;
+
+                const posX = Math.cos(angle) * (towerRadius + 2.5);
+                const posZ = Math.sin(angle) * (towerRadius + 2.5);
+
+                let platType = 'normal';
+                let platColor = 0x3a3d52;
+                let width = 5.0;
+                let length = 6.0;
+
+                if (i > 0 && i % 7 === 0) {
+                    platType = 'checkpoint';
+                    platColor = 0x00ffff;
+                    width = 7.0;
+                } else if (Math.random() < 0.2) {
+                    platType = 'spring';
+                    platColor = 0x00ff44;
+                } else if (Math.random() < 0.25) {
+                    platType = 'boost';
+                    platColor = 0xff0055;
                 }
 
-                const stepGeo = new THREE.BoxGeometry(stepWidth, 0.8, stepWidth);
-                const stepMat = new THREE.MeshLambertMaterial({ color: stepColor });
+                const stepGeo = new THREE.BoxGeometry(width, 0.8, length);
+                const stepMat = new THREE.MeshLambertMaterial({ color: platColor });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
-                step.userData = { type: stepType };
+                step.rotation.y = -angle + Math.PI / 2; // 面向環形切線方向
+                step.userData = { type: platType };
 
                 scene.add(step);
                 obstacles.push(step);
             }
 
-            // 3. 塔頂勝利獎勵水晶
-            const topPlatform = new THREE.Mesh(
+            // 4. 塔頂終點
+            const topAngle = angle + 0.4;
+            const topY = currentY + 3;
+            const topPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(8, 1, 8),
-                new THREE.MeshLambertMaterial({ color: 0xffdd00 })
+                new THREE.MeshLambertMaterial({ color: 0xffcc00 })
             );
-            topPlatform.position.set(Math.cos(currentAngle + 0.5) * currentRadius, currentY + 3, Math.sin(currentAngle + 0.5) * currentRadius);
-            topPlatform.userData = { type: 'normal' };
-            scene.add(topPlatform);
-            obstacles.push(topPlatform);
+            topPlat.position.set(Math.cos(topAngle) * (towerRadius + 2.5), topY, Math.sin(topAngle) * (towerRadius + 2.5));
+            topPlat.userData = { type: 'normal' };
+            scene.add(topPlat);
+            obstacles.push(topPlat);
 
             const crystalGeo = new THREE.OctahedronGeometry(1.5, 0);
             const crystalMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
             rewardCrystal = new THREE.Mesh(crystalGeo, crystalMat);
-            rewardCrystal.position.set(topPlatform.position.x, topPlatform.position.y + 2.5, topPlatform.position.z);
+            rewardCrystal.position.set(topPlat.position.x, topY + 2.5, topPlat.position.z);
             scene.add(rewardCrystal);
 
-            // 移至重生點
             controls.getObject().position.copy(respawnPosition);
         }
 
@@ -332,17 +346,58 @@
             camera.add(weaponGroup);
         }
 
+        function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
+            // 1. 視覺效果
+            const expMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.8 })
+            );
+            expMesh.position.copy(epicenter);
+            scene.add(expMesh);
+            explosions.push({ mesh: expMesh, timer: 0.35 });
+
+            // 2. 對玩家施加爆波推力 (Knockback)
+            const playerPos = controls.getObject().position;
+            const distToPlayer = playerPos.distanceTo(epicenter);
+
+            if (distToPlayer <= radius + 1.0) {
+                const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
+                // 給予向上與向外的強烈推力
+                pushDir.y = Math.max(pushDir.y, 0.4); 
+                playerVelocity.addScaledVector(pushDir, knockbackForce * (1 - distToPlayer / (radius + 2.0)));
+            }
+
+            // 3. 對怪物施加爆波推力與傷害
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const z = zombies[i];
+                const distToZombie = z.position.distanceTo(epicenter);
+
+                if (distToZombie <= radius) {
+                    const zPushDir = new THREE.Vector3().subVectors(z.position, epicenter).normalize();
+                    zPushDir.y = Math.max(zPushDir.y, 0.5);
+                    z.userData.velocity.addScaledVector(zPushDir, knockbackForce * 1.2);
+                    
+                    z.userData.health -= 3;
+                    if (z.userData.health <= 0) {
+                        scene.remove(z);
+                        zombies.splice(i, 1);
+                        score += 30;
+                        hudScore.textContent = score;
+                    }
+                }
+            }
+        }
+
         function startSlide() {
             if (isSliding || !canJump) return;
             isSliding = true;
             slideTimer = 0.7;
-            slideSpeedCurrent = 25.0;
+            slideSpeedCurrent = 24.0;
             currentEyeHeight = CROUCH_HEIGHT;
 
             const frontDir = new THREE.Vector3();
             camera.getWorldDirection(frontDir);
-            frontDir.y = 0;
-            frontDir.normalize();
+            frontDir.y = 0; frontDir.normalize();
 
             if (moveForward || moveBackward || moveLeft || moveRight) {
                 const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
@@ -379,7 +434,7 @@
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
                     if (canJump) {
-                        playerVelocityY = 11.5;
+                        playerVelocity.y = 12.0;
                         canJump = false;
                         if (isSliding) cancelSlide();
                     }
@@ -426,27 +481,36 @@
 
         function tryShoot() {
             const now = performance.now();
-            if (now - lastShotTime < 150) return;
+            const curWeapon = weaponList[currentWeaponIndex];
+            const cooldown = curWeapon === 'rpg' ? 900 : 160;
+
+            if (now - lastShotTime < cooldown) return;
             lastShotTime = now;
 
             const dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
 
-            const bullet = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
-            bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-            bullet.position.copy(spawnPos);
-            bullets.push({ mesh: bullet, dir: dir, speed: 85, life: 2.0 });
-            scene.add(bullet);
+            if (curWeapon === 'rpg') {
+                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+                rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                rocket.position.copy(spawnPos);
+                bullets.push({ mesh: rocket, dir: dir, speed: 45, isRPG: true, life: 3.0 });
+                scene.add(rocket);
+            } else {
+                const bullet = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
+                bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                bullet.position.copy(spawnPos);
+                bullets.push({ mesh: bullet, dir: dir, speed: 85, isRPG: false, life: 2.0 });
+                scene.add(bullet);
+            }
         }
 
-        // 玩家死亡後在檢查點重生
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition);
-            playerVelocityY = 0;
+            playerVelocity.set(0, 0, 0);
             health = 100;
             hudHealth.textContent = health;
-            hudHealth.style.color = '#00ff00';
         }
 
         function spawnZombie() {
@@ -457,9 +521,13 @@
             body.position.y = 0.6;
             zombieGroup.add(body);
 
-            zombieGroup.userData = { speed: 2.5 + currentLevel * 0.3, health: 3, velocityY: 0, canJump: true };
+            zombieGroup.userData = { 
+                speed: 3.0 + currentLevel * 0.3, 
+                health: 3, 
+                velocity: new THREE.Vector3(), 
+                canJump: true 
+            };
 
-            // 隨機在塔平台生成
             const targetObs = obstacles[Math.floor(Math.random() * obstacles.length)];
             const obsBox = new THREE.Box3().setFromObject(targetObs);
 
@@ -469,11 +537,6 @@
 
             scene.add(zombieGroup);
             zombies.push(zombieGroup);
-        }
-
-        function showCheckpointNotification() {
-            checkpointMsg.style.display = 'block';
-            setTimeout(() => { checkpointMsg.style.display = 'none'; }, 1800);
         }
 
         function onWindowResize() {
@@ -503,15 +566,16 @@
             const delta = (time - prevTime) / 1000;
 
             if (controls.isLocked && !isGameOver) {
-                if (isMouseDown) tryShoot();
+                if (isMouseDown && weaponList[currentWeaponIndex] !== 'rpg') tryShoot();
 
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
                 const playerObj = controls.getObject();
 
-                // 滑行與移動處理
+                // 1. 基本操控移動量計算
+                let moveVector = new THREE.Vector3();
                 if (isSliding) {
-                    playerObj.position.addScaledVector(slideDirection, slideSpeedCurrent * delta);
+                    moveVector.copy(slideDirection).multiplyScalar(slideSpeedCurrent * delta);
                     slideSpeedCurrent = Math.max(12.0, slideSpeedCurrent - 18.0 * delta);
                     slideTimer -= delta;
                     if (slideTimer <= 0) cancelSlide();
@@ -520,18 +584,25 @@
                     const frontDir = new THREE.Vector3();
                     camera.getWorldDirection(frontDir);
                     frontDir.y = 0; frontDir.normalize();
-
                     const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
-                    if (moveForward) playerObj.position.addScaledVector(frontDir, moveSpeed);
-                    if (moveBackward) playerObj.position.addScaledVector(frontDir, -moveSpeed);
-                    if (moveLeft) playerObj.position.addScaledVector(sideDir, moveSpeed);
-                    if (moveRight) playerObj.position.addScaledVector(sideDir, -moveSpeed);
+
+                    if (moveForward) moveVector.addScaledVector(frontDir, moveSpeed);
+                    if (moveBackward) moveVector.addScaledVector(frontDir, -moveSpeed);
+                    if (moveLeft) moveVector.addScaledVector(sideDir, moveSpeed);
+                    if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
-                // 重力與平台踩踏檢測
-                playerVelocityY -= GRAVITY * delta;
-                playerObj.position.y += playerVelocityY * delta;
+                // 2. 疊加衝擊波推力向量與重力
+                playerVelocity.y -= GRAVITY * delta;
+                
+                // 套用衝擊波衰減阻尼
+                playerVelocity.x *= 0.95;
+                playerVelocity.z *= 0.95;
 
+                playerObj.position.add(moveVector);
+                playerObj.position.addScaledVector(playerVelocity, delta);
+
+                // 3. 平台碰撞判定
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
 
                 for (let obs of obstacles) {
@@ -539,22 +610,20 @@
                     if (playerObj.position.x >= obsBox.min.x - 0.4 && playerObj.position.x <= obsBox.max.x + 0.4 &&
                         playerObj.position.z >= obsBox.min.z - 0.4 && playerObj.position.z <= obsBox.max.z + 0.4) {
 
-                        if (playerFeetY <= obsBox.max.y && playerFeetY >= obsBox.max.y - 0.6 && playerVelocityY <= 0) {
+                        if (playerFeetY <= obsBox.max.y && playerFeetY >= obsBox.max.y - 0.8 && playerVelocity.y <= 0) {
                             playerObj.position.y = obsBox.max.y + currentEyeHeight;
-                            playerVelocityY = 0;
+                            playerVelocity.y = 0;
                             canJump = true;
 
-                            // 【特殊平台效果】
                             if (obs.userData.type === 'spring') {
-                                playerVelocityY = 22.0; // 綠色彈簧高跳
+                                playerVelocity.y = 24.0; // 綠色彈簧
                                 canJump = false;
                             } else if (obs.userData.type === 'boost') {
                                 const frontDir = new THREE.Vector3();
                                 camera.getWorldDirection(frontDir);
                                 frontDir.y = 0; frontDir.normalize();
-                                playerObj.position.addScaledVector(frontDir, 18.0 * delta); // 紅色極速衝刺
+                                playerVelocity.addScaledVector(frontDir, 30.0); // 紅色加速
                             } else if (obs.userData.type === 'checkpoint') {
-                                // 更新重生紀錄點
                                 const newRespawn = new THREE.Vector3(
                                     (obsBox.min.x + obsBox.max.x) / 2,
                                     obsBox.max.y + STAND_HEIGHT + 0.5,
@@ -562,7 +631,8 @@
                                 );
                                 if (respawnPosition.distanceTo(newRespawn) > 2.0) {
                                     respawnPosition.copy(newRespawn);
-                                    showCheckpointNotification();
+                                    checkpointMsg.style.display = 'block';
+                                    setTimeout(() => { checkpointMsg.style.display = 'none'; }, 1500);
                                 }
                             }
                             break;
@@ -570,77 +640,102 @@
                     }
                 }
 
-                // 跌入虛空：在紀錄點重生
-                if (playerObj.position.y < -10) {
+                // 跌入無底虛空重生
+                if (playerObj.position.y < -15) {
                     respawnAtCheckpoint();
                 }
 
-                // 登上塔頂通關
+                // 通關頂端
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 2.0) {
-                    score += 150;
+                    score += 200;
                     hudScore.textContent = score;
                     currentLevel++;
                     buildTowerScene(currentLevel);
                 }
 
-                // 子彈處理
+                // 子彈與爆炸處理
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
                     b.mesh.position.addScaledVector(b.dir, b.speed * delta);
                     b.life -= delta;
 
+                    let hit = false;
                     for (let j = zombies.length - 1; j >= 0; j--) {
-                        if (b.mesh.position.distanceTo(zombies[j].position) < 1.0) {
-                            scene.remove(zombies[j]);
-                            zombies.splice(j, 1);
-                            score += 20;
-                            hudScore.textContent = score;
+                        if (b.mesh.position.distanceTo(zombies[j].position) < 1.2) {
+                            hit = true;
+                            if (b.isRPG) {
+                                triggerExplosiveShockwave(b.mesh.position, 8.0, 35.0);
+                            } else {
+                                zombies[j].userData.health -= 1;
+                                if (zombies[j].userData.health <= 0) {
+                                    scene.remove(zombies[j]);
+                                    zombies.splice(j, 1);
+                                    score += 20;
+                                    hudScore.textContent = score;
+                                }
+                            }
                             break;
                         }
                     }
 
-                    if (b.life <= 0) {
+                    if (!hit && b.isRPG) {
+                        // 子彈撞擊平台爆破
+                        for (let obs of obstacles) {
+                            const obsBox = new THREE.Box3().setFromObject(obs);
+                            if (obsBox.containsPoint(b.mesh.position)) {
+                                triggerExplosiveShockwave(b.mesh.position, 8.0, 35.0);
+                                hit = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hit || b.life <= 0) {
                         scene.remove(b.mesh);
                         bullets.splice(i, 1);
                     }
                 }
 
-                // 怪物追擊與跳躍
+                // 爆炸效果動畫
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    const exp = explosions[i];
+                    exp.timer -= delta;
+                    exp.mesh.material.opacity = exp.timer / 0.35;
+                    if (exp.timer <= 0) {
+                        scene.remove(exp.mesh);
+                        explosions.splice(i, 1);
+                    }
+                }
+
+                // 怪物追擊與物理運動
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     z.lookAt(playerObj.position.x, z.position.y, playerObj.position.z);
                     z.translateZ(z.userData.speed * delta);
 
-                    if (z.userData.canJump && Math.random() < 0.015) {
-                        z.userData.velocityY = 9.0;
-                        z.userData.canJump = false;
-                    }
+                    z.userData.velocity.y -= GRAVITY * delta;
+                    z.userData.velocity.x *= 0.92;
+                    z.userData.velocity.z *= 0.92;
+                    z.position.addScaledVector(z.userData.velocity, delta);
 
-                    z.userData.velocityY -= GRAVITY * delta;
-                    z.position.y += z.userData.velocityY * delta;
-
-                    // 怪物落地
                     for (let obs of obstacles) {
                         const obsBox = new THREE.Box3().setFromObject(obs);
                         if (z.position.x >= obsBox.min.x && z.position.x <= obsBox.max.x &&
                             z.position.z >= obsBox.min.z && z.position.z <= obsBox.max.z) {
                             if (z.position.y <= obsBox.max.y && z.position.y >= obsBox.max.y - 1.0) {
                                 z.position.y = obsBox.max.y;
-                                z.userData.velocityY = 0;
-                                z.userData.canJump = true;
+                                z.userData.velocity.y = 0;
                                 break;
                             }
                         }
                     }
 
-                    // 怪物掉到虛空自動消失
-                    if (z.position.y < -10) {
+                    if (z.position.y < -15) {
                         scene.remove(z);
                         zombies.splice(i, 1);
                         continue;
                     }
 
-                    // 咬到玩家 -> 在紀錄點重生
                     if (z.position.distanceTo(playerObj.position) < 1.2) {
                         respawnAtCheckpoint();
                         scene.remove(z);
