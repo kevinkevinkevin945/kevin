@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 環塔跑酷 - 漸進難度與爆波物理版</title>
+    <title>3D 糖果奶油跑酷塔 - 按F投擲手榴彈爆波版</title>
     <style>
         body {
             margin: 0;
@@ -85,7 +85,8 @@
         #instructions h1 {
             font-size: 42px;
             margin-bottom: 10px;
-            color: #00ffcc;
+            color: #ff33aa;
+            text-shadow: 2px 2px 8px #ff99ff;
         }
 
         #instructions p {
@@ -103,18 +104,19 @@
     <div id="hud">
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span> | 
-        巨塔層數: <span id="level-display" style="color: #ffaa00;">1</span>
+        糖果塔層數: <span id="level-display" style="color: #ffaa00;">1</span>
     </div>
-    <div id="checkpoint-msg">★ 檢查點已記錄！★</div>
-    <div id="weapon-status">當前武器: 1. 連發步槍</div>
+    <div id="checkpoint-msg">★ 紀錄點已激活！★</div>
+    <div id="weapon-status">當前武器: 1. 連發步槍 | 按 F 丟手榴彈</div>
 
     <div id="instructions">
-        <h1>環形跑酷巨塔 (漸進難度版)</h1>
-        <p>點擊螢幕開始遊戲</p>
-        <p>【難度曲線】前幾關步道寬廣超簡單，越往高層步道越窄、爬升越陡！</p>
-        <p>【爆波物理】RPG 爆炸會產生強烈衝擊波推開角色與怪物！</p>
-        <p>【特殊平台】藍色=紀錄點 | 綠色=彈簧墊 | 紅色=加速步道</p>
-        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | 滑鼠滾輪換槍</p>
+        <h1>糖果奶油高空跑酷塔</h1>
+        <p>點擊螢幕開始遊戲！</p>
+        <p>【爆波手榴彈】隨時按下 <b>F 鍵</b> 丟出手榴彈，爆炸時強烈震飛怪物與自己！</p>
+        <p>【繽紛主題】踩著奶油塊與彩虹平台向塔頂攀爬！</p>
+        <p>【難度曲線】初期步道超寬廣，越往高層越窄且陡峭！</p>
+        <p>【特殊平台】藍色=紀錄點 | 綠色=高空彈簧 | 紅色=極速衝刺</p>
+        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | <b>F 丟手榴彈</b> | 滾輪/1-4 換槍</p>
     </div>
 
     <script>
@@ -133,6 +135,7 @@
 
         let isMouseDown = false;
         let lastShotTime = 0;
+        let lastGrenadeTime = 0;
         let prevTime = performance.now();
 
         const STAND_HEIGHT = 1.6;
@@ -148,6 +151,7 @@
         const zombies = [];
         const obstacles = [];
         const bullets = [];
+        const grenades = [];
         const explosions = [];
 
         let health = 100;
@@ -173,17 +177,19 @@
         const weaponStatus = document.getElementById('weapon-status');
         const instructions = document.getElementById('instructions');
 
+        const candyColors = [0xff6b81, 0xffa502, 0xeccc68, 0x70a1ff, 0x7bed9f, 0xff78ae];
+
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0c0c1e);
-            scene.fog = new THREE.FogExp2(0x0c0c1e, 0.006);
+            scene.background = new THREE.Color(0x3a1c52);
+            scene.fog = new THREE.FogExp2(0x3a1c52, 0.005);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0xaaaaaa);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(30, 100, 30);
             scene.add(dirLight);
 
@@ -221,7 +227,6 @@
             animate();
         }
 
-        // 依據當前關卡 level 計算動態難度參數並建造巨塔
         function buildTowerScene(level) {
             obstacles.forEach(obs => scene.remove(obs));
             obstacles.length = 0;
@@ -233,14 +238,12 @@
             const towerRadius = 12;
             const towerHeight = 50 + level * 25;
 
-            // 1. 中央巨塔核心
             const towerGeo = new THREE.CylinderGeometry(towerRadius - 0.5, towerRadius - 0.5, towerHeight, 32);
-            const towerMat = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
+            const towerMat = new THREE.MeshLambertMaterial({ color: 0xffa042 });
             centerTower = new THREE.Mesh(towerGeo, towerMat);
             centerTower.position.set(0, towerHeight / 2, 0);
             scene.add(centerTower);
 
-            // 2. 底層寬廣起跑平台
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 1.5, 10),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
@@ -252,19 +255,10 @@
 
             respawnPosition.set(0, 3, towerRadius + 3);
 
-            // 3. 漸進難度參數計算
-            const segmentCount = 20 + level * 6; // 階梯總數隨層數增加
-            
-            // 步道寬度：第1關極寬(8.0)，後續逐漸變窄(最窄2.5)
+            const segmentCount = 20 + level * 6;
             const baseWidth = Math.max(2.5, 8.0 - (level - 1) * 1.0);
-            
-            // 爬升斜率：第1關極緩(1.0)，後續漸陡
             const heightGainBase = 1.0 + Math.min(1.5, (level - 1) * 0.3);
-
-            // 特殊平台出現機率 (第1關不出現特殊平台/陷阱，讓新手先熟悉機制)
             const allowSpecialPlatforms = level >= 2;
-
-            // 檢查點頻率：第1關每4階一個，高難度層拉長
             const checkpointInterval = Math.max(5, 4 + Math.floor(level * 0.8));
 
             let angle = 0;
@@ -278,22 +272,22 @@
                 const posZ = Math.sin(angle) * (towerRadius + 2.5);
 
                 let platType = 'normal';
-                let platColor = 0x3a3d52;
+                let platColor = candyColors[i % candyColors.length];
                 let width = baseWidth;
                 let length = Math.max(5.0, 8.0 - level * 0.4);
 
                 if (i > 0 && i % checkpointInterval === 0) {
                     platType = 'checkpoint';
-                    platColor = 0x00ffff; // 藍色檢查點
+                    platColor = 0x00ffff;
                     width = baseWidth + 2.0;
                 } else if (allowSpecialPlatforms) {
                     const randVal = Math.random();
                     if (randVal < 0.15) {
                         platType = 'spring';
-                        platColor = 0x00ff44; // 綠色彈簧
+                        platColor = 0x00ff44;
                     } else if (randVal < 0.30) {
                         platType = 'boost';
-                        platColor = 0xff0055; // 紅色加速
+                        platColor = 0xff0055;
                     }
                 }
 
@@ -309,12 +303,11 @@
                 obstacles.push(step);
             }
 
-            // 4. 塔頂勝利區域
             const topAngle = angle + 0.4;
             const topY = currentY + 3;
             const topPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(8, 1, 8),
-                new THREE.MeshLambertMaterial({ color: 0xffcc00 })
+                new THREE.MeshLambertMaterial({ color: 0xffdd00 })
             );
             topPlat.position.set(Math.cos(topAngle) * (towerRadius + 2.5), topY, Math.sin(topAngle) * (towerRadius + 2.5));
             topPlat.userData = { type: 'normal' };
@@ -399,6 +392,32 @@
             }
         }
 
+        function throwGrenade() {
+            const now = performance.now();
+            if (now - lastGrenadeTime < 1000) return; // CD 1 秒
+            lastGrenadeTime = now;
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.8));
+
+            const gGeo = new THREE.SphereGeometry(0.18, 12, 12);
+            const gMat = new THREE.MeshLambertMaterial({ color: 0x336622 });
+            const grenadeMesh = new THREE.Mesh(gGeo, gMat);
+            grenadeMesh.position.copy(spawnPos);
+
+            const throwVel = dir.clone().multiplyScalar(22.0);
+            throwVel.y += 6.0; // 稍微向上拋
+
+            grenades.push({
+                mesh: grenadeMesh,
+                velocity: throwVel,
+                timer: 1.5 // 1.5 秒後爆炸
+            });
+
+            scene.add(grenadeMesh);
+        }
+
         function startSlide() {
             if (isSliding || !canJump) return;
             isSliding = true;
@@ -437,6 +456,7 @@
                 case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break;
                 case 'KeyD': moveRight = true; break;
+                case 'KeyF': throwGrenade(); break; // 按 F 鍵投擲手榴彈
                 case 'ControlLeft':
                 case 'ControlRight':
                     if (moveForward || moveBackward || moveLeft || moveRight) startSlide();
@@ -487,7 +507,7 @@
             currentWeaponIndex = index;
             const selectedKey = weaponList[index];
             Object.keys(weaponMeshes).forEach(key => weaponMeshes[key].visible = (key === selectedKey));
-            weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey];
+            weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey] + " | 按 F 丟手榴彈";
         }
 
         function tryShoot() {
@@ -532,7 +552,6 @@
             body.position.y = 0.6;
             zombieGroup.add(body);
 
-            // 怪物移動速度隨關卡提升
             zombieGroup.userData = { 
                 speed: 1.8 + currentLevel * 0.4, 
                 health: 3, 
@@ -565,7 +584,8 @@
 
             zombies.forEach(z => scene.remove(z));
             bullets.forEach(b => scene.remove(b.mesh));
-            zombies.length = 0; bullets.length = 0;
+            grenades.forEach(g => scene.remove(g.mesh));
+            zombies.length = 0; bullets.length = 0; grenades.length = 0;
 
             buildTowerScene(currentLevel);
             controls.lock();
@@ -661,6 +681,7 @@
                     buildTowerScene(currentLevel);
                 }
 
+                // 子彈碰撞處理
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
                     b.mesh.position.addScaledVector(b.dir, b.speed * delta);
@@ -702,6 +723,33 @@
                     }
                 }
 
+                // 手榴彈物理與爆炸處理
+                for (let i = grenades.length - 1; i >= 0; i--) {
+                    const g = grenades[i];
+                    g.timer -= delta;
+                    g.velocity.y -= GRAVITY * delta;
+                    g.mesh.position.addScaledVector(g.velocity, delta);
+
+                    // 平台碰撞彈跳
+                    for (let obs of obstacles) {
+                        const obsBox = new THREE.Box3().setFromObject(obs);
+                        if (obsBox.containsPoint(g.mesh.position)) {
+                            g.velocity.y *= -0.4;
+                            g.velocity.x *= 0.6;
+                            g.velocity.z *= 0.6;
+                            g.mesh.position.y = obsBox.max.y + 0.1;
+                            break;
+                        }
+                    }
+
+                    if (g.timer <= 0) {
+                        triggerExplosiveShockwave(g.mesh.position, 9.0, 38.0);
+                        scene.remove(g.mesh);
+                        grenades.splice(i, 1);
+                    }
+                }
+
+                // 爆炸動畫
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
@@ -712,6 +760,7 @@
                     }
                 }
 
+                // 怪物物理與追擊
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     z.lookAt(playerObj.position.x, z.position.y, playerObj.position.z);
