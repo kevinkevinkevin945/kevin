@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 環塔跑酷 - 衝擊波與實體螺旋塔</title>
+    <title>3D 環塔跑酷 - 漸進難度與爆波物理版</title>
     <style>
         body {
             margin: 0;
@@ -85,7 +85,7 @@
         #instructions h1 {
             font-size: 42px;
             margin-bottom: 10px;
-            color: #ffaa00;
+            color: #00ffcc;
         }
 
         #instructions p {
@@ -109,10 +109,10 @@
     <div id="weapon-status">當前武器: 1. 連發步槍</div>
 
     <div id="instructions">
-        <h1>環形跑酷巨塔 (Tower Climb)</h1>
+        <h1>環形跑酷巨塔 (漸進難度版)</h1>
         <p>點擊螢幕開始遊戲</p>
-        <p>【爆波物理】爆炸會產生衝擊波，強烈推動角色與怪物！</p>
-        <p>【巨塔跑酷】沿著中央巨塔外圍的螺旋步道向上攀爬！</p>
+        <p>【難度曲線】前幾關步道寬廣超簡單，越往高層步道越窄、爬升越陡！</p>
+        <p>【爆波物理】RPG 爆炸會產生強烈衝擊波推開角色與怪物！</p>
         <p>【特殊平台】藍色=紀錄點 | 綠色=彈簧墊 | 紅色=加速步道</p>
         <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | 滑鼠滾輪換槍</p>
     </div>
@@ -128,7 +128,6 @@
         let slideDirection = new THREE.Vector3();
         let canJump = false;
         
-        // 玩家速度與向量 (包含衝擊波推力)
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 28;
 
@@ -222,7 +221,7 @@
             animate();
         }
 
-        // 建造圓柱形實體巨塔與環形螺旋廊道
+        // 依據當前關卡 level 計算動態難度參數並建造巨塔
         function buildTowerScene(level) {
             obstacles.forEach(obs => scene.remove(obs));
             obstacles.length = 0;
@@ -232,18 +231,18 @@
             hudLevel.textContent = level;
 
             const towerRadius = 12;
-            const towerHeight = 80 + level * 30;
+            const towerHeight = 50 + level * 25;
 
-            // 1. 中央巨塔核心實體
+            // 1. 中央巨塔核心
             const towerGeo = new THREE.CylinderGeometry(towerRadius - 0.5, towerRadius - 0.5, towerHeight, 32);
             const towerMat = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
             centerTower = new THREE.Mesh(towerGeo, towerMat);
             centerTower.position.set(0, towerHeight / 2, 0);
             scene.add(centerTower);
 
-            // 2. 底層起跑平台（第一個檢查點）
+            // 2. 底層寬廣起跑平台
             const startPlat = new THREE.Mesh(
-                new THREE.BoxGeometry(8, 1.5, 8),
+                new THREE.BoxGeometry(10, 1.5, 10),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
             );
             startPlat.position.set(0, 1, towerRadius + 3);
@@ -253,33 +252,49 @@
 
             respawnPosition.set(0, 3, towerRadius + 3);
 
-            // 3. 沿著塔身建造連續環形廊道與階梯
-            const segmentCount = 30 + level * 8;
+            // 3. 漸進難度參數計算
+            const segmentCount = 20 + level * 6; // 階梯總數隨層數增加
+            
+            // 步道寬度：第1關極寬(8.0)，後續逐漸變窄(最窄2.5)
+            const baseWidth = Math.max(2.5, 8.0 - (level - 1) * 1.0);
+            
+            // 爬升斜率：第1關極緩(1.0)，後續漸陡
+            const heightGainBase = 1.0 + Math.min(1.5, (level - 1) * 0.3);
+
+            // 特殊平台出現機率 (第1關不出現特殊平台/陷阱，讓新手先熟悉機制)
+            const allowSpecialPlatforms = level >= 2;
+
+            // 檢查點頻率：第1關每4階一個，高難度層拉長
+            const checkpointInterval = Math.max(5, 4 + Math.floor(level * 0.8));
+
             let angle = 0;
             let currentY = 2;
 
             for (let i = 0; i < segmentCount; i++) {
-                angle += 0.35;
-                currentY += 1.8 + Math.random() * 0.5;
+                angle += 0.32;
+                currentY += heightGainBase + (allowSpecialPlatforms ? Math.random() * 0.4 : 0);
 
                 const posX = Math.cos(angle) * (towerRadius + 2.5);
                 const posZ = Math.sin(angle) * (towerRadius + 2.5);
 
                 let platType = 'normal';
                 let platColor = 0x3a3d52;
-                let width = 5.0;
-                let length = 6.0;
+                let width = baseWidth;
+                let length = Math.max(5.0, 8.0 - level * 0.4);
 
-                if (i > 0 && i % 7 === 0) {
+                if (i > 0 && i % checkpointInterval === 0) {
                     platType = 'checkpoint';
-                    platColor = 0x00ffff;
-                    width = 7.0;
-                } else if (Math.random() < 0.2) {
-                    platType = 'spring';
-                    platColor = 0x00ff44;
-                } else if (Math.random() < 0.25) {
-                    platType = 'boost';
-                    platColor = 0xff0055;
+                    platColor = 0x00ffff; // 藍色檢查點
+                    width = baseWidth + 2.0;
+                } else if (allowSpecialPlatforms) {
+                    const randVal = Math.random();
+                    if (randVal < 0.15) {
+                        platType = 'spring';
+                        platColor = 0x00ff44; // 綠色彈簧
+                    } else if (randVal < 0.30) {
+                        platType = 'boost';
+                        platColor = 0xff0055; // 紅色加速
+                    }
                 }
 
                 const stepGeo = new THREE.BoxGeometry(width, 0.8, length);
@@ -287,14 +302,14 @@
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
-                step.rotation.y = -angle + Math.PI / 2; // 面向環形切線方向
+                step.rotation.y = -angle + Math.PI / 2;
                 step.userData = { type: platType };
 
                 scene.add(step);
                 obstacles.push(step);
             }
 
-            // 4. 塔頂終點
+            // 4. 塔頂勝利區域
             const topAngle = angle + 0.4;
             const topY = currentY + 3;
             const topPlat = new THREE.Mesh(
@@ -347,7 +362,6 @@
         }
 
         function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
-            // 1. 視覺效果
             const expMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
                 new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.8 })
@@ -356,18 +370,15 @@
             scene.add(expMesh);
             explosions.push({ mesh: expMesh, timer: 0.35 });
 
-            // 2. 對玩家施加爆波推力 (Knockback)
             const playerPos = controls.getObject().position;
             const distToPlayer = playerPos.distanceTo(epicenter);
 
             if (distToPlayer <= radius + 1.0) {
                 const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
-                // 給予向上與向外的強烈推力
                 pushDir.y = Math.max(pushDir.y, 0.4); 
                 playerVelocity.addScaledVector(pushDir, knockbackForce * (1 - distToPlayer / (radius + 2.0)));
             }
 
-            // 3. 對怪物施加爆波推力與傷害
             for (let i = zombies.length - 1; i >= 0; i--) {
                 const z = zombies[i];
                 const distToZombie = z.position.distanceTo(epicenter);
@@ -521,8 +532,9 @@
             body.position.y = 0.6;
             zombieGroup.add(body);
 
+            // 怪物移動速度隨關卡提升
             zombieGroup.userData = { 
-                speed: 3.0 + currentLevel * 0.3, 
+                speed: 1.8 + currentLevel * 0.4, 
                 health: 3, 
                 velocity: new THREE.Vector3(), 
                 canJump: true 
@@ -572,7 +584,7 @@
 
                 const playerObj = controls.getObject();
 
-                // 1. 基本操控移動量計算
+                // 1. 移動量計算
                 let moveVector = new THREE.Vector3();
                 if (isSliding) {
                     moveVector.copy(slideDirection).multiplyScalar(slideSpeedCurrent * delta);
@@ -592,17 +604,15 @@
                     if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
-                // 2. 疊加衝擊波推力向量與重力
+                // 2. 物理向量與重力疊加
                 playerVelocity.y -= GRAVITY * delta;
-                
-                // 套用衝擊波衰減阻尼
                 playerVelocity.x *= 0.95;
                 playerVelocity.z *= 0.95;
 
                 playerObj.position.add(moveVector);
                 playerObj.position.addScaledVector(playerVelocity, delta);
 
-                // 3. 平台碰撞判定
+                // 3. 平台碰撞檢測
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
 
                 for (let obs of obstacles) {
@@ -616,13 +626,13 @@
                             canJump = true;
 
                             if (obs.userData.type === 'spring') {
-                                playerVelocity.y = 24.0; // 綠色彈簧
+                                playerVelocity.y = 24.0;
                                 canJump = false;
                             } else if (obs.userData.type === 'boost') {
                                 const frontDir = new THREE.Vector3();
                                 camera.getWorldDirection(frontDir);
                                 frontDir.y = 0; frontDir.normalize();
-                                playerVelocity.addScaledVector(frontDir, 30.0); // 紅色加速
+                                playerVelocity.addScaledVector(frontDir, 30.0);
                             } else if (obs.userData.type === 'checkpoint') {
                                 const newRespawn = new THREE.Vector3(
                                     (obsBox.min.x + obsBox.max.x) / 2,
@@ -640,12 +650,10 @@
                     }
                 }
 
-                // 跌入無底虛空重生
                 if (playerObj.position.y < -15) {
                     respawnAtCheckpoint();
                 }
 
-                // 通關頂端
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 2.0) {
                     score += 200;
                     hudScore.textContent = score;
@@ -653,7 +661,6 @@
                     buildTowerScene(currentLevel);
                 }
 
-                // 子彈與爆炸處理
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
                     b.mesh.position.addScaledVector(b.dir, b.speed * delta);
@@ -679,7 +686,6 @@
                     }
 
                     if (!hit && b.isRPG) {
-                        // 子彈撞擊平台爆破
                         for (let obs of obstacles) {
                             const obsBox = new THREE.Box3().setFromObject(obs);
                             if (obsBox.containsPoint(b.mesh.position)) {
@@ -696,7 +702,6 @@
                     }
                 }
 
-                // 爆炸效果動畫
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
@@ -707,7 +712,6 @@
                     }
                 }
 
-                // 怪物追擊與物理運動
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     z.lookAt(playerObj.position.x, z.position.y, playerObj.position.z);
