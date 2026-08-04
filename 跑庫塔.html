@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 糖果奶油跑酷塔 - 按F投擲手榴彈爆波版</title>
+    <title>3D 糖果奶油跑酷塔 - 中央巨柱實體版</title>
     <style>
         body {
             margin: 0;
@@ -112,10 +112,10 @@
     <div id="instructions">
         <h1>糖果奶油高空跑酷塔</h1>
         <p>點擊螢幕開始遊戲！</p>
+        <p>【實體中央柱】中間的巨柱已變為實體碰撞牆，無法穿透！</p>
         <p>【爆波手榴彈】隨時按下 <b>F 鍵</b> 丟出手榴彈，爆炸時強烈震飛怪物與自己！</p>
         <p>【繽紛主題】踩著奶油塊與彩虹平台向塔頂攀爬！</p>
         <p>【難度曲線】初期步道超寬廣，越往高層越窄且陡峭！</p>
-        <p>【特殊平台】藍色=紀錄點 | 綠色=高空彈簧 | 紅色=極速衝刺</p>
         <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | <b>F 丟手榴彈</b> | 滾輪/1-4 換槍</p>
     </div>
 
@@ -145,6 +145,9 @@
         let currentLevel = 1;
         let rewardCrystal = null;
         let centerTower = null;
+
+        let towerRadius = 12;
+        let centerTowerSolidRadius = 11.5; // 中央巨柱實體半徑
 
         let respawnPosition = new THREE.Vector3(0, 3, 14);
 
@@ -235,15 +238,18 @@
 
             hudLevel.textContent = level;
 
-            const towerRadius = 12;
+            towerRadius = 12;
+            centerTowerSolidRadius = towerRadius - 0.5; // 巨柱實體邊界
             const towerHeight = 50 + level * 25;
 
-            const towerGeo = new THREE.CylinderGeometry(towerRadius - 0.5, towerRadius - 0.5, towerHeight, 32);
+            // 建構中央巨柱 Mesh
+            const towerGeo = new THREE.CylinderGeometry(centerTowerSolidRadius, centerTowerSolidRadius, towerHeight, 32);
             const towerMat = new THREE.MeshLambertMaterial({ color: 0xffa042 });
             centerTower = new THREE.Mesh(towerGeo, towerMat);
             centerTower.position.set(0, towerHeight / 2, 0);
             scene.add(centerTower);
 
+            // 起始紀錄點
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 1.5, 10),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
@@ -394,7 +400,7 @@
 
         function throwGrenade() {
             const now = performance.now();
-            if (now - lastGrenadeTime < 1000) return; // CD 1 秒
+            if (now - lastGrenadeTime < 1000) return;
             lastGrenadeTime = now;
 
             const dir = new THREE.Vector3();
@@ -407,12 +413,12 @@
             grenadeMesh.position.copy(spawnPos);
 
             const throwVel = dir.clone().multiplyScalar(22.0);
-            throwVel.y += 6.0; // 稍微向上拋
+            throwVel.y += 6.0;
 
             grenades.push({
                 mesh: grenadeMesh,
                 velocity: throwVel,
-                timer: 1.5 // 1.5 秒後爆炸
+                timer: 1.5
             });
 
             scene.add(grenadeMesh);
@@ -456,7 +462,7 @@
                 case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break;
                 case 'KeyD': moveRight = true; break;
-                case 'KeyF': throwGrenade(); break; // 按 F 鍵投擲手榴彈
+                case 'KeyF': throwGrenade(); break;
                 case 'ControlLeft':
                 case 'ControlRight':
                     if (moveForward || moveBackward || moveLeft || moveRight) startSlide();
@@ -624,13 +630,21 @@
                     if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
-                // 2. 物理向量與重力疊加
+                // 2. 重力與速度疊加
                 playerVelocity.y -= GRAVITY * delta;
                 playerVelocity.x *= 0.95;
                 playerVelocity.z *= 0.95;
 
                 playerObj.position.add(moveVector);
                 playerObj.position.addScaledVector(playerVelocity, delta);
+
+                // 【關鍵更新】中央巨柱實體圓柱牆體碰撞 (Solid Column Collision)
+                const playerDistCenter = Math.sqrt(playerObj.position.x * playerObj.position.x + playerObj.position.z * playerObj.position.z);
+                const minPlayerDist = centerTowerSolidRadius + 0.4; // 巨柱半徑 + 角色碰撞體
+                if (playerDistCenter < minPlayerDist && playerDistCenter > 0.001) {
+                    playerObj.position.x = (playerObj.position.x / playerDistCenter) * minPlayerDist;
+                    playerObj.position.z = (playerObj.position.z / playerDistCenter) * minPlayerDist;
+                }
 
                 // 3. 平台碰撞檢測
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
@@ -723,12 +737,19 @@
                     }
                 }
 
-                // 手榴彈物理與爆炸處理
+                // 手榴彈物理與實體柱體擋擋處理
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i];
                     g.timer -= delta;
                     g.velocity.y -= GRAVITY * delta;
                     g.mesh.position.addScaledVector(g.velocity, delta);
+
+                    // 中央巨柱反彈手榴彈
+                    const gDistCenter = Math.sqrt(g.mesh.position.x * g.mesh.position.x + g.mesh.position.z * g.mesh.position.z);
+                    if (gDistCenter < centerTowerSolidRadius + 0.2) {
+                        g.velocity.x *= -0.5;
+                        g.velocity.z *= -0.5;
+                    }
 
                     // 平台碰撞彈跳
                     for (let obs of obstacles) {
@@ -749,7 +770,7 @@
                     }
                 }
 
-                // 爆炸動畫
+                // 爆炸效果動畫
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
@@ -760,7 +781,7 @@
                     }
                 }
 
-                // 怪物物理與追擊
+                // 怪物 AI 與巨柱實體碰撞阻擋
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     z.lookAt(playerObj.position.x, z.position.y, playerObj.position.z);
@@ -770,6 +791,14 @@
                     z.userData.velocity.x *= 0.92;
                     z.userData.velocity.z *= 0.92;
                     z.position.addScaledVector(z.userData.velocity, delta);
+
+                    // 怪物碰巨柱推開
+                    const zDistCenter = Math.sqrt(z.position.x * z.position.x + z.position.z * z.position.z);
+                    const minZDist = centerTowerSolidRadius + 0.4;
+                    if (zDistCenter < minZDist && zDistCenter > 0.001) {
+                        z.position.x = (z.position.x / zDistCenter) * minZDist;
+                        z.position.z = (z.position.z / zDistCenter) * minZDist;
+                    }
 
                     for (let obs of obstacles) {
                         const obsBox = new THREE.Box3().setFromObject(obs);
