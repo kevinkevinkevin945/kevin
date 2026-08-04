@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 糖果奶油跑酷塔 - 中央巨柱實體版</title>
+    <title>3D 糖果奶油跑酷塔 - 柱子火箭跳版</title>
     <style>
         body {
             margin: 0;
@@ -112,7 +112,7 @@
     <div id="instructions">
         <h1>糖果奶油高空跑酷塔</h1>
         <p>點擊螢幕開始遊戲！</p>
-        <p>【實體中央柱】中間的巨柱已變為實體碰撞牆，無法穿透！</p>
+        <p>【柱子火箭跳】拿 RPG 朝旁邊的中央巨柱轟擊，利用牆面爆波把你高高彈飛！</p>
         <p>【爆波手榴彈】隨時按下 <b>F 鍵</b> 丟出手榴彈，爆炸時強烈震飛怪物與自己！</p>
         <p>【繽紛主題】踩著奶油塊與彩虹平台向塔頂攀爬！</p>
         <p>【難度曲線】初期步道超寬廣，越往高層越窄且陡峭！</p>
@@ -147,7 +147,7 @@
         let centerTower = null;
 
         let towerRadius = 12;
-        let centerTowerSolidRadius = 11.5; // 中央巨柱實體半徑
+        let centerTowerSolidRadius = 11.5;
 
         let respawnPosition = new THREE.Vector3(0, 3, 14);
 
@@ -164,7 +164,7 @@
         const weaponList = ['rifle', 'rpg', 'crossbow', 'sniper'];
         const weaponNames = {
             'rifle': '1. 連發步槍',
-            'rpg': '2. RPG火箭筒 (強烈爆波)',
+            'rpg': '2. RPG火箭筒 (牆面火箭跳)',
             'crossbow': '3. 十字弓',
             'sniper': '4. 狙擊槍'
         };
@@ -239,17 +239,15 @@
             hudLevel.textContent = level;
 
             towerRadius = 12;
-            centerTowerSolidRadius = towerRadius - 0.5; // 巨柱實體邊界
+            centerTowerSolidRadius = towerRadius - 0.5;
             const towerHeight = 50 + level * 25;
 
-            // 建構中央巨柱 Mesh
             const towerGeo = new THREE.CylinderGeometry(centerTowerSolidRadius, centerTowerSolidRadius, towerHeight, 32);
             const towerMat = new THREE.MeshLambertMaterial({ color: 0xffa042 });
             centerTower = new THREE.Mesh(towerGeo, towerMat);
             centerTower.position.set(0, towerHeight / 2, 0);
             scene.add(centerTower);
 
-            // 起始紀錄點
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 1.5, 10),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
@@ -360,6 +358,7 @@
             camera.add(weaponGroup);
         }
 
+        // 強力火箭跳與衝擊波函數
         function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
             const expMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
@@ -372,10 +371,15 @@
             const playerPos = controls.getObject().position;
             const distToPlayer = playerPos.distanceTo(epicenter);
 
-            if (distToPlayer <= radius + 1.0) {
+            if (distToPlayer <= radius + 2.0) {
                 const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
-                pushDir.y = Math.max(pushDir.y, 0.4); 
-                playerVelocity.addScaledVector(pushDir, knockbackForce * (1 - distToPlayer / (radius + 2.0)));
+                
+                // 柱子牆面火箭跳加成：強制提高垂直向上推力！
+                pushDir.y = Math.max(pushDir.y + 0.4, 0.7); 
+                pushDir.normalize();
+
+                const falloff = 1 - (distToPlayer / (radius + 2.5));
+                playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
             }
 
             for (let i = zombies.length - 1; i >= 0; i--) {
@@ -529,7 +533,7 @@
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
 
             if (curWeapon === 'rpg') {
-                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
                 rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 rocket.position.copy(spawnPos);
                 bullets.push({ mesh: rocket, dir: dir, speed: 45, isRPG: true, life: 3.0 });
@@ -630,7 +634,7 @@
                     if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
-                // 2. 重力與速度疊加
+                // 2. 重力與物理速度疊加
                 playerVelocity.y -= GRAVITY * delta;
                 playerVelocity.x *= 0.95;
                 playerVelocity.z *= 0.95;
@@ -638,9 +642,9 @@
                 playerObj.position.add(moveVector);
                 playerObj.position.addScaledVector(playerVelocity, delta);
 
-                // 【關鍵更新】中央巨柱實體圓柱牆體碰撞 (Solid Column Collision)
+                // 中央巨柱實體圓柱牆體碰撞
                 const playerDistCenter = Math.sqrt(playerObj.position.x * playerObj.position.x + playerObj.position.z * playerObj.position.z);
-                const minPlayerDist = centerTowerSolidRadius + 0.4; // 巨柱半徑 + 角色碰撞體
+                const minPlayerDist = centerTowerSolidRadius + 0.4;
                 if (playerDistCenter < minPlayerDist && playerDistCenter > 0.001) {
                     playerObj.position.x = (playerObj.position.x / playerDistCenter) * minPlayerDist;
                     playerObj.position.z = (playerObj.position.z / playerDistCenter) * minPlayerDist;
@@ -695,28 +699,40 @@
                     buildTowerScene(currentLevel);
                 }
 
-                // 子彈碰撞處理
+                // 子彈與 RPG 撞柱引爆邏輯
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
                     b.mesh.position.addScaledVector(b.dir, b.speed * delta);
                     b.life -= delta;
 
                     let hit = false;
-                    for (let j = zombies.length - 1; j >= 0; j--) {
-                        if (b.mesh.position.distanceTo(zombies[j].position) < 1.2) {
+
+                    // RPG 擊中中央巨柱表面引爆火箭跳
+                    if (b.isRPG) {
+                        const bulletDistCenter = Math.sqrt(b.mesh.position.x * b.mesh.position.x + b.mesh.position.z * b.mesh.position.z);
+                        if (bulletDistCenter <= centerTowerSolidRadius) {
+                            triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0); // 超大半徑與強推力
                             hit = true;
-                            if (b.isRPG) {
-                                triggerExplosiveShockwave(b.mesh.position, 8.0, 35.0);
-                            } else {
-                                zombies[j].userData.health -= 1;
-                                if (zombies[j].userData.health <= 0) {
-                                    scene.remove(zombies[j]);
-                                    zombies.splice(j, 1);
-                                    score += 20;
-                                    hudScore.textContent = score;
+                        }
+                    }
+
+                    if (!hit) {
+                        for (let j = zombies.length - 1; j >= 0; j--) {
+                            if (b.mesh.position.distanceTo(zombies[j].position) < 1.2) {
+                                hit = true;
+                                if (b.isRPG) {
+                                    triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
+                                } else {
+                                    zombies[j].userData.health -= 1;
+                                    if (zombies[j].userData.health <= 0) {
+                                        scene.remove(zombies[j]);
+                                        zombies.splice(j, 1);
+                                        score += 20;
+                                        hudScore.textContent = score;
+                                    }
                                 }
+                                break;
                             }
-                            break;
                         }
                     }
 
@@ -724,7 +740,7 @@
                         for (let obs of obstacles) {
                             const obsBox = new THREE.Box3().setFromObject(obs);
                             if (obsBox.containsPoint(b.mesh.position)) {
-                                triggerExplosiveShockwave(b.mesh.position, 8.0, 35.0);
+                                triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
                                 hit = true;
                                 break;
                             }
@@ -737,21 +753,19 @@
                     }
                 }
 
-                // 手榴彈物理與實體柱體擋擋處理
+                // 手榴彈物理與引爆
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i];
                     g.timer -= delta;
                     g.velocity.y -= GRAVITY * delta;
                     g.mesh.position.addScaledVector(g.velocity, delta);
 
-                    // 中央巨柱反彈手榴彈
                     const gDistCenter = Math.sqrt(g.mesh.position.x * g.mesh.position.x + g.mesh.position.z * g.mesh.position.z);
                     if (gDistCenter < centerTowerSolidRadius + 0.2) {
                         g.velocity.x *= -0.5;
                         g.velocity.z *= -0.5;
                     }
 
-                    // 平台碰撞彈跳
                     for (let obs of obstacles) {
                         const obsBox = new THREE.Box3().setFromObject(obs);
                         if (obsBox.containsPoint(g.mesh.position)) {
@@ -781,7 +795,7 @@
                     }
                 }
 
-                // 怪物 AI 與巨柱實體碰撞阻擋
+                // 怪物 AI 與巨柱阻擋
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     z.lookAt(playerObj.position.x, z.position.y, playerObj.position.z);
@@ -792,7 +806,6 @@
                     z.userData.velocity.z *= 0.92;
                     z.position.addScaledVector(z.userData.velocity, delta);
 
-                    // 怪物碰巨柱推開
                     const zDistCenter = Math.sqrt(z.position.x * z.position.x + z.position.z * z.position.z);
                     const minZDist = centerTowerSolidRadius + 0.4;
                     if (zDistCenter < minZDist && zDistCenter > 0.001) {
