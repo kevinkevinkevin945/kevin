@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 直線極速懸空跑酷 (High-Speed Linear Obby)</title>
+    <title>3D 直線極速懸空跑酷 (多障礙版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
@@ -30,10 +30,10 @@
     <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
 
     <div id="instructions">
-        <h1>直線極速懸空跑酷</h1>
+        <h1>直線極速懸空跑酷 (多障礙版)</h1>
         <p>點擊螢幕開始遊戲！</p>
-        <p>【直線賽道】地圖全面改為直線向前延伸，極致速度感！</p>
-        <p>【高速推進】角色基礎速度與衝刺大幅加快，結合 <b>0.1s 榴彈砲</b> 享受極速爆破！</p>
+        <p>【新增障礙】<b>🔴危險雷射牆</b>、<b>🌀滾動巨石</b>與<b>💥爆炸油桶</b>！</p>
+        <p>【高速爆破】善用 <b>0.1s 裝填榴彈砲</b> 轟飛障礙或預先引爆油桶推進！</p>
         <p>【移動操作】W/A/S/D 移動 | Space 三段跳 | Ctrl 滑行衝刺 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
     </div>
 
@@ -73,6 +73,9 @@
 
         const obstacles = [];
         const movingPlatforms = [];
+        const laserWalls = [];
+        const barrels = [];
+        const boulders = [];
         const projectiles = [];
         const grenades = [];
         const explosions = [];
@@ -146,11 +149,13 @@
             animate();
         }
 
-        // 建立直線跑酷賽道
         function buildLinearTrack(level) {
+            // 清理舊物件
             obstacles.forEach(obs => scene.remove(obs));
-            obstacles.length = 0;
-            movingPlatforms.length = 0;
+            laserWalls.forEach(l => scene.remove(l));
+            barrels.forEach(b => scene.remove(b.mesh));
+            boulders.forEach(b => scene.remove(b.mesh));
+            obstacles.length = 0; movingPlatforms.length = 0; laserWalls.length = 0; barrels.length = 0; boulders.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
@@ -167,12 +172,11 @@
 
             respawnPosition.set(0, 5, 0);
 
-            const segmentCount = 25 + level * 8;
+            const segmentCount = 30 + level * 8;
             let currentZ = 8;
             let currentY = 2;
 
             for (let i = 0; i < segmentCount; i++) {
-                // 向前方 (Z 軸正方向) 延伸，並有些微左右偏擺與高低落差
                 const gap = 6.0 + Math.random() * 4.0 + level * 0.5;
                 currentZ += gap;
                 currentY += (Math.random() - 0.3) * 3.5;
@@ -182,7 +186,7 @@
                 let platColor = candyColors[i % candyColors.length];
                 let cubeSize = Math.max(2.5, 4.5 - level * 0.2);
 
-                const isMoving = (level >= 2 && i % 3 === 1);
+                const isMoving = (level >= 2 && i % 4 === 1);
 
                 if (i > 0 && i % 8 === 0) {
                     platType = 'checkpoint';
@@ -209,6 +213,33 @@
                 scene.add(step);
                 obstacles.push(step);
                 if (isMoving) movingPlatforms.push(step);
+
+                // --- 隨機生成新障礙物 ---
+                if (i > 2 && i % 4 === 0) {
+                    // 1. 雷射牆障礙
+                    const laserGeo = new THREE.BoxGeometry(cubeSize * 1.5, 1.8, 0.2);
+                    const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0.7 });
+                    const laser = new THREE.Mesh(laserGeo, laserMat);
+                    laser.position.set(posX, currentY + cubeSize / 2 + 1.2, currentZ);
+                    scene.add(laser);
+                    laserWalls.push(laser);
+                } else if (i > 3 && i % 5 === 3) {
+                    // 2. 爆破油桶
+                    const bGeo = new THREE.CylinderGeometry(0.6, 0.6, 1.4, 12);
+                    const bMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+                    const barrelMesh = new THREE.Mesh(bGeo, bMat);
+                    barrelMesh.position.set(posX, currentY + cubeSize / 2 + 0.7, currentZ);
+                    scene.add(barrelMesh);
+                    barrels.push({ mesh: barrelMesh, hp: 1 });
+                } else if (i > 5 && i % 6 === 2) {
+                    // 3. 滾動巨石
+                    const boulGeo = new THREE.SphereGeometry(1.2, 16, 16);
+                    const boulMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+                    const boulMesh = new THREE.Mesh(boulGeo, boulMat);
+                    boulMesh.position.set(posX - 4, currentY + cubeSize / 2 + 1.2, currentZ);
+                    scene.add(boulMesh);
+                    boulders.push({ mesh: boulMesh, dir: 1, minX: posX - 5, maxX: posX + 5, speed: 4.0 + level });
+                }
             }
 
             // 直線終點平台
@@ -229,7 +260,6 @@
             scene.add(rewardCrystal);
 
             controls.getObject().position.copy(respawnPosition);
-            // 視角自動面向直線前方 (+Z 方向)
             camera.rotation.set(0, 0, 0);
         }
 
@@ -272,6 +302,16 @@
                 jumpsLeft = MAX_JUMPS; 
                 hudJumps.textContent = jumpsLeft;
             }
+
+            // 引爆週邊油桶連鎖爆炸
+            for (let i = barrels.length - 1; i >= 0; i--) {
+                const b = barrels[i];
+                if (b.mesh.position.distanceTo(epicenter) <= radius) {
+                    scene.remove(b.mesh);
+                    barrels.splice(i, 1);
+                    triggerExplosiveShockwave(b.mesh.position, 12.0, 60.0); // 超強油桶爆波
+                }
+            }
         }
 
         function throwGrenade() {
@@ -287,9 +327,7 @@
 
         function startSlide() {
             if (isSliding) return; isSliding = true;
-            slideTimer = 0.8; 
-            slideSpeedCurrent = 45.0; // 極速滑行衝刺
-            currentEyeHeight = CROUCH_HEIGHT;
+            slideTimer = 0.8; slideSpeedCurrent = 45.0; currentEyeHeight = CROUCH_HEIGHT;
             const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
             if (moveForward || moveBackward || moveLeft || moveRight) {
                 const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
@@ -314,12 +352,7 @@
                     break;
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    if (jumpsLeft > 0) { 
-                        playerVelocity.y = 14.5; // 提高跳躍高度配合速度
-                        jumpsLeft--; 
-                        hudJumps.textContent = jumpsLeft; 
-                        if (isSliding) cancelSlide(); 
-                    }
+                    if (jumpsLeft > 0) { playerVelocity.y = 14.5; jumpsLeft--; hudJumps.textContent = jumpsLeft; if (isSliding) cancelSlide(); }
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
@@ -365,10 +398,7 @@
             } else if (curWeapon === 'grenadeLauncher') {
                 const glMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
                 glMesh.position.copy(spawnPos);
-                
-                const glVel = dir.clone().multiplyScalar(40.0);
-                glVel.y += 2.5;
-
+                const glVel = dir.clone().multiplyScalar(40.0); glVel.y += 2.5;
                 projectiles.push({ mesh: glMesh, velocity: glVel, isRPG: false, life: 2.5 });
                 scene.add(glMesh);
             }
@@ -393,8 +423,15 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
-                movingPlatforms.forEach(plat => { const u = plat.userData; const offset = Math.sin(time * 0.002 * u.moveSpeed + u.moveOffset) * 5.0; plat.position.x = u.basePos.x + offset; });
                 
+                // 動態方塊與巨石
+                movingPlatforms.forEach(plat => { const u = plat.userData; const offset = Math.sin(time * 0.002 * u.moveSpeed + u.moveOffset) * 5.0; plat.position.x = u.basePos.x + offset; });
+                boulders.forEach(b => {
+                    b.mesh.position.x += b.dir * b.speed * delta;
+                    b.mesh.rotation.z -= b.dir * b.speed * delta;
+                    if (b.mesh.position.x > b.maxX || b.mesh.position.x < b.minX) b.dir *= -1;
+                });
+
                 windTimer += delta;
                 if (windTimer > 8.0) {
                     isWindActive = Math.random() < 0.5; windTimer = 0;
@@ -409,7 +446,6 @@
                     slideSpeedCurrent = Math.max(26.0, slideSpeedCurrent - 25.0 * delta); slideTimer -= delta;
                     if (slideTimer <= 0) cancelSlide();
                 } else {
-                    // 大幅提高角色移動速度 (基礎速度 26.0)
                     let moveSpeed = (isCrouching ? 10.0 : 26.0) * delta;
                     const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
                     const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
@@ -421,6 +457,20 @@
                 playerVelocity.y -= GRAVITY * delta; playerVelocity.x *= 0.94; playerVelocity.z *= 0.94;
                 playerObj.position.add(moveVector); playerObj.position.addScaledVector(playerVelocity, delta);
                 
+                // 玩家與雷射牆碰撞
+                laserWalls.forEach(lw => {
+                    if (new THREE.Box3().setFromObject(lw).containsPoint(playerObj.position)) {
+                        triggerExplosiveShockwave(playerObj.position, 6.0, 35.0); // 觸雷射爆炸彈飛
+                    }
+                });
+
+                // 玩家與巨石碰撞
+                boulders.forEach(b => {
+                    if (playerObj.position.distanceTo(b.mesh.position) < 1.8) {
+                        triggerExplosiveShockwave(b.mesh.position, 7.0, 40.0);
+                    }
+                });
+
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
                 for (let obs of obstacles) {
                     const obsBox = new THREE.Box3().setFromObject(obs);
@@ -442,17 +492,14 @@
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
                     if (!p.isRPG) p.velocity.y -= GRAVITY * 0.4 * delta;
-                    
                     p.mesh.position.addScaledVector(p.velocity, delta);
                     p.life -= delta;
 
                     let hit = false;
                     for (let obs of obstacles) {
-                        const obsBox = new THREE.Box3().setFromObject(obs);
-                        if (obsBox.containsPoint(p.mesh.position)) {
+                        if (new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
                             triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 10.0 : 8.5, p.isRPG ? 50.0 : 42.0);
-                            hit = true;
-                            break;
+                            hit = true; break;
                         }
                     }
 
