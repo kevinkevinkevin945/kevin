@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 懸空方塊爆破跑酷 (無巨柱版)</title>
+    <title>3D 直線極速懸空跑酷 (High-Speed Linear Obby)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
@@ -30,11 +30,11 @@
     <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
 
     <div id="instructions">
-        <h1>懸空方塊爆破跑酷</h1>
+        <h1>直線極速懸空跑酷</h1>
         <p>點擊螢幕開始遊戲！</p>
-        <p>【無巨柱版】中間柱子已移除，盡情體驗空曠虛空跑酷！</p>
-        <p>【超速榴彈砲】裝填只需 <b>0.1 秒</b>，對準方塊轟炸產生爆波推力！</p>
-        <p>【移動操作】W/A/S/D 移動 | Space 三段跳 | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
+        <p>【直線賽道】地圖全面改為直線向前延伸，極致速度感！</p>
+        <p>【高速推進】角色基礎速度與衝刺大幅加快，結合 <b>0.1s 榴彈砲</b> 享受極速爆破！</p>
+        <p>【移動操作】W/A/S/D 移動 | Space 三段跳 | Ctrl 滑行衝刺 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
     </div>
 
     <script>
@@ -51,7 +51,7 @@
         const MAX_JUMPS = 3;
 
         let playerVelocity = new THREE.Vector3();
-        const GRAVITY = 30;
+        const GRAVITY = 32;
 
         let isMouseDown = false;
         let lastShotTime = 0;
@@ -65,13 +65,11 @@
         let currentLevel = 1;
         let rewardCrystal = null;
 
-        let towerRadius = 13;
-
         let windForce = new THREE.Vector3();
         let windTimer = 0;
         let isWindActive = false;
 
-        let respawnPosition = new THREE.Vector3(0, 4, 15);
+        let respawnPosition = new THREE.Vector3(0, 4, 0);
 
         const obstacles = [];
         const movingPlatforms = [];
@@ -104,7 +102,7 @@
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a052b);
-            scene.fog = new THREE.FogExp2(0x1a052b, 0.006);
+            scene.fog = new THREE.FogExp2(0x1a052b, 0.005);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -117,7 +115,7 @@
 
             controls = new THREE.PointerLockControls(camera, document.body);
             
-            buildTowerScene(currentLevel);
+            buildLinearTrack(currentLevel);
 
             instructions.addEventListener('click', () => {
                 if (!isGameOver) controls.lock();
@@ -148,7 +146,8 @@
             animate();
         }
 
-        function buildTowerScene(level) {
+        // 建立直線跑酷賽道
+        function buildLinearTrack(level) {
             obstacles.forEach(obs => scene.remove(obs));
             obstacles.length = 0;
             movingPlatforms.length = 0;
@@ -156,43 +155,40 @@
 
             hudLevel.textContent = level;
 
-            towerRadius = 13;
-
             // 起始大平台
             const startPlat = new THREE.Mesh(
-                new THREE.BoxGeometry(6, 2, 6),
+                new THREE.BoxGeometry(8, 2, 8),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
             );
-            startPlat.position.set(0, 2, towerRadius + 3);
+            startPlat.position.set(0, 2, 0);
             startPlat.userData = { type: 'checkpoint' };
             scene.add(startPlat);
             obstacles.push(startPlat);
 
-            respawnPosition.set(0, 5, towerRadius + 3);
+            respawnPosition.set(0, 5, 0);
 
-            const segmentCount = 20 + level * 6;
-
-            let angle = 0;
+            const segmentCount = 25 + level * 8;
+            let currentZ = 8;
             let currentY = 2;
 
             for (let i = 0; i < segmentCount; i++) {
-                angle += 0.55 + Math.random() * 0.15; 
-                currentY += 2.2 + Math.random() * 1.5; 
-
-                const posX = Math.cos(angle) * (towerRadius + 3.0);
-                const posZ = Math.sin(angle) * (towerRadius + 3.0);
+                // 向前方 (Z 軸正方向) 延伸，並有些微左右偏擺與高低落差
+                const gap = 6.0 + Math.random() * 4.0 + level * 0.5;
+                currentZ += gap;
+                currentY += (Math.random() - 0.3) * 3.5;
+                const posX = (Math.random() - 0.5) * 12.0; 
 
                 let platType = 'normal';
                 let platColor = candyColors[i % candyColors.length];
-                let cubeSize = Math.max(2.2, 4.0 - level * 0.3);
+                let cubeSize = Math.max(2.5, 4.5 - level * 0.2);
 
                 const isMoving = (level >= 2 && i % 3 === 1);
 
-                if (i > 0 && i % 6 === 0) {
+                if (i > 0 && i % 8 === 0) {
                     platType = 'checkpoint';
                     platColor = 0x00ffff;
-                    cubeSize += 1.5;
-                } else if (i % 4 === 2) {
+                    cubeSize += 2.0;
+                } else if (i % 5 === 2) {
                     platType = 'spring';
                     platColor = 0x00ff44;
                 }
@@ -201,13 +197,13 @@
                 const stepMat = new THREE.MeshLambertMaterial({ color: platColor });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
-                step.position.set(posX, currentY, posZ);
+                step.position.set(posX, currentY, currentZ);
                 step.userData = { 
                     type: platType,
                     isMoving: isMoving,
-                    basePos: new THREE.Vector3(posX, currentY, posZ),
+                    basePos: new THREE.Vector3(posX, currentY, currentZ),
                     moveOffset: Math.random() * Math.PI * 2,
-                    moveSpeed: 1.8 + level * 0.6
+                    moveSpeed: 2.2 + level * 0.8
                 };
 
                 scene.add(step);
@@ -215,24 +211,26 @@
                 if (isMoving) movingPlatforms.push(step);
             }
 
-            const topAngle = angle + 0.6;
-            const topY = currentY + 4;
+            // 直線終點平台
+            currentZ += 10.0;
             const topPlat = new THREE.Mesh(
-                new THREE.BoxGeometry(7, 2, 7),
+                new THREE.BoxGeometry(9, 2, 9),
                 new THREE.MeshLambertMaterial({ color: 0xffdd00 })
             );
-            topPlat.position.set(Math.cos(topAngle) * (towerRadius + 3.0), topY, Math.sin(topAngle) * (towerRadius + 3.0));
+            topPlat.position.set(0, currentY + 2.0, currentZ);
             topPlat.userData = { type: 'normal' };
             scene.add(topPlat);
             obstacles.push(topPlat);
 
-            const crystalGeo = new THREE.OctahedronGeometry(1.5, 0);
+            const crystalGeo = new THREE.OctahedronGeometry(1.8, 0);
             const crystalMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
             rewardCrystal = new THREE.Mesh(crystalGeo, crystalMat);
-            rewardCrystal.position.set(topPlat.position.x, topY + 3.0, topPlat.position.z);
+            rewardCrystal.position.set(topPlat.position.x, topPlat.position.y + 3.5, topPlat.position.z);
             scene.add(rewardCrystal);
 
             controls.getObject().position.copy(respawnPosition);
+            // 視角自動面向直線前方 (+Z 方向)
+            camera.rotation.set(0, 0, 0);
         }
 
         function createWeapons() {
@@ -265,11 +263,11 @@
             const playerPos = controls.getObject().position;
             const distToPlayer = playerPos.distanceTo(epicenter);
 
-            if (distToPlayer <= radius + 2.0) {
+            if (distToPlayer <= radius + 2.5) {
                 const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
                 pushDir.y = Math.max(pushDir.y + 0.4, 0.7); 
                 pushDir.normalize();
-                const falloff = 1 - (distToPlayer / (radius + 2.5));
+                const falloff = 1 - (distToPlayer / (radius + 3.0));
                 playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
                 jumpsLeft = MAX_JUMPS; 
                 hudJumps.textContent = jumpsLeft;
@@ -283,13 +281,15 @@
             const gGeo = new THREE.SphereGeometry(0.18, 12, 12);
             const gMat = new THREE.MeshLambertMaterial({ color: 0x336622 });
             const grenadeMesh = new THREE.Mesh(gGeo, gMat); grenadeMesh.position.copy(spawnPos);
-            const throwVel = dir.clone().multiplyScalar(22.0); throwVel.y += 6.0;
+            const throwVel = dir.clone().multiplyScalar(30.0); throwVel.y += 7.0;
             grenades.push({ mesh: grenadeMesh, velocity: throwVel, timer: 1.5 }); scene.add(grenadeMesh);
         }
 
         function startSlide() {
             if (isSliding) return; isSliding = true;
-            slideTimer = 0.7; slideSpeedCurrent = 24.0; currentEyeHeight = CROUCH_HEIGHT;
+            slideTimer = 0.8; 
+            slideSpeedCurrent = 45.0; // 極速滑行衝刺
+            currentEyeHeight = CROUCH_HEIGHT;
             const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
             if (moveForward || moveBackward || moveLeft || moveRight) {
                 const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
@@ -314,7 +314,12 @@
                     break;
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    if (jumpsLeft > 0) { playerVelocity.y = 13.0; jumpsLeft--; hudJumps.textContent = jumpsLeft; if (isSliding) cancelSlide(); }
+                    if (jumpsLeft > 0) { 
+                        playerVelocity.y = 14.5; // 提高跳躍高度配合速度
+                        jumpsLeft--; 
+                        hudJumps.textContent = jumpsLeft; 
+                        if (isSliding) cancelSlide(); 
+                    }
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
@@ -355,14 +360,14 @@
                 const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
                 rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                 rocket.position.copy(spawnPos);
-                projectiles.push({ mesh: rocket, velocity: dir.clone().multiplyScalar(45.0), isRPG: true, life: 3.0 });
+                projectiles.push({ mesh: rocket, velocity: dir.clone().multiplyScalar(55.0), isRPG: true, life: 3.0 });
                 scene.add(rocket);
             } else if (curWeapon === 'grenadeLauncher') {
                 const glMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
                 glMesh.position.copy(spawnPos);
                 
-                const glVel = dir.clone().multiplyScalar(32.0);
-                glVel.y += 2.0;
+                const glVel = dir.clone().multiplyScalar(40.0);
+                glVel.y += 2.5;
 
                 projectiles.push({ mesh: glMesh, velocity: glVel, isRPG: false, life: 2.5 });
                 scene.add(glMesh);
@@ -379,7 +384,7 @@
         function restartGame() {
             currentLevel = 1; score = 0; isGameOver = false; hudScore.textContent = score;
             projectiles.forEach(b => scene.remove(b.mesh)); grenades.forEach(g => scene.remove(g.mesh));
-            projectiles.length = 0; grenades.length = 0; buildTowerScene(currentLevel); controls.lock();
+            projectiles.length = 0; grenades.length = 0; buildLinearTrack(currentLevel); controls.lock();
         }
 
         function animate() {
@@ -388,7 +393,7 @@
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
-                movingPlatforms.forEach(plat => { const u = plat.userData; const offset = Math.sin(time * 0.002 * u.moveSpeed + u.moveOffset) * 4.0; plat.position.x = u.basePos.x + offset; });
+                movingPlatforms.forEach(plat => { const u = plat.userData; const offset = Math.sin(time * 0.002 * u.moveSpeed + u.moveOffset) * 5.0; plat.position.x = u.basePos.x + offset; });
                 
                 windTimer += delta;
                 if (windTimer > 8.0) {
@@ -398,12 +403,14 @@
 
                 const playerObj = controls.getObject();
                 let moveVector = new THREE.Vector3();
+
                 if (isSliding) {
                     moveVector.copy(slideDirection).multiplyScalar(slideSpeedCurrent * delta);
-                    slideSpeedCurrent = Math.max(12.0, slideSpeedCurrent - 18.0 * delta); slideTimer -= delta;
+                    slideSpeedCurrent = Math.max(26.0, slideSpeedCurrent - 25.0 * delta); slideTimer -= delta;
                     if (slideTimer <= 0) cancelSlide();
                 } else {
-                    let moveSpeed = (isCrouching ? 5.5 : 12.0) * delta;
+                    // 大幅提高角色移動速度 (基礎速度 26.0)
+                    let moveSpeed = (isCrouching ? 10.0 : 26.0) * delta;
                     const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
                     const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
                     if (moveForward) moveVector.addScaledVector(frontDir, moveSpeed); if (moveBackward) moveVector.addScaledVector(frontDir, -moveSpeed);
@@ -417,38 +424,33 @@
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
                 for (let obs of obstacles) {
                     const obsBox = new THREE.Box3().setFromObject(obs);
-                    if (playerObj.position.x >= obsBox.min.x - 0.3 && playerObj.position.x <= obsBox.max.x + 0.3 && playerObj.position.z >= obsBox.min.z - 0.3 && playerObj.position.z <= obsBox.max.z + 0.3) {
+                    if (playerObj.position.x >= obsBox.min.x - 0.4 && playerObj.position.x <= obsBox.max.x + 0.4 && playerObj.position.z >= obsBox.min.z - 0.4 && playerObj.position.z <= obsBox.max.z + 0.4) {
                         const platTop = obsBox.max.y;
-                        if (playerFeetY <= platTop && playerFeetY >= platTop - 1.2 && playerVelocity.y <= 0) {
+                        if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
                             playerObj.position.y = platTop + currentEyeHeight; playerVelocity.y = 0; jumpsLeft = MAX_JUMPS; hudJumps.textContent = jumpsLeft;
-                            if (obs.userData.type === 'spring') { playerVelocity.y = 26.0; } 
+                            if (obs.userData.type === 'spring') { playerVelocity.y = 30.0; } 
                             else if (obs.userData.type === 'checkpoint') { const newRespawn = new THREE.Vector3((obsBox.min.x + obsBox.max.x) / 2, platTop + STAND_HEIGHT + 1.0, (obsBox.min.z + obsBox.max.z) / 2); respawnPosition.copy(newRespawn); }
                             break;
                         }
                     }
                 }
 
-                if (playerObj.position.y < -15) { respawnAtCheckpoint(); }
-                if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 2.0) { score += 300; hudScore.textContent = score; currentLevel++; buildTowerScene(currentLevel); }
+                if (playerObj.position.y < -20) { respawnAtCheckpoint(); }
+                if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 2.5) { score += 300; hudScore.textContent = score; currentLevel++; buildLinearTrack(currentLevel); }
 
-                // 彈藥運動與碰撞判定
+                // 彈藥運動與碰撞
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
-                    
-                    if (!p.isRPG) {
-                        p.velocity.y -= GRAVITY * 0.5 * delta;
-                    }
+                    if (!p.isRPG) p.velocity.y -= GRAVITY * 0.4 * delta;
                     
                     p.mesh.position.addScaledVector(p.velocity, delta);
                     p.life -= delta;
 
                     let hit = false;
-
-                    // 碰撞跑酷方塊引爆
                     for (let obs of obstacles) {
                         const obsBox = new THREE.Box3().setFromObject(obs);
                         if (obsBox.containsPoint(p.mesh.position)) {
-                            triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.5 : 8.0, p.isRPG ? 45.0 : 38.0);
+                            triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 10.0 : 8.5, p.isRPG ? 50.0 : 42.0);
                             hit = true;
                             break;
                         }
@@ -464,10 +466,10 @@
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i]; g.timer -= delta; g.velocity.y -= GRAVITY * delta; g.mesh.position.addScaledVector(g.velocity, delta);
                     for (let obs of obstacles) { const obsBox = new THREE.Box3().setFromObject(obs); if (obsBox.containsPoint(g.mesh.position)) { g.velocity.y *= -0.4; g.velocity.x *= 0.6; g.velocity.z *= 0.6; g.mesh.position.y = obsBox.max.y + 0.1; break; } }
-                    if (g.timer <= 0) { triggerExplosiveShockwave(g.mesh.position, 9.0, 40.0); scene.remove(g.mesh); grenades.splice(i, 1); }
+                    if (g.timer <= 0) { triggerExplosiveShockwave(g.mesh.position, 9.5, 45.0); scene.remove(g.mesh); grenades.splice(i, 1); }
                 }
 
-                // 爆炸效果動畫
+                // 爆炸動畫
                 for (let i = explosions.length - 1; i >= 0; i--) { const exp = explosions[i]; exp.timer -= delta; exp.mesh.material.opacity = exp.timer / 0.35; if (exp.timer <= 0) { scene.remove(exp.mesh); explosions.splice(i, 1); } }
             }
             prevTime = time; renderer.render(scene, camera);
