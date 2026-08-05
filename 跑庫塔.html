@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 糖果奶油跑酷塔 - 無限連跳版</title>
+    <title>3D 糖果奶油跑酷塔 - 極限狂暴版</title>
     <style>
         body {
             margin: 0;
@@ -40,15 +40,15 @@
             z-index: 10;
         }
 
-        #checkpoint-msg {
+        #wind-warning {
             position: absolute;
             top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            color: #00ffff;
-            font-size: 24px;
+            color: #ff3333;
+            font-size: 26px;
             font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
+            text-shadow: 2px 2px 8px #ff0000;
             display: none;
             pointer-events: none;
             z-index: 10;
@@ -85,8 +85,8 @@
         #instructions h1 {
             font-size: 42px;
             margin-bottom: 10px;
-            color: #ff33aa;
-            text-shadow: 2px 2px 8px #ff99ff;
+            color: #ff3333;
+            text-shadow: 2px 2px 8px #ff9999;
         }
 
         #instructions p {
@@ -104,18 +104,20 @@
     <div id="hud">
         血量: <span id="health" style="color: #00ff00;">100</span> | 
         得分: <span id="score">0</span> | 
-        糖果塔層數: <span id="level-display" style="color: #ffaa00;">1</span>
+        層數: <span id="level-display" style="color: #ffaa00;">1</span> | 
+        剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">3</span>
     </div>
-    <div id="checkpoint-msg">★ 紀錄點已激活！★</div>
+    <div id="wind-warning">⚠️ 警報：高空強烈陣風吹襲中！</div>
     <div id="weapon-status">當前武器: 1. 連發步槍 | 按 F 丟手榴彈</div>
 
     <div id="instructions">
-        <h1>糖果奶油高空跑酷塔</h1>
+        <h1>糖果奶油塔 - 極限狂暴模式</h1>
         <p>點擊螢幕開始遊戲！</p>
-        <p>【無限連續跳】已開啟！可在空中無限按 Space 踏空飛行！</p>
-        <p>【柱子火箭跳】拿 RPG 朝旁邊的中央巨柱轟擊，利用牆面爆波把你高高彈飛！</p>
-        <p>【爆波手榴彈】隨時按下 <b>F 鍵</b> 丟出手榴彈，爆炸時強烈震飛怪物與自己！</p>
-        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | <b>Space 無限連跳</b> | <b>F 丟手榴彈</b> | 滾輪/1-4 換槍</p>
+        <p>【限制三段跳】空中最多連續跳躍 <b>3 次</b>，需精準計算落腳處！</p>
+        <p>【動態移動平台】高樓層出現左右擺動的奶油平台！</p>
+        <p>【高空強風 Hazard】隨時會刮起巨風把你吹落高塔！</p>
+        <p>【柱子火箭跳】拿 RPG 轟中央巨柱仍可獲得超級彈跳推力！</p>
+        <p>【移動操作】W/A/S/D 移動 | Space 三段跳 | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-4 換槍</p>
     </div>
 
     <script>
@@ -128,8 +130,12 @@
         let slideSpeedCurrent = 0;
         let slideDirection = new THREE.Vector3();
         
+        // 跳躍次數控制
+        let jumpsLeft = 3;
+        const MAX_JUMPS = 3;
+
         let playerVelocity = new THREE.Vector3();
-        const GRAVITY = 28;
+        const GRAVITY = 30;
 
         let isMouseDown = false;
         let lastShotTime = 0;
@@ -147,10 +153,16 @@
         let towerRadius = 12;
         let centerTowerSolidRadius = 11.5;
 
+        // 風力氣流控制
+        let windForce = new THREE.Vector3();
+        let windTimer = 0;
+        let isWindActive = false;
+
         let respawnPosition = new THREE.Vector3(0, 3, 14);
 
         const zombies = [];
         const obstacles = [];
+        const movingPlatforms = [];
         const bullets = [];
         const grenades = [];
         const explosions = [];
@@ -174,7 +186,8 @@
         const hudHealth = document.getElementById('health');
         const hudScore = document.getElementById('score');
         const hudLevel = document.getElementById('level-display');
-        const checkpointMsg = document.getElementById('checkpoint-msg');
+        const hudJumps = document.getElementById('jumps-left');
+        const windWarning = document.getElementById('wind-warning');
         const weaponStatus = document.getElementById('weapon-status');
         const instructions = document.getElementById('instructions');
 
@@ -182,15 +195,15 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x3a1c52);
-            scene.fog = new THREE.FogExp2(0x3a1c52, 0.005);
+            scene.background = new THREE.Color(0x220538);
+            scene.fog = new THREE.FogExp2(0x220538, 0.006);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
             dirLight.position.set(30, 100, 30);
             scene.add(dirLight);
 
@@ -223,7 +236,7 @@
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
-            setInterval(spawnZombie, 3000);
+            setInterval(spawnZombie, 2000); // 加快怪物生成頻率
 
             animate();
         }
@@ -231,6 +244,7 @@
         function buildTowerScene(level) {
             obstacles.forEach(obs => scene.remove(obs));
             obstacles.length = 0;
+            movingPlatforms.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
             if (centerTower) scene.remove(centerTower);
 
@@ -238,10 +252,10 @@
 
             towerRadius = 12;
             centerTowerSolidRadius = towerRadius - 0.5;
-            const towerHeight = 50 + level * 25;
+            const towerHeight = 60 + level * 30;
 
             const towerGeo = new THREE.CylinderGeometry(centerTowerSolidRadius, centerTowerSolidRadius, towerHeight, 32);
-            const towerMat = new THREE.MeshLambertMaterial({ color: 0xffa042 });
+            const towerMat = new THREE.MeshLambertMaterial({ color: 0xe67e22 });
             centerTower = new THREE.Mesh(towerGeo, towerMat);
             centerTower.position.set(0, towerHeight / 2, 0);
             scene.add(centerTower);
@@ -257,18 +271,16 @@
 
             respawnPosition.set(0, 3, towerRadius + 3);
 
-            const segmentCount = 20 + level * 6;
-            const baseWidth = Math.max(2.5, 8.0 - (level - 1) * 1.0);
-            const heightGainBase = 1.0 + Math.min(1.5, (level - 1) * 0.3);
-            const allowSpecialPlatforms = level >= 2;
-            const checkpointInterval = Math.max(5, 4 + Math.floor(level * 0.8));
+            const segmentCount = 22 + level * 7;
+            const baseWidth = Math.max(2.0, 6.5 - (level - 1) * 0.8);
+            const heightGainBase = 1.2 + Math.min(1.8, (level - 1) * 0.4);
 
             let angle = 0;
             let currentY = 2;
 
             for (let i = 0; i < segmentCount; i++) {
-                angle += 0.32;
-                currentY += heightGainBase + (allowSpecialPlatforms ? Math.random() * 0.4 : 0);
+                angle += 0.35;
+                currentY += heightGainBase;
 
                 const posX = Math.cos(angle) * (towerRadius + 2.5);
                 const posZ = Math.sin(angle) * (towerRadius + 2.5);
@@ -276,21 +288,17 @@
                 let platType = 'normal';
                 let platColor = candyColors[i % candyColors.length];
                 let width = baseWidth;
-                let length = Math.max(5.0, 8.0 - level * 0.4);
+                let length = Math.max(4.0, 7.0 - level * 0.5);
 
-                if (i > 0 && i % checkpointInterval === 0) {
+                const isMoving = (level >= 2 && i % 4 === 0);
+
+                if (i > 0 && i % 6 === 0) {
                     platType = 'checkpoint';
                     platColor = 0x00ffff;
-                    width = baseWidth + 2.0;
-                } else if (allowSpecialPlatforms) {
-                    const randVal = Math.random();
-                    if (randVal < 0.15) {
-                        platType = 'spring';
-                        platColor = 0x00ff44;
-                    } else if (randVal < 0.30) {
-                        platType = 'boost';
-                        platColor = 0xff0055;
-                    }
+                    width = baseWidth + 1.5;
+                } else if (i % 5 === 2) {
+                    platType = 'spring';
+                    platColor = 0x00ff44;
                 }
 
                 const stepGeo = new THREE.BoxGeometry(width, 0.8, length);
@@ -299,10 +307,17 @@
 
                 step.position.set(posX, currentY, posZ);
                 step.rotation.y = -angle + Math.PI / 2;
-                step.userData = { type: platType };
+                step.userData = { 
+                    type: platType,
+                    isMoving: isMoving,
+                    basePos: new THREE.Vector3(posX, currentY, posZ),
+                    moveOffset: Math.random() * Math.PI * 2,
+                    moveSpeed: 1.5 + level * 0.5
+                };
 
                 scene.add(step);
                 obstacles.push(step);
+                if (isMoving) movingPlatforms.push(step);
             }
 
             const topAngle = angle + 0.4;
@@ -359,7 +374,7 @@
         function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
             const expMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
-                new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.8 })
+                new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.85 })
             );
             expMesh.position.copy(epicenter);
             scene.add(expMesh);
@@ -370,12 +385,13 @@
 
             if (distToPlayer <= radius + 2.0) {
                 const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
-                
                 pushDir.y = Math.max(pushDir.y + 0.4, 0.7); 
                 pushDir.normalize();
 
                 const falloff = 1 - (distToPlayer / (radius + 2.5));
                 playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
+                jumpsLeft = MAX_JUMPS; // 火箭跳成功重置段跳次數！
+                hudJumps.textContent = jumpsLeft;
             }
 
             for (let i = zombies.length - 1; i >= 0; i--) {
@@ -470,9 +486,13 @@
                     break;
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    // 【關鍵修改】：無限空中跳躍！無論在空中何時按下都能跳起
-                    playerVelocity.y = 12.5; 
-                    if (isSliding) cancelSlide();
+                    // 三段跳邏輯
+                    if (jumpsLeft > 0) {
+                        playerVelocity.y = 13.0;
+                        jumpsLeft--;
+                        hudJumps.textContent = jumpsLeft;
+                        if (isSliding) cancelSlide();
+                    }
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
@@ -544,6 +564,8 @@
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition);
             playerVelocity.set(0, 0, 0);
+            jumpsLeft = MAX_JUMPS;
+            hudJumps.textContent = jumpsLeft;
             health = 100;
             hudHealth.textContent = health;
         }
@@ -552,13 +574,13 @@
             if (!controls.isLocked || isGameOver) return;
 
             const zombieGroup = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.4), new THREE.MeshLambertMaterial({ color: 0x22aa44 }));
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.4), new THREE.MeshLambertMaterial({ color: 0xcc2222 }));
             body.position.y = 0.6;
             zombieGroup.add(body);
 
             zombieGroup.userData = { 
-                speed: 1.8 + currentLevel * 0.4, 
-                health: 3, 
+                speed: 2.5 + currentLevel * 0.6, // 怪物速度大幅提升
+                health: 4, 
                 velocity: new THREE.Vector3()
             };
 
@@ -605,6 +627,25 @@
 
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
+                // 更新移動平台
+                movingPlatforms.forEach(plat => {
+                    const u = plat.userData;
+                    const offset = Math.sin(time * 0.002 * u.moveSpeed + u.moveOffset) * 3.5;
+                    plat.position.x = u.basePos.x + offset;
+                });
+
+                // 風力 Hazard 機制 (高層刮強風)
+                windTimer += delta;
+                if (windTimer > 8.0) {
+                    isWindActive = Math.random() < 0.5;
+                    windTimer = 0;
+                    if (isWindActive) {
+                        windForce.set((Math.random() - 0.5) * 16.0, 0, (Math.random() - 0.5) * 16.0);
+                        windWarning.style.display = 'block';
+                        setTimeout(() => { windWarning.style.display = 'none'; }, 2500);
+                    }
+                }
+
                 const playerObj = controls.getObject();
 
                 // 1. 移動量計算
@@ -627,15 +668,20 @@
                     if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
+                // 強風推力加成
+                if (isWindActive && playerObj.position.y > 15) {
+                    playerVelocity.addScaledVector(windForce, delta * 0.8);
+                }
+
                 // 2. 重力與速度疊加
                 playerVelocity.y -= GRAVITY * delta;
-                playerVelocity.x *= 0.95;
-                playerVelocity.z *= 0.95;
+                playerVelocity.x *= 0.94;
+                playerVelocity.z *= 0.94;
 
                 playerObj.position.add(moveVector);
                 playerObj.position.addScaledVector(playerVelocity, delta);
 
-                // 中央巨柱實體圓柱牆體碰撞
+                // 中央巨柱實體碰撞
                 const playerDistCenter = Math.sqrt(playerObj.position.x * playerObj.position.x + playerObj.position.z * playerObj.position.z);
                 const minPlayerDist = centerTowerSolidRadius + 0.4;
                 if (playerDistCenter < minPlayerDist && playerDistCenter > 0.001) {
@@ -654,25 +700,20 @@
                         if (playerFeetY <= obsBox.max.y && playerFeetY >= obsBox.max.y - 0.8 && playerVelocity.y <= 0) {
                             playerObj.position.y = obsBox.max.y + currentEyeHeight;
                             playerVelocity.y = 0;
+                            
+                            // 踩到地面重置三段跳
+                            jumpsLeft = MAX_JUMPS;
+                            hudJumps.textContent = jumpsLeft;
 
                             if (obs.userData.type === 'spring') {
-                                playerVelocity.y = 24.0;
-                            } else if (obs.userData.type === 'boost') {
-                                const frontDir = new THREE.Vector3();
-                                camera.getWorldDirection(frontDir);
-                                frontDir.y = 0; frontDir.normalize();
-                                playerVelocity.addScaledVector(frontDir, 30.0);
+                                playerVelocity.y = 26.0;
                             } else if (obs.userData.type === 'checkpoint') {
                                 const newRespawn = new THREE.Vector3(
                                     (obsBox.min.x + obsBox.max.x) / 2,
                                     obsBox.max.y + STAND_HEIGHT + 0.5,
                                     (obsBox.min.z + obsBox.max.z) / 2
                                 );
-                                if (respawnPosition.distanceTo(newRespawn) > 2.0) {
-                                    respawnPosition.copy(newRespawn);
-                                    checkpointMsg.style.display = 'block';
-                                    setTimeout(() => { checkpointMsg.style.display = 'none'; }, 1500);
-                                }
+                                respawnPosition.copy(newRespawn);
                             }
                             break;
                         }
@@ -684,13 +725,13 @@
                 }
 
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 2.0) {
-                    score += 200;
+                    score += 300;
                     hudScore.textContent = score;
                     currentLevel++;
                     buildTowerScene(currentLevel);
                 }
 
-                // 子彈與 RPG 撞柱引爆邏輯
+                // 子彈與 RPG 擊中邏輯
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
                     b.mesh.position.addScaledVector(b.dir, b.speed * delta);
@@ -701,7 +742,7 @@
                     if (b.isRPG) {
                         const bulletDistCenter = Math.sqrt(b.mesh.position.x * b.mesh.position.x + b.mesh.position.z * b.mesh.position.z);
                         if (bulletDistCenter <= centerTowerSolidRadius) {
-                            triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
+                            triggerExplosiveShockwave(b.mesh.position, 9.5, 45.0);
                             hit = true;
                         }
                     }
@@ -711,7 +752,7 @@
                             if (b.mesh.position.distanceTo(zombies[j].position) < 1.2) {
                                 hit = true;
                                 if (b.isRPG) {
-                                    triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
+                                    triggerExplosiveShockwave(b.mesh.position, 9.5, 45.0);
                                 } else {
                                     zombies[j].userData.health -= 1;
                                     if (zombies[j].userData.health <= 0) {
@@ -730,7 +771,7 @@
                         for (let obs of obstacles) {
                             const obsBox = new THREE.Box3().setFromObject(obs);
                             if (obsBox.containsPoint(b.mesh.position)) {
-                                triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
+                                triggerExplosiveShockwave(b.mesh.position, 9.5, 45.0);
                                 hit = true;
                                 break;
                             }
@@ -743,7 +784,7 @@
                     }
                 }
 
-                // 手榴彈物理與引爆
+                // 手榴彈與引爆
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i];
                     g.timer -= delta;
@@ -768,13 +809,13 @@
                     }
 
                     if (g.timer <= 0) {
-                        triggerExplosiveShockwave(g.mesh.position, 9.0, 38.0);
+                        triggerExplosiveShockwave(g.mesh.position, 9.0, 40.0);
                         scene.remove(g.mesh);
                         grenades.splice(i, 1);
                     }
                 }
 
-                // 爆炸效果動畫
+                // 爆炸動畫
                 for (let i = explosions.length - 1; i >= 0; i--) {
                     const exp = explosions[i];
                     exp.timer -= delta;
