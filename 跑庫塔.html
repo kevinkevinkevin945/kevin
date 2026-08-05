@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 糖果奶油跑酷塔 - 柱子火箭跳版</title>
+    <title>3D 糖果奶油跑酷塔 - 無限連跳版</title>
     <style>
         body {
             margin: 0;
@@ -112,11 +112,10 @@
     <div id="instructions">
         <h1>糖果奶油高空跑酷塔</h1>
         <p>點擊螢幕開始遊戲！</p>
+        <p>【無限連續跳】已開啟！可在空中無限按 Space 踏空飛行！</p>
         <p>【柱子火箭跳】拿 RPG 朝旁邊的中央巨柱轟擊，利用牆面爆波把你高高彈飛！</p>
         <p>【爆波手榴彈】隨時按下 <b>F 鍵</b> 丟出手榴彈，爆炸時強烈震飛怪物與自己！</p>
-        <p>【繽紛主題】踩著奶油塊與彩虹平台向塔頂攀爬！</p>
-        <p>【難度曲線】初期步道超寬廣，越往高層越窄且陡峭！</p>
-        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | Space 跳躍 | <b>F 丟手榴彈</b> | 滾輪/1-4 換槍</p>
+        <p>【移動操作】W/A/S/D 移動 | Ctrl/C 滑行 | <b>Space 無限連跳</b> | <b>F 丟手榴彈</b> | 滾輪/1-4 換槍</p>
     </div>
 
     <script>
@@ -128,7 +127,6 @@
         let slideTimer = 0;
         let slideSpeedCurrent = 0;
         let slideDirection = new THREE.Vector3();
-        let canJump = false;
         
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 28;
@@ -358,7 +356,6 @@
             camera.add(weaponGroup);
         }
 
-        // 強力火箭跳與衝擊波函數
         function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
             const expMesh = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
@@ -374,7 +371,6 @@
             if (distToPlayer <= radius + 2.0) {
                 const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
                 
-                // 柱子牆面火箭跳加成：強制提高垂直向上推力！
                 pushDir.y = Math.max(pushDir.y + 0.4, 0.7); 
                 pushDir.normalize();
 
@@ -429,7 +425,7 @@
         }
 
         function startSlide() {
-            if (isSliding || !canJump) return;
+            if (isSliding) return;
             isSliding = true;
             slideTimer = 0.7;
             slideSpeedCurrent = 24.0;
@@ -474,11 +470,9 @@
                     break;
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    if (canJump) {
-                        playerVelocity.y = 12.0;
-                        canJump = false;
-                        if (isSliding) cancelSlide();
-                    }
+                    // 【關鍵修改】：無限空中跳躍！無論在空中何時按下都能跳起
+                    playerVelocity.y = 12.5; 
+                    if (isSliding) cancelSlide();
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
@@ -565,8 +559,7 @@
             zombieGroup.userData = { 
                 speed: 1.8 + currentLevel * 0.4, 
                 health: 3, 
-                velocity: new THREE.Vector3(), 
-                canJump: true 
+                velocity: new THREE.Vector3()
             };
 
             const targetObs = obstacles[Math.floor(Math.random() * obstacles.length)];
@@ -634,7 +627,7 @@
                     if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
                 }
 
-                // 2. 重力與物理速度疊加
+                // 2. 重力與速度疊加
                 playerVelocity.y -= GRAVITY * delta;
                 playerVelocity.x *= 0.95;
                 playerVelocity.z *= 0.95;
@@ -661,11 +654,9 @@
                         if (playerFeetY <= obsBox.max.y && playerFeetY >= obsBox.max.y - 0.8 && playerVelocity.y <= 0) {
                             playerObj.position.y = obsBox.max.y + currentEyeHeight;
                             playerVelocity.y = 0;
-                            canJump = true;
 
                             if (obs.userData.type === 'spring') {
                                 playerVelocity.y = 24.0;
-                                canJump = false;
                             } else if (obs.userData.type === 'boost') {
                                 const frontDir = new THREE.Vector3();
                                 camera.getWorldDirection(frontDir);
@@ -707,11 +698,10 @@
 
                     let hit = false;
 
-                    // RPG 擊中中央巨柱表面引爆火箭跳
                     if (b.isRPG) {
                         const bulletDistCenter = Math.sqrt(b.mesh.position.x * b.mesh.position.x + b.mesh.position.z * b.mesh.position.z);
                         if (bulletDistCenter <= centerTowerSolidRadius) {
-                            triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0); // 超大半徑與強推力
+                            triggerExplosiveShockwave(b.mesh.position, 9.5, 42.0);
                             hit = true;
                         }
                     }
