@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 直線極速懸空跑酷 (E鍵生成終點版)</title>
+    <title>3D 直線極速懸空跑酷 (方塊炸毀墜落版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
@@ -11,7 +11,7 @@
         #wind-warning { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); color: #ff3333; font-size: 26px; font-weight: bold; text-shadow: 2px 2px 8px #ff0000; display: none; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #00ffff; text-shadow: 2px 2px 8px #0088ff; }
+        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #ffaa00; text-shadow: 2px 2px 8px #ff3300; }
         #instructions p { font-size: 16px; margin: 4px 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -27,14 +27,14 @@
         剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">∞</span>
     </div>
     <div id="wind-warning">⚠️ 警報：高空強烈熱浪陣風吹襲中！</div>
-    <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈 | 按 E 腳下生成終點</div>
+    <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈 | 按 ! 腳下生成終點</div>
 
     <div id="instructions">
-        <h1>直線極速跑酷 (✨E鍵生成終點版)</h1>
+        <h1>直線極速跑酷 (💥方塊炸毀墜落版)</h1>
         <p>點擊螢幕開始遊戲！</p>
-        <p>【捷徑通關】按下 <b>E</b> 可直接在腳下生成終點，立刻進入下一關！</p>
-        <p>【無限連跳】可在空中連續按下 <b>Space</b> 無限跳躍飛行！</p>
-        <p>【移動操作】W/A/S/D 移動 | Space 無限跳 | Ctrl 滑行 | <b>E 生成終點</b> | <b>F 丟手榴彈</b> | 1-2 換武器</p>
+        <p>【破壞地形】用火箭筒或榴彈砲轟炸方塊，<b>方塊會直接崩塌墜落岩漿</b>！</p>
+        <p>【捷徑通關】按下 <b>!</b> (Shift + 1) 可直接在腳下生成終點！</p>
+        <p>【移動操作】W/A/S/D 移動 | Space 無限跳 | Ctrl 滑行 | <b>! 生成終點</b> | <b>F 丟手榴彈</b> | 1-2 換武器</p>
     </div>
 
     <script>
@@ -70,6 +70,7 @@
         let respawnPosition = new THREE.Vector3(0, 4, 0);
 
         const obstacles = [];
+        const fallingPlatforms = []; // 正在墜落的方塊
         const movingPlatforms = [];
         const laserWalls = [];
         const barrels = [];
@@ -83,7 +84,7 @@
 
         const weaponList = ['rpg', 'grenadeLauncher'];
         const weaponNames = {
-            'rpg': '1. RPG火箭筒 (火箭跳)',
+            'rpg': '1. RPG火箭筒 (炸毀平台)',
             'grenadeLauncher': '2. 0.1s超速榴彈砲 (狂轟超推力)'
         };
 
@@ -156,10 +157,11 @@
 
         function buildLinearTrack(level) {
             obstacles.forEach(obs => scene.remove(obs));
+            fallingPlatforms.forEach(fp => scene.remove(fp.mesh));
             laserWalls.forEach(l => scene.remove(l));
             barrels.forEach(b => scene.remove(b.mesh));
             boulders.forEach(b => scene.remove(b.mesh));
-            obstacles.length = 0; movingPlatforms.length = 0; laserWalls.length = 0; barrels.length = 0; boulders.length = 0;
+            obstacles.length = 0; fallingPlatforms.length = 0; movingPlatforms.length = 0; laserWalls.length = 0; barrels.length = 0; boulders.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
@@ -169,7 +171,7 @@
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
             );
             startPlat.position.set(0, 2, 0);
-            startPlat.userData = { type: 'checkpoint' };
+            startPlat.userData = { type: 'checkpoint', isIndestructible: true };
             scene.add(startPlat);
             obstacles.push(startPlat);
 
@@ -247,7 +249,7 @@
                 new THREE.MeshLambertMaterial({ color: 0xffdd00 })
             );
             topPlat.position.set(0, currentY + 2.0, currentZ);
-            topPlat.userData = { type: 'normal' };
+            topPlat.userData = { type: 'normal', isIndestructible: true };
             scene.add(topPlat);
             obstacles.push(topPlat);
 
@@ -309,6 +311,28 @@
                 playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
             }
 
+            // 炸毀方塊機制：半徑內方塊轉為墜落狀態
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                if (obs.userData.isIndestructible) continue; // 起點終點不被炸毀
+
+                if (obs.position.distanceTo(epicenter) <= radius + 1.5) {
+                    obstacles.splice(i, 1); // 移出碰撞障礙物陣列
+
+                    // 若是移動平台，也從移動清單移除
+                    const mIdx = movingPlatforms.indexOf(obs);
+                    if (mIdx !== -1) movingPlatforms.splice(mIdx, 1);
+
+                    // 加入墜落動畫陣列
+                    fallingPlatforms.push({
+                        mesh: obs,
+                        fallSpeed: 2.0 + Math.random() * 5.0,
+                        rotSpeedX: (Math.random() - 0.5) * 4.0,
+                        rotSpeedZ: (Math.random() - 0.5) * 4.0
+                    });
+                }
+            }
+
             for (let i = barrels.length - 1; i >= 0; i--) {
                 const b = barrels[i];
                 if (b.mesh.position.distanceTo(epicenter) <= radius) {
@@ -347,10 +371,15 @@
 
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
+            
+            if (e.key === '!') {
+                spawnGoalAtPlayerFeet();
+                return;
+            }
+
             switch (e.code) {
                 case 'KeyW': moveForward = true; break; case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break; case 'KeyD': moveRight = true; break;
-                case 'KeyE': spawnGoalAtPlayerFeet(); break; // 按 E 腳下生成終點
                 case 'KeyF': throwGrenade(); break;
                 case 'ControlLeft': case 'ControlRight':
                     if (moveForward || moveBackward || moveLeft || moveRight) startSlide();
@@ -361,7 +390,7 @@
                     playerVelocity.y = 14.5; 
                     if (isSliding) cancelSlide();
                     break;
-                case 'Digit1': selectWeapon(0); break;
+                case 'Digit1': if (!e.shiftKey) selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
             }
         }
@@ -381,7 +410,7 @@
         function selectWeapon(index) {
             currentWeaponIndex = index; const selectedKey = weaponList[index];
             Object.keys(weaponMeshes).forEach(key => weaponMeshes[key].visible = (key === selectedKey));
-            weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey] + " | 按 F 丟手榴彈 | 按 E 腳下生成終點";
+            weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey] + " | 按 F 丟手榴彈 | 按 ! 腳下生成終點";
         }
 
         function tryShoot() {
@@ -441,6 +470,21 @@
                     if (b.mesh.position.x > b.maxX || b.mesh.position.x < b.minX) b.dir *= -1;
                 });
 
+                // 方塊墜落物理動畫
+                for (let i = fallingPlatforms.length - 1; i >= 0; i--) {
+                    const fp = fallingPlatforms[i];
+                    fp.fallSpeed += GRAVITY * delta * 0.8;
+                    fp.mesh.position.y -= fp.fallSpeed * delta;
+                    fp.mesh.rotation.x += fp.rotSpeedX * delta;
+                    fp.mesh.rotation.z += fp.rotSpeedZ * delta;
+
+                    // 掉入岩漿下移除
+                    if (fp.mesh.position.y <= -10.0) {
+                        scene.remove(fp.mesh);
+                        fallingPlatforms.splice(i, 1);
+                    }
+                }
+
                 windTimer += delta;
                 if (windTimer > 8.0) {
                     isWindActive = Math.random() < 0.5; windTimer = 0;
@@ -497,7 +541,6 @@
                     respawnAtCheckpoint();
                 }
 
-                // 觸碰終點水晶判定
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
                     score += 300; 
                     hudScore.textContent = score; 
