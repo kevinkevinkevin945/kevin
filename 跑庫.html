@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 極速跑酷塔 (踩踏定時消失版)</title>
+    <title>3D 地獄級跑酷塔 (無人機+雷射障礙版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
-        #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
+        #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; text-align: right; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #ff9900; text-shadow: 2px 2px 8px #ff5500; }
+        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #ff0055; text-shadow: 2px 2px 8px #ff0000; }
         #instructions p { font-size: 16px; margin: 4px 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -23,16 +23,21 @@
     <div id="hud">
         得分: <span id="score">0</span> | 
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
-        剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">∞</span>
+        剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">3</span> / 3
     </div>
-    <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
+    <div id="weapon-status">
+        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">RPG 子彈: 20 / 20</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
+    </div>
 
     <div id="instructions">
-        <h1>🗼 3D 跑酷塔 (踩踏消失版)</h1>
+        <h1>🗼 3D 地獄跑酷塔 (地獄極致版)</h1>
         <p>點擊螢幕開始爬塔！</p>
-        <p>【⚠️ 踩踏消失】腳踩到方塊後 <b>0.8 秒會消失</b>，<b>5 秒後才會重新出現</b>！</p>
-        <p>【火箭跳】可利用火箭筒炸自己腳邊進行火箭跳跳過難關！</p>
-        <p>【移動操作】W/A/S/D 移動 | Space 無限跳 | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
+        <p>【🚁 巡邏無人機】繞塔飛行的紅色無人機，近身或被照到會將你推飛！<b>可用武器炸毀</b>！</p>
+        <p>【⚠️ 旋轉雷射】旋轉的橫向雷射牆，碰觸會產生強力擊退！</p>
+        <p>【💥 爆炸破壞】<b>火箭筒/榴彈炸到方塊也會使其消失 5 秒</b>！</p>
+        <p>【📦 補給點】每隔 12 層有<b>綠色補給箱</b>補滿彈藥（初始各 20 發）。</p>
+        <p>【移動操作】W/A/S/D 移動 | Space 跳躍 (最多3連跳) | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
     </div>
 
     <script>
@@ -47,6 +52,15 @@
 
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 32;
+
+        const MAX_JUMPS = 3;
+        let jumpsLeft = MAX_JUMPS;
+
+        const MAX_AMMO = 20;
+        const ammo = {
+            'rpg': 20,
+            'grenadeLauncher': 20
+        };
 
         let isMouseDown = false;
         let lastShotTime = 0;
@@ -64,7 +78,9 @@
         let respawnPosition = new THREE.Vector3(0, 4, 12);
 
         const obstacles = [];
-        const laserWalls = [];
+        const ammoCrates = [];
+        const drones = [];         // 巡邏無人機
+        const laserWalls = [];     // 旋轉雷射牆
         const barrels = [];
         const projectiles = [];
         const grenades = [];
@@ -75,8 +91,8 @@
 
         const weaponList = ['rpg', 'grenadeLauncher'];
         const weaponNames = {
-            'rpg': '1. RPG火箭筒 (爆炸推力)',
-            'grenadeLauncher': '2. 0.1s超速榴彈砲 (超強震撼波)'
+            'rpg': '1. RPG火箭筒 (擊毀無人機)',
+            'grenadeLauncher': '2. 0.1s超速榴彈砲 (範圍爆炸)'
         };
 
         let currentWeaponIndex = 0;
@@ -85,7 +101,9 @@
 
         const hudScore = document.getElementById('score');
         const hudLevel = document.getElementById('level-display');
-        const weaponStatus = document.getElementById('weapon-status');
+        const hudJumps = document.getElementById('jumps-left');
+        const ammoDisplay = document.getElementById('ammo-display');
+        const weaponNameDisplay = document.getElementById('weapon-name');
         const instructions = document.getElementById('instructions');
 
         const towerColors = [0xff0055, 0xff7700, 0xffcc00, 0x00ff66, 0x00ccff, 0xaa00ff];
@@ -106,7 +124,6 @@
 
             controls = new THREE.PointerLockControls(camera, document.body);
             
-            // 底層岩漿
             const lavaGeo = new THREE.PlaneGeometry(1000, 1000);
             const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff1100, side: THREE.DoubleSide });
             lavaSea = new THREE.Mesh(lavaGeo, lavaMat);
@@ -145,16 +162,30 @@
             animate();
         }
 
+        function updateHUD() {
+            hudJumps.textContent = jumpsLeft;
+            hudJumps.style.color = jumpsLeft === 0 ? "#ff3333" : "#00ffff";
+
+            const curKey = weaponList[currentWeaponIndex];
+            ammoDisplay.textContent = `子彈: ${ammo[curKey]} / ${MAX_AMMO}`;
+            ammoDisplay.style.color = ammo[curKey] === 0 ? "#ff3333" : "#00ff66";
+            weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey] + " | 按 F 丟手榴彈";
+        }
+
         function buildTower(level) {
             obstacles.forEach(obs => scene.remove(obs));
-            laserWalls.forEach(l => scene.remove(l));
+            ammoCrates.forEach(c => scene.remove(c.mesh));
+            drones.forEach(d => scene.remove(d.mesh));
+            laserWalls.forEach(l => scene.remove(l.mesh));
             barrels.forEach(b => scene.remove(b.mesh));
-            obstacles.length = 0; laserWalls.length = 0; barrels.length = 0;
+            
+            obstacles.length = 0; ammoCrates.length = 0; drones.length = 0; 
+            laserWalls.length = 0; barrels.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
 
-            // 起點平台 (永遠不消失)
+            // 起點平台
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(8, 1.5, 8),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
@@ -179,7 +210,7 @@
                 const posZ = Math.cos(currentAngle) * radius;
 
                 const colorIdx = Math.floor(i / 8) % towerColors.length;
-                const cubeSize = Math.max(2.5, 4.2 - level * 0.15);
+                const cubeSize = Math.max(2.2, 4.0 - level * 0.15);
 
                 const stepGeo = new THREE.BoxGeometry(cubeSize, 1.2, cubeSize);
                 const stepMat = new THREE.MeshLambertMaterial({ 
@@ -192,7 +223,6 @@
                 step.position.set(posX, currentY, posZ);
                 step.rotation.y = -currentAngle;
                 
-                // 狀態紀錄：是否消失、觸發定時器
                 step.userData = { 
                     isPermanent: false,
                     isStepped: false,
@@ -204,17 +234,51 @@
                 scene.add(step);
                 obstacles.push(step);
 
-                if (i > 3 && i % 6 === 0) {
-                    const bGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12);
-                    const bMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
-                    const barrelMesh = new THREE.Mesh(bGeo, bMat);
-                    barrelMesh.position.set(posX, currentY + 1.2, posZ);
-                    scene.add(barrelMesh);
-                    barrels.push({ mesh: barrelMesh });
+                // 補給箱 (每 12 層)
+                if (i > 0 && i % 12 === 0) {
+                    const crateGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+                    const crateMat = new THREE.MeshLambertMaterial({ color: 0x00ff66 });
+                    const crateMesh = new THREE.Mesh(crateGeo, crateMat);
+                    crateMesh.position.set(posX, currentY + 1.2, posZ);
+                    scene.add(crateMesh);
+                    ammoCrates.push({ mesh: crateMesh, active: true });
+                }
+
+                // 旋轉雷射牆 (每 10 層)
+                if (i > 5 && i % 10 === 0) {
+                    const laserGeo = new THREE.BoxGeometry(6.0, 0.2, 0.2);
+                    const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                    const laserMesh = new THREE.Mesh(laserGeo, laserMat);
+                    laserMesh.position.set(posX, currentY + 1.6, posZ);
+                    scene.add(laserMesh);
+                    laserWalls.push({ mesh: laserMesh, speed: 1.5 + level * 0.2 });
+                }
+
+                // 巡邏無人機 (每 15 層出現一隻)
+                if (i > 8 && i % 15 === 0) {
+                    const droneGroup = new THREE.Group();
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                    const eye = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 8), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+                    eye.rotation.x = Math.PI / 2;
+                    eye.position.z = -0.6;
+                    droneGroup.add(body);
+                    droneGroup.add(eye);
+
+                    const droneHeight = currentY + 2.0;
+                    droneGroup.position.set(posX * 1.3, droneHeight, posZ * 1.3);
+                    scene.add(droneGroup);
+
+                    drones.push({ 
+                        mesh: droneGroup, 
+                        baseAngle: currentAngle, 
+                        height: droneHeight,
+                        speed: 0.8 + level * 0.1,
+                        active: true 
+                    });
                 }
             }
 
-            // 塔頂終點平台 (永遠不消失)
+            // 終點平台
             currentY += 4.0;
             const topPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 2, 10),
@@ -229,13 +293,24 @@
 
             controls.getObject().position.copy(respawnPosition);
             camera.rotation.set(0, 0, 0);
+            jumpsLeft = MAX_JUMPS;
+            
+            ammo['rpg'] = MAX_AMMO;
+            ammo['grenadeLauncher'] = MAX_AMMO;
+            updateHUD();
         }
 
         function triggerPlatformDisappear(obs) {
             if (obs.userData.isPermanent || obs.userData.isStepped) return;
-            
             obs.userData.isStepped = true;
-            obs.userData.stepTimer = 0.8; // 0.8秒後消失
+            obs.userData.stepTimer = 0.8;
+        }
+
+        function destroyPlatformByExplosion(obs) {
+            if (obs.userData.isPermanent || obs.userData.isDisappeared) return;
+            obs.userData.isDisappeared = true;
+            obs.visible = false;
+            obs.userData.reappearTimer = 5.0;
         }
 
         function spawnGoalCrystal(position) {
@@ -274,6 +349,23 @@
             scene.add(expMesh);
             explosions.push({ mesh: expMesh, timer: 0.35 });
 
+            // 炸毀周圍方塊
+            for (let obs of obstacles) {
+                if (obs.userData.isPermanent) continue;
+                if (obs.position.distanceTo(epicenter) <= radius + 1.5) {
+                    destroyPlatformByExplosion(obs);
+                }
+            }
+
+            // 炸毀範圍內的無人機
+            for (let i = drones.length - 1; i >= 0; i--) {
+                const d = drones[i];
+                if (d.active && d.mesh.position.distanceTo(epicenter) <= radius + 2.0) {
+                    d.active = false;
+                    scene.remove(d.mesh);
+                }
+            }
+
             const playerPos = controls.getObject().position;
             const distToPlayer = playerPos.distanceTo(epicenter);
 
@@ -283,15 +375,6 @@
                 pushDir.normalize();
                 const falloff = 1 - (distToPlayer / (radius + 3.0));
                 playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
-            }
-
-            for (let i = barrels.length - 1; i >= 0; i--) {
-                const b = barrels[i];
-                if (b.mesh.position.distanceTo(epicenter) <= radius) {
-                    scene.remove(b.mesh);
-                    barrels.splice(i, 1);
-                    triggerExplosiveShockwave(b.mesh.position, 12.0, 60.0);
-                }
             }
         }
 
@@ -334,8 +417,12 @@
                     break;
                 case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    playerVelocity.y = 14.5; 
-                    if (isSliding) cancelSlide();
+                    if (jumpsLeft > 0) {
+                        playerVelocity.y = 14.5; 
+                        jumpsLeft--;
+                        updateHUD();
+                        if (isSliding) cancelSlide();
+                    }
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
@@ -357,16 +444,21 @@
         function selectWeapon(index) {
             currentWeaponIndex = index; const selectedKey = weaponList[index];
             Object.keys(weaponMeshes).forEach(key => weaponMeshes[key].visible = (key === selectedKey));
-            weaponStatus.textContent = "當前武器: " + weaponNames[selectedKey] + " | 按 F 丟手榴彈";
+            updateHUD();
         }
 
         function tryShoot() {
-            const now = performance.now();
             const curWeapon = weaponList[currentWeaponIndex];
-            const cooldown = curWeapon === 'grenadeLauncher' ? 100 : 900;
+            if (ammo[curWeapon] <= 0) return;
+
+            const now = performance.now();
+            const cooldown = curWeapon === 'grenadeLauncher' ? 120 : 900;
 
             if (now - lastShotTime < cooldown) return;
             lastShotTime = now;
+
+            ammo[curWeapon]--;
+            updateHUD();
 
             const dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
@@ -389,6 +481,8 @@
 
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition); playerVelocity.set(0, 0, 0);
+            jumpsLeft = MAX_JUMPS;
+            updateHUD();
         }
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
@@ -406,35 +500,74 @@
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
-                // 更新方塊消失/恢復邏輯
+                const playerObj = controls.getObject();
+
+                // 1. 無人機巡邏更新與擊退判定
+                for (let d of drones) {
+                    if (!d.active) continue;
+                    d.baseAngle += d.speed * delta;
+                    const radius = 16.0;
+                    d.mesh.position.x = Math.sin(d.baseAngle) * radius;
+                    d.mesh.position.z = Math.cos(d.baseAngle) * radius;
+
+                    // 無人機過近撞擊玩家
+                    if (playerObj.position.distanceTo(d.mesh.position) < 2.2) {
+                        const push = new THREE.Vector3().subVectors(playerObj.position, d.mesh.position).normalize();
+                        playerVelocity.addScaledVector(push, 30.0);
+                    }
+                }
+
+                // 2. 旋轉雷射牆更新
+                for (let l of laserWalls) {
+                    l.mesh.rotation.y += l.speed * delta;
+                    if (playerObj.position.distanceTo(l.mesh.position) < 3.2) {
+                        const push = new THREE.Vector3().subVectors(playerObj.position, l.mesh.position).normalize();
+                        push.y = 0.5;
+                        playerVelocity.addScaledVector(push, 25.0);
+                    }
+                }
+
+                // 補給箱碰撞
+                for (let i = ammoCrates.length - 1; i >= 0; i--) {
+                    const c = ammoCrates[i];
+                    if (c.active) {
+                        c.mesh.rotation.y += 1.5 * delta;
+                        if (playerObj.position.distanceTo(c.mesh.position) < 2.0) {
+                            ammo['rpg'] = MAX_AMMO;
+                            ammo['grenadeLauncher'] = MAX_AMMO;
+                            updateHUD();
+                            c.active = false;
+                            scene.remove(c.mesh);
+                        }
+                    }
+                }
+
+                // 平台消失/恢復計時
                 for (let obs of obstacles) {
                     if (obs.userData.isPermanent) continue;
 
-                    // 1. 被踩到後的倒數計時（半透明閃爍提示）
                     if (obs.userData.isStepped && !obs.userData.isDisappeared) {
                         obs.userData.stepTimer -= delta;
                         obs.material.opacity = Math.max(0.2, obs.userData.stepTimer / 0.8);
 
                         if (obs.userData.stepTimer <= 0) {
                             obs.userData.isDisappeared = true;
-                            obs.visible = false; // 隱藏
-                            obs.userData.reappearTimer = 5.0; // 5秒後重新出現
+                            obs.visible = false;
+                            obs.userData.reappearTimer = 5.0;
                         }
                     }
 
-                    // 2. 消失後的重生倒數計時
                     if (obs.userData.isDisappeared) {
                         obs.userData.reappearTimer -= delta;
                         if (obs.userData.reappearTimer <= 0) {
                             obs.userData.isDisappeared = false;
                             obs.userData.isStepped = false;
-                            obs.visible = true; // 重新顯示
+                            obs.visible = true;
                             obs.material.opacity = 1.0;
                         }
                     }
                 }
 
-                const playerObj = controls.getObject();
                 let moveVector = new THREE.Vector3();
 
                 if (isSliding) {
@@ -454,7 +587,6 @@
 
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
                 for (let obs of obstacles) {
-                    // 若方塊已經消失，直接忽略碰撞
                     if (obs.userData.isDisappeared) continue;
 
                     const obsBox = new THREE.Box3().setFromObject(obs);
@@ -463,7 +595,11 @@
                         if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
                             playerObj.position.y = platTop + currentEyeHeight; playerVelocity.y = 0;
                             
-                            // 踩中平台，觸發消失計時
+                            if (jumpsLeft < MAX_JUMPS) {
+                                jumpsLeft = MAX_JUMPS;
+                                updateHUD();
+                            }
+
                             triggerPlatformDisappear(obs);
                             break;
                         }
