@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：元素狂暴創意版</title>
+    <title>3D 跑酷塔：凌空石傳送版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
         #checkpoint-notify { position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(45deg, #00ffcc, #00ff66); color: #000; padding: 14px 28px; border-radius: 30px; font-size: 24px; font-weight: 900; display: none; z-index: 15; pointer-events: none; box-shadow: 0 0 20px #00ffcc; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ff00cc, #3300ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #00ffcc, #0099ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
         #instructions p { font-size: 16px; margin: 5px 0; color: #ddd; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -24,35 +24,30 @@
     <div id="hud">
         得分: <span id="score">0</span> | 
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
-        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3
+        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 |
+        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span>
     </div>
 
-    <div id="checkpoint-notify">⚡ 踩到紀錄點！元素能量全滿！</div>
+    <div id="checkpoint-notify">⚡ 踩到紀錄點！凌空石與能量全滿！</div>
 
     <div id="weapon-status">
         <div id="ammo-display" style="color: #00ff66; font-size: 26px;">脈衝步槍: 200 / 200</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 3. 脈衝電磁槍 (擴大階梯)</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 E 鍵使用【凌空石】瞬移</div>
     </div>
 
     <div id="instructions">
-        <h1>🌀 跑酷塔：元素狂暴版</h1>
-        <p>點擊螢幕開始體驗創意極限！</p>
-        <p>【🌌 1. 黑洞火箭 (10發)】將周圍無人機吸入摧毀，並產生強烈黑洞彈射力！</p>
-        <p>【❄️ 2. 冰凍榴彈 (15發)】凍結周圍階梯<b>8秒不消失</b>，並凍結無人機！</p>
-        <p>【⚡ 3. 脈衝步槍 (200發)】射擊階梯可將其<b>擴大 1.5 倍面積</b>！</p>
-        <p>【🍥 彈簧墊】踩到粉紅色方塊可高高彈起！【🚩 記錄點】踩到彈藥全滿且永久不毀！</p>
-        <p>【操作】W/A/S/D 移動 | Space 跳躍 | Ctrl 滑行 | 1-3 換武器 | F 丟手榴彈</p>
+        <h1>🔮 跑酷塔：凌空石瞬移版</h1>
+        <p>點擊螢幕開始體驗靈動瞬移！</p>
+        <p>【💎 凌空石機制 (按 E)】</p>
+        <p>1. 按 <b>[E]</b> 鍵向前拋出「凌空石」，石塊會在半空中展開綠色反重力平台。</p>
+        <p>2. 石塊懸浮時，<b>再按一次 [E] 鍵</b>，瞬間傳送到石塊位置，並<b>重置跳躍次數</b>！</p>
+        <p>【🚩 記錄點】踩到金黃色紀錄點，所有子彈與凌空石<b>瞬間補滿</b>！</p>
+        <p>【操作】W/A/S/D 移動 | Space 跳躍 | <b>E 發射/瞬移凌空石</b> | 1-3 換武器</p>
     </div>
 
     <script>
         let camera, scene, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        
-        let isCrouching = false;
-        let isSliding = false;
-        let slideTimer = 0;
-        let slideSpeedCurrent = 0;
-        let slideDirection = new THREE.Vector3();
 
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 32;
@@ -65,12 +60,9 @@
 
         let isMouseDown = false;
         let lastShotTime = 0;
-        let lastGrenadeTime = 0;
         let prevTime = performance.now();
 
         const STAND_HEIGHT = 1.6;
-        const CROUCH_HEIGHT = 0.7;
-        let currentEyeHeight = STAND_HEIGHT;
 
         let currentLevel = 1;
         let rewardCrystal = null;
@@ -80,10 +72,14 @@
         const obstacles = [];
         const checkpoints = [];
         const drones = [];
-        const laserWalls = [];
         const projectiles = [];
-        const grenades = [];
-        const explosions = [];
+
+        // --- 凌空石 (Sky-Soaring Stone) 系統 ---
+        let skyStoneMesh = null;
+        let skyStonePlatform = null;
+        let skyStoneState = 'READY'; // READY, FLYING, ANCHORED, COOLDOWN
+        let skyStoneVelocity = new THREE.Vector3();
+        let skyStoneCooldownTimer = 0;
 
         let activeCheckpointIndex = -1;
         let notifyTimer = 0;
@@ -92,9 +88,9 @@
 
         const weaponList = ['blackhole', 'freeze', 'pulse'];
         const weaponNames = {
-            'blackhole': '1. 黑洞火箭 (聚怪吸力)',
-            'freeze': '2. 冰凍榴彈砲 (固化階梯)',
-            'pulse': '3. 脈衝電磁槍 (擴大階梯)'
+            'blackhole': '1. 黑洞火箭',
+            'freeze': '2. 冰凍榴彈砲',
+            'pulse': '3. 脈衝電磁槍'
         };
 
         let currentWeaponIndex = 2;
@@ -104,6 +100,7 @@
         const hudScore = document.getElementById('score');
         const hudLevel = document.getElementById('level-display');
         const hudJumps = document.getElementById('jumps-left');
+        const stoneStatus = document.getElementById('stone-status');
         const ammoDisplay = document.getElementById('ammo-display');
         const weaponNameDisplay = document.getElementById('weapon-name');
         const checkpointNotify = document.getElementById('checkpoint-notify');
@@ -121,7 +118,7 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0x00ffff, 0.6);
+            const dirLight = new THREE.DirectionalLight(0x00ffcc, 0.7);
             dirLight.position.set(0, 100, 0);
             scene.add(dirLight);
 
@@ -134,6 +131,7 @@
             lavaSea.position.set(0, -5, 0);
             scene.add(lavaSea);
 
+            createSkyStoneObjects();
             buildTower(currentLevel);
 
             instructions.addEventListener('click', () => {
@@ -161,10 +159,33 @@
             animate();
         }
 
+        // 創建凌空石視覺模型
+        function createSkyStoneObjects() {
+            // 凌空石本體 (八面體閃耀晶石)
+            const stoneGeo = new THREE.OctahedronGeometry(0.4, 0);
+            const stoneMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+            skyStoneMesh = new THREE.Mesh(stoneGeo, stoneMat);
+            skyStoneMesh.visible = false;
+            scene.add(skyStoneMesh);
+
+            // 凌空石產生的反重力浮空平台
+            const platGeo = new THREE.CylinderGeometry(2.0, 2.0, 0.4, 16);
+            const platMat = new THREE.MeshLambertMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7 });
+            skyStonePlatform = new THREE.Mesh(platGeo, platMat);
+            skyStonePlatform.visible = false;
+            skyStonePlatform.userData = { isPermanent: true, isCheckpoint: false };
+            scene.add(skyStonePlatform);
+        }
+
         function refillAllAmmo() {
             ammo['blackhole'] = MAX_AMMO['blackhole'];
             ammo['freeze'] = MAX_AMMO['freeze'];
             ammo['pulse'] = MAX_AMMO['pulse'];
+            
+            // 重置凌空石狀態
+            skyStoneState = 'READY';
+            skyStoneMesh.visible = false;
+            skyStonePlatform.visible = false;
             updateHUD();
         }
 
@@ -172,21 +193,57 @@
             hudJumps.textContent = jumpsLeft;
             hudJumps.style.color = jumpsLeft === 0 ? "#ff3333" : "#00ffff";
 
+            if (skyStoneState === 'READY') stoneStatus.textContent = "就緒 (按 E)";
+            else if (skyStoneState === 'FLYING') stoneStatus.textContent = "飛行中...";
+            else if (skyStoneState === 'ANCHORED') stoneStatus.textContent = "錨定中 (再按 E 瞬移)";
+            else if (skyStoneState === 'COOLDOWN') stoneStatus.textContent = `冷卻中 (${skyStoneCooldownTimer.toFixed(1)}s)`;
+
             const curKey = weaponList[currentWeaponIndex];
             ammoDisplay.textContent = `子彈: ${ammo[curKey]} / ${MAX_AMMO[curKey]}`;
-            ammoDisplay.style.color = ammo[curKey] === 0 ? "#ff3333" : "#00ff66";
-            weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey];
+            weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey] + " | 按 E 鍵發射凌空石";
+        }
+
+        // 觸發凌空石傳送與錨定
+        function handleSkyStoneAbility() {
+            if (skyStoneState === 'READY') {
+                // 發射凌空石
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                skyStoneMesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.0));
+                skyStoneVelocity.copy(dir).multiplyScalar(35.0);
+                
+                skyStoneMesh.visible = true;
+                skyStonePlatform.visible = false;
+                skyStoneState = 'FLYING';
+                updateHUD();
+
+            } else if (skyStoneState === 'FLYING' || skyStoneState === 'ANCHORED') {
+                // 瞬間傳送到凌空石位置！
+                const targetPos = skyStoneMesh.position.clone();
+                targetPos.y += 1.2; // 傳送到石塊上方
+
+                controls.getObject().position.copy(targetPos);
+                playerVelocity.set(0, 0, 0); // 瞬間消除落速
+                jumpsLeft = MAX_JUMPS; // 補滿跳躍次數！
+
+                // 進入冷卻
+                skyStoneMesh.visible = false;
+                skyStonePlatform.visible = false;
+                skyStoneState = 'COOLDOWN';
+                skyStoneCooldownTimer = 3.0; // 3 秒冷卻
+                updateHUD();
+            }
         }
 
         function buildTower(level) {
             obstacles.forEach(obs => scene.remove(obs));
-            checkpoints.length = 0; drones.forEach(d => scene.remove(d.mesh)); laserWalls.forEach(l => scene.remove(l.mesh));
-            obstacles.length = 0; drones.length = 0; laserWalls.length = 0;
+            checkpoints.length = 0; drones.forEach(d => scene.remove(d.mesh));
+            obstacles.length = 0; drones.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
 
-            // 起點記錄點
+            // 起點平台
             const startPlat = new THREE.Mesh(new THREE.BoxGeometry(8, 1.5, 8), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
             startPlat.position.set(0, 2, 12);
             startPlat.userData = { isPermanent: true, isCheckpoint: true, id: 0 };
@@ -201,51 +258,21 @@
             for (let i = 0; i < totalSteps; i++) {
                 currentAngle += 0.35; currentY += 1.8;
                 const posX = Math.sin(currentAngle) * radius; const posZ = Math.cos(currentAngle) * radius;
-
                 const isCP = (i > 0 && i % 12 === 0);
-                const isBounce = (!isCP && i % 7 === 0); // 彈簧墊
 
                 const cubeSize = isCP ? 5.0 : Math.max(2.2, 4.0 - level * 0.15);
                 const stepGeo = new THREE.BoxGeometry(cubeSize, 1.2, cubeSize);
-                
-                let stepColor = towerColors[Math.floor(i / 8) % towerColors.length];
-                if (isCP) stepColor = 0xffd700;
-                if (isBounce) stepColor = 0xff00bb; // 粉紅彈簧墊
-
-                const stepMat = new THREE.MeshLambertMaterial({ color: stepColor, transparent: !isCP, opacity: 1.0 });
+                const stepMat = new THREE.MeshLambertMaterial({ color: isCP ? 0xffd700 : towerColors[i % towerColors.length] });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
-                step.rotation.y = -currentAngle;
-                
-                step.userData = { 
-                    isPermanent: isCP,
-                    isCheckpoint: isCP,
-                    isBounce: isBounce,
-                    id: isCP ? checkpoints.length : -1,
-                    isStepped: false,
-                    isDisappeared: false,
-                    isFrozen: false,
-                    freezeTimer: 0,
-                    stepTimer: 0,
-                    reappearTimer: 0,
-                    originalScale: new THREE.Vector3(1, 1, 1)
-                };
+                step.userData = { isPermanent: isCP, isCheckpoint: isCP, id: isCP ? checkpoints.length : -1 };
 
                 scene.add(step); obstacles.push(step);
                 if (isCP) checkpoints.push(step);
-
-                if (!isCP && i > 8 && i % 15 === 0) {
-                    const droneGroup = new THREE.Group();
-                    droneGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0055 })));
-                    const droneHeight = currentY + 2.0;
-                    droneGroup.position.set(posX * 1.3, droneHeight, posZ * 1.3);
-                    scene.add(droneGroup);
-                    drones.push({ mesh: droneGroup, baseAngle: currentAngle, height: droneHeight, speed: 0.8 + level * 0.1, active: true, isFrozen: false, freezeTimer: 0 });
-                }
             }
 
-            // 終點
+            // 終點平台
             currentY += 4.0;
             const topPlat = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 10), new THREE.MeshLambertMaterial({ color: 0xffff00 }));
             topPlat.position.set(0, currentY, 0);
@@ -257,12 +284,6 @@
             jumpsLeft = MAX_JUMPS; refillAllAmmo();
         }
 
-        function triggerPlatformDisappear(obs) {
-            if (obs.userData.isPermanent || obs.userData.isStepped || obs.userData.isFrozen) return;
-            obs.userData.isStepped = true;
-            obs.userData.stepTimer = 0.8;
-        }
-
         function spawnGoalCrystal(position) {
             if (rewardCrystal) scene.remove(rewardCrystal);
             rewardCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(2.0, 0), new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }));
@@ -271,44 +292,9 @@
 
         function createWeapons() {
             weaponGroup = new THREE.Group();
-            
-            const bh = new THREE.Group(); bh.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x9900ff }))); bh.position.set(0.3, -0.25, -0.5); weaponMeshes['blackhole'] = bh;
-            const fr = new THREE.Group(); fr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ffff }))); fr.position.set(0.3, -0.25, -0.5); weaponMeshes['freeze'] = fr;
             const pl = new THREE.Group(); pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ff66 }))); pl.position.set(0.3, -0.22, -0.45); weaponMeshes['pulse'] = pl;
-
-            Object.keys(weaponMeshes).forEach(key => { weaponMeshes[key].visible = (key === weaponList[currentWeaponIndex]); weaponGroup.add(weaponMeshes[key]); });
+            weaponGroup.add(pl);
             camera.add(weaponGroup);
-        }
-
-        function triggerElementalEffect(epicenter, type) {
-            if (type === 'blackhole') {
-                // 吸力與打擊
-                for (let d of drones) {
-                    if (d.active && d.mesh.position.distanceTo(epicenter) < 12.0) {
-                        d.mesh.position.lerp(epicenter, 0.8);
-                        if (d.mesh.position.distanceTo(epicenter) < 2.5) { d.active = false; scene.remove(d.mesh); }
-                    }
-                }
-                const playerPos = controls.getObject().position;
-                if (playerPos.distanceTo(epicenter) < 10.0) {
-                    const pull = new THREE.Vector3().subVectors(epicenter, playerPos).normalize();
-                    playerVelocity.addScaledVector(pull, 35.0);
-                }
-            } else if (type === 'freeze') {
-                // 凍結方塊與無人機
-                for (let obs of obstacles) {
-                    if (!obs.userData.isPermanent && obs.position.distanceTo(epicenter) < 8.0) {
-                        obs.userData.isFrozen = true;
-                        obs.userData.freezeTimer = 8.0;
-                        obs.material.color.setHex(0x00ffff);
-                    }
-                }
-                for (let d of drones) {
-                    if (d.active && d.mesh.position.distanceTo(epicenter) < 8.0) {
-                        d.isFrozen = true; d.freezeTimer = 8.0;
-                    }
-                }
-            }
         }
 
         function onKeyDown(e) {
@@ -316,11 +302,9 @@
             switch (e.code) {
                 case 'KeyW': moveForward = true; break; case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break; case 'KeyD': moveRight = true; break;
+                case 'KeyE': handleSkyStoneAbility(); break; // 觸發凌空石
                 case 'Space': 
                     if (jumpsLeft > 0) { playerVelocity.y = 14.5; jumpsLeft--; updateHUD(); } break;
-                case 'Digit1': selectWeapon(0); break;
-                case 'Digit2': selectWeapon(1); break;
-                case 'Digit3': selectWeapon(2); break;
             }
         }
 
@@ -331,33 +315,20 @@
             }
         }
 
-        function onMouseDown(e) { if (controls.isLocked && !isGameOver && e.button === 0) { isMouseDown = true; tryShoot(); } }
-        function onMouseUp(e) { if (e.button === 0) isMouseDown = false; }
-        function onMouseWheel(e) { if (!controls.isLocked) return; currentWeaponIndex = (e.deltaY > 0) ? (currentWeaponIndex + 1) % weaponList.length : (currentWeaponIndex - 1 + weaponList.length) % weaponList.length; selectWeapon(currentWeaponIndex); }
-
-        function selectWeapon(index) {
-            currentWeaponIndex = index; const selectedKey = weaponList[index];
-            Object.keys(weaponMeshes).forEach(key => weaponMeshes[key].visible = (key === selectedKey));
-            updateHUD();
-        }
+        function onMouseDown(e) { if (controls.isLocked && !isGameOver && e.button === 0) tryShoot(); }
+        function onMouseUp(e) {}
+        function onMouseWheel(e) {}
 
         function tryShoot() {
             const curWeapon = weaponList[currentWeaponIndex];
             if (ammo[curWeapon] <= 0) return;
-
-            const now = performance.now();
-            let cooldown = (curWeapon === 'pulse') ? 90 : 600;
-            if (now - lastShotTime < cooldown) return;
-            lastShotTime = now;
-
             ammo[curWeapon]--; updateHUD();
+            
             const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
-
-            const pColor = curWeapon === 'blackhole' ? 0x9900ff : (curWeapon === 'freeze' ? 0x00ffff : 0x00ff66);
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: pColor }));
+            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), new THREE.MeshBasicMaterial({ color: 0x00ff66 }));
             bullet.position.copy(spawnPos);
-            projectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(65.0), type: curWeapon, life: 2.5 });
+            projectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(70.0), life: 2.0 });
             scene.add(bullet);
         }
 
@@ -378,43 +349,34 @@
             const time = performance.now(); const delta = (time - prevTime) / 1000;
             
             if (controls.isLocked && !isGameOver) {
-                if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
-                if (notifyTimer > 0) { notifyTimer -= delta; if (notifyTimer <= 0) checkpointNotify.style.display = 'none'; }
+                // --- 凌空石動態邏輯 ---
+                if (skyStoneState === 'FLYING') {
+                    skyStoneMesh.position.addScaledVector(skyStoneVelocity, delta);
+                    skyStoneMesh.rotation.x += 5.0 * delta;
+                    skyStoneMesh.rotation.y += 5.0 * delta;
+
+                    // 飛行一段距離後停住，展開反重力平台
+                    if (camera.position.distanceTo(skyStoneMesh.position) > 18.0) {
+                        skyStoneState = 'ANCHORED';
+                        skyStonePlatform.position.copy(skyStoneMesh.position);
+                        skyStonePlatform.position.y -= 0.3;
+                        skyStonePlatform.visible = true;
+                        updateHUD();
+                    }
+                } else if (skyStoneState === 'ANCHORED') {
+                    skyStoneMesh.rotation.y += 3.0 * delta;
+                } else if (skyStoneState === 'COOLDOWN') {
+                    skyStoneCooldownTimer -= delta;
+                    updateHUD();
+                    if (skyStoneCooldownTimer <= 0) {
+                        skyStoneState = 'READY';
+                        updateHUD();
+                    }
+                }
 
                 const playerObj = controls.getObject();
-
-                // 無人機動態
-                for (let d of drones) {
-                    if (!d.active) continue;
-                    if (d.isFrozen) {
-                        d.freezeTimer -= delta;
-                        if (d.freezeTimer <= 0) d.isFrozen = false;
-                    } else {
-                        d.baseAngle += d.speed * delta;
-                        d.mesh.position.x = Math.sin(d.baseAngle) * 16.0;
-                        d.mesh.position.z = Math.cos(d.baseAngle) * 16.0;
-                    }
-                }
-
-                // 板塊凍結與復原
-                for (let obs of obstacles) {
-                    if (obs.userData.isFrozen) {
-                        obs.userData.freezeTimer -= delta;
-                        if (obs.userData.freezeTimer <= 0) {
-                            obs.userData.isFrozen = false;
-                            obs.material.color.setHex(0xff0055);
-                        }
-                    } else if (obs.userData.isStepped && !obs.userData.isDisappeared && !obs.userData.isPermanent) {
-                        obs.userData.stepTimer -= delta;
-                        obs.material.opacity = Math.max(0.2, obs.userData.stepTimer / 0.8);
-                        if (obs.userData.stepTimer <= 0) { obs.userData.isDisappeared = true; obs.visible = false; obs.userData.reappearTimer = 5.0; }
-                    } else if (obs.userData.isDisappeared) {
-                        obs.userData.reappearTimer -= delta;
-                        if (obs.userData.reappearTimer <= 0) { obs.userData.isDisappeared = false; obs.userData.isStepped = false; obs.visible = true; obs.material.opacity = 1.0; }
-                    }
-                }
 
                 let moveVector = new THREE.Vector3();
                 let moveSpeed = 26.0 * delta;
@@ -426,21 +388,18 @@
                 playerVelocity.y -= GRAVITY * delta; playerVelocity.x *= 0.94; playerVelocity.z *= 0.94;
                 playerObj.position.add(moveVector); playerObj.position.addScaledVector(playerVelocity, delta);
 
-                const playerFeetY = playerObj.position.y - currentEyeHeight;
-                for (let obs of obstacles) {
-                    if (obs.userData.isDisappeared) continue;
+                // 碰撞檢測 (包含凌空石平台)
+                const playerFeetY = playerObj.position.y - STAND_HEIGHT;
+                const allPlatforms = [...obstacles];
+                if (skyStonePlatform.visible) allPlatforms.push(skyStonePlatform);
+
+                for (let obs of allPlatforms) {
                     const obsBox = new THREE.Box3().setFromObject(obs);
                     if (playerObj.position.x >= obsBox.min.x - 0.4 && playerObj.position.x <= obsBox.max.x + 0.4 && playerObj.position.z >= obsBox.min.z - 0.4 && playerObj.position.z <= obsBox.max.z + 0.4) {
                         const platTop = obsBox.max.y;
                         if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
-                            playerObj.position.y = platTop + currentEyeHeight; playerVelocity.y = 0;
-                            
-                            // 粉紅彈簧墊高彈
-                            if (obs.userData.isBounce) {
-                                playerVelocity.y = 26.0;
-                            } else {
-                                jumpsLeft = MAX_JUMPS; updateHUD();
-                            }
+                            playerObj.position.y = platTop + STAND_HEIGHT; playerVelocity.y = 0;
+                            jumpsLeft = MAX_JUMPS; updateHUD();
 
                             if (obs.userData.isCheckpoint) {
                                 if (activeCheckpointIndex !== obs.userData.id) {
@@ -449,8 +408,6 @@
                                     refillAllAmmo();
                                     checkpointNotify.style.display = 'block'; notifyTimer = 2.0;
                                 }
-                            } else {
-                                triggerPlatformDisappear(obs);
                             }
                             break;
                         }
@@ -463,26 +420,10 @@
                     score += 500; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
                 }
 
-                // 子彈碰撞
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
                     p.mesh.position.addScaledVector(p.velocity, delta); p.life -= delta;
-                    let hit = false;
-
-                    for (let obs of obstacles) {
-                        if (!obs.userData.isDisappeared && new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
-                            hit = true;
-                            if (p.type === 'pulse') {
-                                // 脈衝電磁槍：擴大階梯
-                                obs.scale.set(1.5, 1.0, 1.5);
-                            } else {
-                                triggerElementalEffect(p.mesh.position, p.type);
-                            }
-                            break;
-                        }
-                    }
-
-                    if (hit || p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
+                    if (p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
                 }
             }
             prevTime = time; renderer.render(scene, camera);
