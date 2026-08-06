@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 極速跑酷塔 (堅固平台版)</title>
+    <title>3D 極速跑酷塔 (踩踏定時消失版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #00ffcc; text-shadow: 2px 2px 8px #00aaff; }
+        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #ff9900; text-shadow: 2px 2px 8px #ff5500; }
         #instructions p { font-size: 16px; margin: 4px 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -28,10 +28,10 @@
     <div id="weapon-status">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
 
     <div id="instructions">
-        <h1>🗼 3D 極速跑酷塔 (堅固平台版)</h1>
+        <h1>🗼 3D 跑酷塔 (踩踏消失版)</h1>
         <p>點擊螢幕開始爬塔！</p>
-        <p>【堅固地形】平台不會被炸毀或墜落！安心跳躍！</p>
-        <p>【火箭跳】利用爆炸衝擊力將自己推向更高處！</p>
+        <p>【⚠️ 踩踏消失】腳踩到方塊後 <b>0.8 秒會消失</b>，<b>5 秒後才會重新出現</b>！</p>
+        <p>【火箭跳】可利用火箭筒炸自己腳邊進行火箭跳跳過難關！</p>
         <p>【移動操作】W/A/S/D 移動 | Space 無限跳 | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
     </div>
 
@@ -154,12 +154,13 @@
 
             hudLevel.textContent = level;
 
-            // 起點平台
+            // 起點平台 (永遠不消失)
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(8, 1.5, 8),
                 new THREE.MeshLambertMaterial({ color: 0x00ffff })
             );
             startPlat.position.set(0, 2, 12);
+            startPlat.userData = { isPermanent: true };
             scene.add(startPlat);
             obstacles.push(startPlat);
 
@@ -181,11 +182,24 @@
                 const cubeSize = Math.max(2.5, 4.2 - level * 0.15);
 
                 const stepGeo = new THREE.BoxGeometry(cubeSize, 1.2, cubeSize);
-                const stepMat = new THREE.MeshLambertMaterial({ color: towerColors[colorIdx] });
+                const stepMat = new THREE.MeshLambertMaterial({ 
+                    color: towerColors[colorIdx],
+                    transparent: true,
+                    opacity: 1.0
+                });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
                 step.rotation.y = -currentAngle;
+                
+                // 狀態紀錄：是否消失、觸發定時器
+                step.userData = { 
+                    isPermanent: false,
+                    isStepped: false,
+                    isDisappeared: false,
+                    stepTimer: 0,
+                    reappearTimer: 0
+                };
 
                 scene.add(step);
                 obstacles.push(step);
@@ -200,13 +214,14 @@
                 }
             }
 
-            // 塔頂終點平台
+            // 塔頂終點平台 (永遠不消失)
             currentY += 4.0;
             const topPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 2, 10),
                 new THREE.MeshLambertMaterial({ color: 0xffff00 })
             );
             topPlat.position.set(0, currentY, 0);
+            topPlat.userData = { isPermanent: true };
             scene.add(topPlat);
             obstacles.push(topPlat);
 
@@ -214,6 +229,13 @@
 
             controls.getObject().position.copy(respawnPosition);
             camera.rotation.set(0, 0, 0);
+        }
+
+        function triggerPlatformDisappear(obs) {
+            if (obs.userData.isPermanent || obs.userData.isStepped) return;
+            
+            obs.userData.isStepped = true;
+            obs.userData.stepTimer = 0.8; // 0.8秒後消失
         }
 
         function spawnGoalCrystal(position) {
@@ -384,6 +406,34 @@
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
+                // 更新方塊消失/恢復邏輯
+                for (let obs of obstacles) {
+                    if (obs.userData.isPermanent) continue;
+
+                    // 1. 被踩到後的倒數計時（半透明閃爍提示）
+                    if (obs.userData.isStepped && !obs.userData.isDisappeared) {
+                        obs.userData.stepTimer -= delta;
+                        obs.material.opacity = Math.max(0.2, obs.userData.stepTimer / 0.8);
+
+                        if (obs.userData.stepTimer <= 0) {
+                            obs.userData.isDisappeared = true;
+                            obs.visible = false; // 隱藏
+                            obs.userData.reappearTimer = 5.0; // 5秒後重新出現
+                        }
+                    }
+
+                    // 2. 消失後的重生倒數計時
+                    if (obs.userData.isDisappeared) {
+                        obs.userData.reappearTimer -= delta;
+                        if (obs.userData.reappearTimer <= 0) {
+                            obs.userData.isDisappeared = false;
+                            obs.userData.isStepped = false;
+                            obs.visible = true; // 重新顯示
+                            obs.material.opacity = 1.0;
+                        }
+                    }
+                }
+
                 const playerObj = controls.getObject();
                 let moveVector = new THREE.Vector3();
 
@@ -404,11 +454,17 @@
 
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
                 for (let obs of obstacles) {
+                    // 若方塊已經消失，直接忽略碰撞
+                    if (obs.userData.isDisappeared) continue;
+
                     const obsBox = new THREE.Box3().setFromObject(obs);
                     if (playerObj.position.x >= obsBox.min.x - 0.4 && playerObj.position.x <= obsBox.max.x + 0.4 && playerObj.position.z >= obsBox.min.z - 0.4 && playerObj.position.z <= obsBox.max.z + 0.4) {
                         const platTop = obsBox.max.y;
                         if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
                             playerObj.position.y = platTop + currentEyeHeight; playerVelocity.y = 0;
+                            
+                            // 踩中平台，觸發消失計時
+                            triggerPlatformDisappear(obs);
                             break;
                         }
                     }
@@ -433,7 +489,7 @@
 
                     let hit = false;
                     for (let obs of obstacles) {
-                        if (new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
+                        if (!obs.userData.isDisappeared && new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
                             triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
                             hit = true; break;
                         }
@@ -452,7 +508,13 @@
 
                 for (let i = grenades.length - 1; i >= 0; i--) {
                     const g = grenades[i]; g.timer -= delta; g.velocity.y -= GRAVITY * delta; g.mesh.position.addScaledVector(g.velocity, delta);
-                    for (let obs of obstacles) { const obsBox = new THREE.Box3().setFromObject(obs); if (obsBox.containsPoint(g.mesh.position)) { g.velocity.y *= -0.4; g.velocity.x *= 0.6; g.velocity.z *= 0.6; g.mesh.position.y = obsBox.max.y + 0.1; break; } }
+                    for (let obs of obstacles) { 
+                        if (obs.userData.isDisappeared) continue;
+                        const obsBox = new THREE.Box3().setFromObject(obs); 
+                        if (obsBox.containsPoint(g.mesh.position)) { 
+                            g.velocity.y *= -0.4; g.velocity.x *= 0.6; g.velocity.z *= 0.6; g.mesh.position.y = obsBox.max.y + 0.1; break; 
+                        } 
+                    }
                     if (g.timer <= 0 || g.mesh.position.y <= -4.0) { triggerExplosiveShockwave(g.mesh.position, 9.5, 45.0); scene.remove(g.mesh); grenades.splice(i, 1); }
                 }
 
