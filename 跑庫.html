@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔 (永久記錄點+自選補給版)</title>
+    <title>3D 跑酷塔 (突擊步槍+記錄點滿彈版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; text-align: right; }
-        #ammo-choice-panel { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.85); border: 3px solid #ffcc00; padding: 15px 30px; border-radius: 10px; color: #fff; text-align: center; font-size: 22px; display: none; z-index: 15; pointer-events: none; }
+        #checkpoint-notify { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 255, 100, 0.85); color: #000; padding: 12px 24px; border-radius: 8px; font-size: 22px; font-weight: bold; display: none; z-index: 15; pointer-events: none; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #ff0055; text-shadow: 2px 2px 8px #ff0000; }
+        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #00ffcc; text-shadow: 2px 2px 8px #0088cc; }
         #instructions p { font-size: 16px; margin: 4px 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -26,25 +26,21 @@
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
         剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">3</span> / 3
     </div>
-    
-    <div id="ammo-choice-panel">
-        <div style="color: #ffcc00; font-size: 24px; margin-bottom: 10px;">🚩 踩到記錄點補給！</div>
-        <div>按 <span style="color: #00ffff;">[ G ]</span> 鍵：RPG 火箭彈 +10</div>
-        <div>按 <span style="color: #ff00ff;">[ H ]</span> 鍵：0.1s 榴彈砲 +10</div>
-    </div>
+
+    <div id="checkpoint-notify">🚩 踩到紀錄點！所有武器彈藥已補滿！</div>
 
     <div id="weapon-status">
-        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">RPG 子彈: 20</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 1. RPG火箭筒 | 按 F 丟手榴彈</div>
+        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">子彈: 200 / 200</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 3. 突擊步槍 | 按 F 丟手榴彈</div>
     </div>
 
     <div id="instructions">
-        <h1>🗼 3D 跑酷塔 (記錄點補給版)</h1>
+        <h1>🗼 3D 跑酷塔 (突擊步槍火力版)</h1>
         <p>點擊螢幕開始爬塔！</p>
-        <p>【🛡️ 記錄點安全】金黃色紀錄點<b>絕對不消失</b>且無法被炸毀！</p>
-        <p>【📦 記錄點選彈】踩到紀錄點時，可選擇按 <b>[G]</b> 或 <b>[H]</b> 為指定武器 <b>+10 發子彈</b>！</p>
-        <p>【🔄 重生回滿】跌落岩漿重生時，<b>所有武器子彈直接補滿</b>！</p>
-        <p>【移動操作】W/A/S/D 移動 | Space 跳躍 (最多3連跳) | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-2 換武器</p>
+        <p>【🔫 新增武器】<b>3. 突擊步槍（200 發子彈）</b>，高射速高速清理障礙！</p>
+        <p>【🚩 記錄點補給】踩到金黃色記錄點時，<b>所有武器子彈直接全滿</b>！</p>
+        <p>【🛡️ 記錄點安全】紀錄點<b>永遠不消失</b>且無法被爆炸毀壞！</p>
+        <p>【移動操作】W/A/S/D 移動 | Space 跳躍 (最多3連跳) | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-3 切換武器</p>
     </div>
 
     <script>
@@ -63,10 +59,16 @@
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
-        const BASE_AMMO = 20;
+        const MAX_AMMO = {
+            'rpg': 20,
+            'grenadeLauncher': 20,
+            'rifle': 200
+        };
+
         const ammo = {
             'rpg': 20,
-            'grenadeLauncher': 20
+            'grenadeLauncher': 20,
+            'rifle': 200
         };
 
         let isMouseDown = false;
@@ -85,7 +87,7 @@
         let respawnPosition = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
-        const checkpoints = [];    // 記錄點陣列
+        const checkpoints = [];
         const drones = [];
         const laserWalls = [];
         const projectiles = [];
@@ -93,18 +95,19 @@
         const explosions = [];
 
         let activeCheckpointIndex = -1;
-        let canChooseAmmo = false;
+        let notifyTimer = 0;
 
         let score = 0;
         let isGameOver = false;
 
-        const weaponList = ['rpg', 'grenadeLauncher'];
+        const weaponList = ['rpg', 'grenadeLauncher', 'rifle'];
         const weaponNames = {
-            'rpg': '1. RPG火箭筒 (擊毀無人機)',
-            'grenadeLauncher': '2. 0.1s超速榴彈砲 (範圍爆炸)'
+            'rpg': '1. RPG火箭筒',
+            'grenadeLauncher': '2. 0.1s超速榴彈砲',
+            'rifle': '3. 突擊步槍 (200發連發)'
         };
 
-        let currentWeaponIndex = 0;
+        let currentWeaponIndex = 2; // 預設使用突擊步槍
         let weaponMeshes = {};
         let weaponGroup;
 
@@ -113,7 +116,7 @@
         const hudJumps = document.getElementById('jumps-left');
         const ammoDisplay = document.getElementById('ammo-display');
         const weaponNameDisplay = document.getElementById('weapon-name');
-        const ammoChoicePanel = document.getElementById('ammo-choice-panel');
+        const checkpointNotify = document.getElementById('checkpoint-notify');
         const instructions = document.getElementById('instructions');
 
         const towerColors = [0xff0055, 0xff7700, 0x00ff66, 0x00ccff, 0xaa00ff];
@@ -172,16 +175,21 @@
             animate();
         }
 
+        function refillAllAmmo() {
+            ammo['rpg'] = MAX_AMMO['rpg'];
+            ammo['grenadeLauncher'] = MAX_AMMO['grenadeLauncher'];
+            ammo['rifle'] = MAX_AMMO['rifle'];
+            updateHUD();
+        }
+
         function updateHUD() {
             hudJumps.textContent = jumpsLeft;
             hudJumps.style.color = jumpsLeft === 0 ? "#ff3333" : "#00ffff";
 
             const curKey = weaponList[currentWeaponIndex];
-            ammoDisplay.textContent = `子彈: ${ammo[curKey]}`;
+            ammoDisplay.textContent = `子彈: ${ammo[curKey]} / ${MAX_AMMO[curKey]}`;
             ammoDisplay.style.color = ammo[curKey] === 0 ? "#ff3333" : "#00ff66";
             weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey] + " | 按 F 丟手榴彈";
-
-            ammoChoicePanel.style.display = canChooseAmmo ? "block" : "none";
         }
 
         function buildTower(level) {
@@ -195,7 +203,7 @@
 
             hudLevel.textContent = level;
 
-            // 起點記錄點平台 (金黃色、永久)
+            // 起點平台
             const startPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(8, 1.5, 8),
                 new THREE.MeshLambertMaterial({ color: 0xffd700 })
@@ -221,11 +229,10 @@
                 const posX = Math.sin(currentAngle) * radius;
                 const posZ = Math.cos(currentAngle) * radius;
 
-                const isCP = (i > 0 && i % 12 === 0); // 每 12 步設置一個記錄點
+                const isCP = (i > 0 && i % 12 === 0);
                 const cubeSize = isCP ? 5.0 : Math.max(2.2, 4.0 - level * 0.15);
 
                 const stepGeo = new THREE.BoxGeometry(cubeSize, 1.2, cubeSize);
-                // 記錄點使用亮金黃色，普通板塊使用彩色
                 const stepMat = new THREE.MeshLambertMaterial({ 
                     color: isCP ? 0xffd700 : towerColors[Math.floor(i / 8) % towerColors.length],
                     transparent: !isCP,
@@ -237,7 +244,7 @@
                 step.rotation.y = -currentAngle;
                 
                 step.userData = { 
-                    isPermanent: isCP,       // 記錄點永久不消失
+                    isPermanent: isCP,
                     isCheckpoint: isCP,
                     id: isCP ? checkpoints.length : -1,
                     isStepped: false,
@@ -250,7 +257,6 @@
                 obstacles.push(step);
                 if (isCP) checkpoints.push(step);
 
-                // 旋轉雷射牆
                 if (!isCP && i > 5 && i % 10 === 0) {
                     const laserGeo = new THREE.BoxGeometry(6.0, 0.2, 0.2);
                     const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -260,7 +266,6 @@
                     laserWalls.push({ mesh: laserMesh, speed: 1.5 + level * 0.2 });
                 }
 
-                // 巡邏無人機
                 if (!isCP && i > 8 && i % 15 === 0) {
                     const droneGroup = new THREE.Group();
                     const body = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
@@ -284,7 +289,7 @@
                 }
             }
 
-            // 終點平台 (永久記錄點)
+            // 終點平台
             currentY += 4.0;
             const topPlat = new THREE.Mesh(
                 new THREE.BoxGeometry(10, 2, 10),
@@ -302,9 +307,7 @@
             camera.rotation.set(0, 0, 0);
             jumpsLeft = MAX_JUMPS;
             
-            ammo['rpg'] = BASE_AMMO;
-            ammo['grenadeLauncher'] = BASE_AMMO;
-            updateHUD();
+            refillAllAmmo();
         }
 
         function triggerPlatformDisappear(obs) {
@@ -332,19 +335,32 @@
         function createWeapons() {
             weaponGroup = new THREE.Group();
 
+            // RPG
             const rpgGroup = new THREE.Group();
             rpgGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 12), new THREE.MeshLambertMaterial({ color: 0x2d4f1e })));
             rpgGroup.position.set(0.3, -0.25, -0.5);
             weaponMeshes['rpg'] = rpgGroup;
 
+            // 榴彈砲
             const glGroup = new THREE.Group();
             glGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.6, 12), new THREE.MeshLambertMaterial({ color: 0x444444 })));
             glGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshLambertMaterial({ color: 0xaa2222 })));
             glGroup.position.set(0.3, -0.25, -0.45);
             weaponMeshes['grenadeLauncher'] = glGroup;
 
+            // 突擊步槍 (Rifle)
+            const rifleGroup = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), new THREE.MeshLambertMaterial({ color: 0x666666 }));
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.set(0, 0.03, -0.4);
+            rifleGroup.add(body);
+            rifleGroup.add(barrel);
+            rifleGroup.position.set(0.3, -0.22, -0.45);
+            weaponMeshes['rifle'] = rifleGroup;
+
             Object.keys(weaponMeshes).forEach(key => { 
-                weaponMeshes[key].visible = (key === 'rpg'); 
+                weaponMeshes[key].visible = (key === weaponList[currentWeaponIndex]); 
                 weaponGroup.add(weaponMeshes[key]); 
             });
             camera.add(weaponGroup);
@@ -412,21 +428,6 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
-            // 記錄點選擇子彈按鍵判定
-            if (canChooseAmmo) {
-                if (e.code === 'KeyG') {
-                    ammo['rpg'] += 10;
-                    canChooseAmmo = false;
-                    updateHUD();
-                    return;
-                } else if (e.code === 'KeyH') {
-                    ammo['grenadeLauncher'] += 10;
-                    canChooseAmmo = false;
-                    updateHUD();
-                    return;
-                }
-            }
-
             switch (e.code) {
                 case 'KeyW': moveForward = true; break; case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break; case 'KeyD': moveRight = true; break;
@@ -446,6 +447,7 @@
                     break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
+                case 'Digit3': selectWeapon(2); break;
             }
         }
 
@@ -472,7 +474,9 @@
             if (ammo[curWeapon] <= 0) return;
 
             const now = performance.now();
-            const cooldown = curWeapon === 'grenadeLauncher' ? 120 : 900;
+            let cooldown = 900;
+            if (curWeapon === 'grenadeLauncher') cooldown = 120;
+            if (curWeapon === 'rifle') cooldown = 80; // 步槍高射速
 
             if (now - lastShotTime < cooldown) return;
             lastShotTime = now;
@@ -496,20 +500,19 @@
                 const glVel = dir.clone().multiplyScalar(40.0); glVel.y += 2.5;
                 projectiles.push({ mesh: glMesh, velocity: glVel, isRPG: false, life: 2.5 });
                 scene.add(glMesh);
+            } else if (curWeapon === 'rifle') {
+                // 步槍高速子彈
+                const bulletMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+                bulletMesh.position.copy(spawnPos);
+                projectiles.push({ mesh: bulletMesh, velocity: dir.clone().multiplyScalar(90.0), isRifle: true, life: 1.5 });
+                scene.add(bulletMesh);
             }
         }
 
-        // 重生機制：返回記錄點 + 所有彈藥補滿！
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition); playerVelocity.set(0, 0, 0);
             jumpsLeft = MAX_JUMPS;
-            canChooseAmmo = false;
-            
-            // 重生彈藥回滿
-            ammo['rpg'] = Math.max(ammo['rpg'], BASE_AMMO);
-            ammo['grenadeLauncher'] = Math.max(ammo['grenadeLauncher'], BASE_AMMO);
-
-            updateHUD();
+            refillAllAmmo();
         }
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
@@ -527,9 +530,15 @@
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
+                // 提示視窗自動隱藏計時
+                if (notifyTimer > 0) {
+                    notifyTimer -= delta;
+                    if (notifyTimer <= 0) checkpointNotify.style.display = 'none';
+                }
+
                 const playerObj = controls.getObject();
 
-                // 無人機動態
+                // 無人機
                 for (let d of drones) {
                     if (!d.active) continue;
                     d.baseAngle += d.speed * delta;
@@ -543,7 +552,7 @@
                     }
                 }
 
-                // 雷射牆動態
+                // 雷射牆
                 for (let l of laserWalls) {
                     l.mesh.rotation.y += l.speed * delta;
                     if (playerObj.position.distanceTo(l.mesh.position) < 3.2) {
@@ -553,7 +562,7 @@
                     }
                 }
 
-                // 普通板塊計時器
+                // 板塊 disappearance
                 for (let obs of obstacles) {
                     if (obs.userData.isPermanent) continue;
 
@@ -616,8 +625,10 @@
                                 if (activeCheckpointIndex !== obs.userData.id) {
                                     activeCheckpointIndex = obs.userData.id;
                                     respawnPosition.set(obs.position.x, obs.position.y + 3.0, obs.position.z);
-                                    canChooseAmmo = true; // 啟用補給選擇選單
-                                    updateHUD();
+                                    refillAllAmmo(); // 子彈全部滿彈
+                                    
+                                    checkpointNotify.style.display = 'block';
+                                    notifyTimer = 2.0; // 顯示提示 2 秒
                                 }
                             } else {
                                 triggerPlatformDisappear(obs);
@@ -638,22 +649,40 @@
                     buildTower(currentLevel); 
                 }
 
+                // 子彈與彈道計算
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
-                    if (!p.isRPG) p.velocity.y -= GRAVITY * 0.4 * delta;
+                    if (p.isGrenade) p.velocity.y -= GRAVITY * 0.4 * delta;
                     p.mesh.position.addScaledVector(p.velocity, delta);
                     p.life -= delta;
 
                     let hit = false;
+
+                    // 步槍擊中無人機
+                    if (p.isRifle) {
+                        for (let j = drones.length - 1; j >= 0; j--) {
+                            const d = drones[j];
+                            if (d.active && d.mesh.position.distanceTo(p.mesh.position) < 1.5) {
+                                d.active = false;
+                                scene.remove(d.mesh);
+                                hit = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 碰撞方塊
                     for (let obs of obstacles) {
                         if (!obs.userData.isDisappeared && new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
-                            triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
+                            if (!p.isRifle) {
+                                triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
+                            }
                             hit = true; break;
                         }
                     }
 
                     if (p.mesh.position.y <= -4.0) {
-                        triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
+                        if (!p.isRifle) triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
                         hit = true;
                     }
 
