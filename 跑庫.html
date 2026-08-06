@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔 (突擊步槍+記錄點滿彈版)</title>
+    <title>3D 跑酷塔：元素狂暴創意版</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; user-select: none; background-color: #000; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin-top: -4px; margin-left: -4px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.8); border: 2px solid rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 10; }
-        #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; }
-        #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 10; text-align: right; }
-        #checkpoint-notify { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 255, 100, 0.85); color: #000; padding: 12px 24px; border-radius: 8px; font-size: 22px; font-weight: bold; display: none; z-index: 15; pointer-events: none; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; color: #00ffcc; text-shadow: 2px 2px 8px #0088cc; }
-        #instructions p { font-size: 16px; margin: 4px 0; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
+        #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
+        #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
+        #checkpoint-notify { position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(45deg, #00ffcc, #00ff66); color: #000; padding: 14px 28px; border-radius: 30px; font-size: 24px; font-weight: 900; display: none; z-index: 15; pointer-events: none; box-shadow: 0 0 20px #00ffcc; }
+        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
+        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ff00cc, #3300ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        #instructions p { font-size: 16px; margin: 5px 0; color: #ddd; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
@@ -24,23 +24,24 @@
     <div id="hud">
         得分: <span id="score">0</span> | 
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
-        剩餘跳躍: <span id="jumps-left" style="color: #00ffff;">3</span> / 3
+        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3
     </div>
 
-    <div id="checkpoint-notify">🚩 踩到紀錄點！所有武器彈藥已補滿！</div>
+    <div id="checkpoint-notify">⚡ 踩到紀錄點！元素能量全滿！</div>
 
     <div id="weapon-status">
-        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">子彈: 200 / 200</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 3. 突擊步槍 | 按 F 丟手榴彈</div>
+        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">脈衝步槍: 200 / 200</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">當前武器: 3. 脈衝電磁槍 (擴大階梯)</div>
     </div>
 
     <div id="instructions">
-        <h1>🗼 3D 跑酷塔 (突擊步槍火力版)</h1>
-        <p>點擊螢幕開始爬塔！</p>
-        <p>【🔫 新增武器】<b>3. 突擊步槍（200 發子彈）</b>，高射速高速清理障礙！</p>
-        <p>【🚩 記錄點補給】踩到金黃色記錄點時，<b>所有武器子彈直接全滿</b>！</p>
-        <p>【🛡️ 記錄點安全】紀錄點<b>永遠不消失</b>且無法被爆炸毀壞！</p>
-        <p>【移動操作】W/A/S/D 移動 | Space 跳躍 (最多3連跳) | Ctrl 滑行 | <b>F 丟手榴彈</b> | 1-3 切換武器</p>
+        <h1>🌀 跑酷塔：元素狂暴版</h1>
+        <p>點擊螢幕開始體驗創意極限！</p>
+        <p>【🌌 1. 黑洞火箭 (10發)】將周圍無人機吸入摧毀，並產生強烈黑洞彈射力！</p>
+        <p>【❄️ 2. 冰凍榴彈 (15發)】凍結周圍階梯<b>8秒不消失</b>，並凍結無人機！</p>
+        <p>【⚡ 3. 脈衝步槍 (200發)】射擊階梯可將其<b>擴大 1.5 倍面積</b>！</p>
+        <p>【🍥 彈簧墊】踩到粉紅色方塊可高高彈起！【🚩 記錄點】踩到彈藥全滿且永久不毀！</p>
+        <p>【操作】W/A/S/D 移動 | Space 跳躍 | Ctrl 滑行 | 1-3 換武器 | F 丟手榴彈</p>
     </div>
 
     <script>
@@ -59,17 +60,8 @@
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
-        const MAX_AMMO = {
-            'rpg': 20,
-            'grenadeLauncher': 20,
-            'rifle': 200
-        };
-
-        const ammo = {
-            'rpg': 20,
-            'grenadeLauncher': 20,
-            'rifle': 200
-        };
+        const MAX_AMMO = { 'blackhole': 10, 'freeze': 15, 'pulse': 200 };
+        const ammo = { 'blackhole': 10, 'freeze': 15, 'pulse': 200 };
 
         let isMouseDown = false;
         let lastShotTime = 0;
@@ -82,7 +74,6 @@
 
         let currentLevel = 1;
         let rewardCrystal = null;
-        let lavaSea = null;
 
         let respawnPosition = new THREE.Vector3(0, 5, 12);
 
@@ -96,18 +87,17 @@
 
         let activeCheckpointIndex = -1;
         let notifyTimer = 0;
-
         let score = 0;
         let isGameOver = false;
 
-        const weaponList = ['rpg', 'grenadeLauncher', 'rifle'];
+        const weaponList = ['blackhole', 'freeze', 'pulse'];
         const weaponNames = {
-            'rpg': '1. RPG火箭筒',
-            'grenadeLauncher': '2. 0.1s超速榴彈砲',
-            'rifle': '3. 突擊步槍 (200發連發)'
+            'blackhole': '1. 黑洞火箭 (聚怪吸力)',
+            'freeze': '2. 冰凍榴彈砲 (固化階梯)',
+            'pulse': '3. 脈衝電磁槍 (擴大階梯)'
         };
 
-        let currentWeaponIndex = 2; // 預設使用突擊步槍
+        let currentWeaponIndex = 2;
         let weaponMeshes = {};
         let weaponGroup;
 
@@ -123,23 +113,23 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0518);
-            scene.fog = new THREE.FogExp2(0x0a0518, 0.008);
+            scene.background = new THREE.Color(0x05020a);
+            scene.fog = new THREE.FogExp2(0x05020a, 0.008);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffaaff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0x00ffff, 0.6);
             dirLight.position.set(0, 100, 0);
             scene.add(dirLight);
 
             controls = new THREE.PointerLockControls(camera, document.body);
             
             const lavaGeo = new THREE.PlaneGeometry(1000, 1000);
-            const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff1100, side: THREE.DoubleSide });
-            lavaSea = new THREE.Mesh(lavaGeo, lavaMat);
+            const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff0033, side: THREE.DoubleSide });
+            const lavaSea = new THREE.Mesh(lavaGeo, lavaMat);
             lavaSea.rotation.x = Math.PI / 2;
             lavaSea.position.set(0, -5, 0);
             scene.add(lavaSea);
@@ -152,12 +142,9 @@
             });
 
             controls.addEventListener('lock', () => instructions.style.display = 'none');
-            controls.addEventListener('unlock', () => {
-                if (!isGameOver) instructions.style.display = 'flex';
-            });
+            controls.addEventListener('unlock', () => { if (!isGameOver) instructions.style.display = 'flex'; });
 
             scene.add(controls.getObject());
-
             createWeapons();
 
             document.addEventListener('keydown', onKeyDown);
@@ -171,14 +158,13 @@
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
-
             animate();
         }
 
         function refillAllAmmo() {
-            ammo['rpg'] = MAX_AMMO['rpg'];
-            ammo['grenadeLauncher'] = MAX_AMMO['grenadeLauncher'];
-            ammo['rifle'] = MAX_AMMO['rifle'];
+            ammo['blackhole'] = MAX_AMMO['blackhole'];
+            ammo['freeze'] = MAX_AMMO['freeze'];
+            ammo['pulse'] = MAX_AMMO['pulse'];
             updateHUD();
         }
 
@@ -189,55 +175,44 @@
             const curKey = weaponList[currentWeaponIndex];
             ammoDisplay.textContent = `子彈: ${ammo[curKey]} / ${MAX_AMMO[curKey]}`;
             ammoDisplay.style.color = ammo[curKey] === 0 ? "#ff3333" : "#00ff66";
-            weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey] + " | 按 F 丟手榴彈";
+            weaponNameDisplay.textContent = "當前武器: " + weaponNames[curKey];
         }
 
         function buildTower(level) {
             obstacles.forEach(obs => scene.remove(obs));
-            checkpoints.length = 0;
-            drones.forEach(d => scene.remove(d.mesh));
-            laserWalls.forEach(l => scene.remove(l.mesh));
-            
+            checkpoints.length = 0; drones.forEach(d => scene.remove(d.mesh)); laserWalls.forEach(l => scene.remove(l.mesh));
             obstacles.length = 0; drones.length = 0; laserWalls.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
 
-            // 起點平台
-            const startPlat = new THREE.Mesh(
-                new THREE.BoxGeometry(8, 1.5, 8),
-                new THREE.MeshLambertMaterial({ color: 0xffd700 })
-            );
+            // 起點記錄點
+            const startPlat = new THREE.Mesh(new THREE.BoxGeometry(8, 1.5, 8), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
             startPlat.position.set(0, 2, 12);
             startPlat.userData = { isPermanent: true, isCheckpoint: true, id: 0 };
-            scene.add(startPlat);
-            obstacles.push(startPlat);
-            checkpoints.push(startPlat);
+            scene.add(startPlat); obstacles.push(startPlat); checkpoints.push(startPlat);
 
-            respawnPosition.set(0, 5, 12);
-            activeCheckpointIndex = 0;
+            respawnPosition.set(0, 5, 12); activeCheckpointIndex = 0;
 
             const totalSteps = 45 + level * 10;
             const radius = 14.0;
-            let currentAngle = 0;
-            let currentY = 3.5;
+            let currentAngle = 0; let currentY = 3.5;
 
             for (let i = 0; i < totalSteps; i++) {
-                currentAngle += 0.35;
-                currentY += 1.8;
-
-                const posX = Math.sin(currentAngle) * radius;
-                const posZ = Math.cos(currentAngle) * radius;
+                currentAngle += 0.35; currentY += 1.8;
+                const posX = Math.sin(currentAngle) * radius; const posZ = Math.cos(currentAngle) * radius;
 
                 const isCP = (i > 0 && i % 12 === 0);
-                const cubeSize = isCP ? 5.0 : Math.max(2.2, 4.0 - level * 0.15);
+                const isBounce = (!isCP && i % 7 === 0); // 彈簧墊
 
+                const cubeSize = isCP ? 5.0 : Math.max(2.2, 4.0 - level * 0.15);
                 const stepGeo = new THREE.BoxGeometry(cubeSize, 1.2, cubeSize);
-                const stepMat = new THREE.MeshLambertMaterial({ 
-                    color: isCP ? 0xffd700 : towerColors[Math.floor(i / 8) % towerColors.length],
-                    transparent: !isCP,
-                    opacity: 1.0
-                });
+                
+                let stepColor = towerColors[Math.floor(i / 8) % towerColors.length];
+                if (isCP) stepColor = 0xffd700;
+                if (isBounce) stepColor = 0xff00bb; // 粉紅彈簧墊
+
+                const stepMat = new THREE.MeshLambertMaterial({ color: stepColor, transparent: !isCP, opacity: 1.0 });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
@@ -246,205 +221,103 @@
                 step.userData = { 
                     isPermanent: isCP,
                     isCheckpoint: isCP,
+                    isBounce: isBounce,
                     id: isCP ? checkpoints.length : -1,
                     isStepped: false,
                     isDisappeared: false,
+                    isFrozen: false,
+                    freezeTimer: 0,
                     stepTimer: 0,
-                    reappearTimer: 0
+                    reappearTimer: 0,
+                    originalScale: new THREE.Vector3(1, 1, 1)
                 };
 
-                scene.add(step);
-                obstacles.push(step);
+                scene.add(step); obstacles.push(step);
                 if (isCP) checkpoints.push(step);
-
-                if (!isCP && i > 5 && i % 10 === 0) {
-                    const laserGeo = new THREE.BoxGeometry(6.0, 0.2, 0.2);
-                    const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                    const laserMesh = new THREE.Mesh(laserGeo, laserMat);
-                    laserMesh.position.set(posX, currentY + 1.6, posZ);
-                    scene.add(laserMesh);
-                    laserWalls.push({ mesh: laserMesh, speed: 1.5 + level * 0.2 });
-                }
 
                 if (!isCP && i > 8 && i % 15 === 0) {
                     const droneGroup = new THREE.Group();
-                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-                    const eye = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 8), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-                    eye.rotation.x = Math.PI / 2;
-                    eye.position.z = -0.6;
-                    droneGroup.add(body);
-                    droneGroup.add(eye);
-
+                    droneGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0055 })));
                     const droneHeight = currentY + 2.0;
                     droneGroup.position.set(posX * 1.3, droneHeight, posZ * 1.3);
                     scene.add(droneGroup);
-
-                    drones.push({ 
-                        mesh: droneGroup, 
-                        baseAngle: currentAngle, 
-                        height: droneHeight,
-                        speed: 0.8 + level * 0.1,
-                        active: true 
-                    });
+                    drones.push({ mesh: droneGroup, baseAngle: currentAngle, height: droneHeight, speed: 0.8 + level * 0.1, active: true, isFrozen: false, freezeTimer: 0 });
                 }
             }
 
-            // 終點平台
+            // 終點
             currentY += 4.0;
-            const topPlat = new THREE.Mesh(
-                new THREE.BoxGeometry(10, 2, 10),
-                new THREE.MeshLambertMaterial({ color: 0xffff00 })
-            );
+            const topPlat = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 10), new THREE.MeshLambertMaterial({ color: 0xffff00 }));
             topPlat.position.set(0, currentY, 0);
             topPlat.userData = { isPermanent: true, isCheckpoint: true, id: checkpoints.length };
-            scene.add(topPlat);
-            obstacles.push(topPlat);
-            checkpoints.push(topPlat);
+            scene.add(topPlat); obstacles.push(topPlat); checkpoints.push(topPlat);
 
             spawnGoalCrystal(new THREE.Vector3(0, currentY + 3.0, 0));
-
-            controls.getObject().position.copy(respawnPosition);
-            camera.rotation.set(0, 0, 0);
-            jumpsLeft = MAX_JUMPS;
-            
-            refillAllAmmo();
+            controls.getObject().position.copy(respawnPosition); camera.rotation.set(0, 0, 0);
+            jumpsLeft = MAX_JUMPS; refillAllAmmo();
         }
 
         function triggerPlatformDisappear(obs) {
-            if (obs.userData.isPermanent || obs.userData.isStepped) return;
+            if (obs.userData.isPermanent || obs.userData.isStepped || obs.userData.isFrozen) return;
             obs.userData.isStepped = true;
             obs.userData.stepTimer = 0.8;
         }
 
-        function destroyPlatformByExplosion(obs) {
-            if (obs.userData.isPermanent || obs.userData.isDisappeared) return;
-            obs.userData.isDisappeared = true;
-            obs.visible = false;
-            obs.userData.reappearTimer = 5.0;
-        }
-
         function spawnGoalCrystal(position) {
             if (rewardCrystal) scene.remove(rewardCrystal);
-            const crystalGeo = new THREE.OctahedronGeometry(2.0, 0);
-            const crystalMat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
-            rewardCrystal = new THREE.Mesh(crystalGeo, crystalMat);
-            rewardCrystal.position.copy(position);
-            scene.add(rewardCrystal);
+            rewardCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(2.0, 0), new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }));
+            rewardCrystal.position.copy(position); scene.add(rewardCrystal);
         }
 
         function createWeapons() {
             weaponGroup = new THREE.Group();
+            
+            const bh = new THREE.Group(); bh.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x9900ff }))); bh.position.set(0.3, -0.25, -0.5); weaponMeshes['blackhole'] = bh;
+            const fr = new THREE.Group(); fr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ffff }))); fr.position.set(0.3, -0.25, -0.5); weaponMeshes['freeze'] = fr;
+            const pl = new THREE.Group(); pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ff66 }))); pl.position.set(0.3, -0.22, -0.45); weaponMeshes['pulse'] = pl;
 
-            // RPG
-            const rpgGroup = new THREE.Group();
-            rpgGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 12), new THREE.MeshLambertMaterial({ color: 0x2d4f1e })));
-            rpgGroup.position.set(0.3, -0.25, -0.5);
-            weaponMeshes['rpg'] = rpgGroup;
-
-            // 榴彈砲
-            const glGroup = new THREE.Group();
-            glGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.6, 12), new THREE.MeshLambertMaterial({ color: 0x444444 })));
-            glGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshLambertMaterial({ color: 0xaa2222 })));
-            glGroup.position.set(0.3, -0.25, -0.45);
-            weaponMeshes['grenadeLauncher'] = glGroup;
-
-            // 突擊步槍 (Rifle)
-            const rifleGroup = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshLambertMaterial({ color: 0x111111 }));
-            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), new THREE.MeshLambertMaterial({ color: 0x666666 }));
-            barrel.rotation.x = Math.PI / 2;
-            barrel.position.set(0, 0.03, -0.4);
-            rifleGroup.add(body);
-            rifleGroup.add(barrel);
-            rifleGroup.position.set(0.3, -0.22, -0.45);
-            weaponMeshes['rifle'] = rifleGroup;
-
-            Object.keys(weaponMeshes).forEach(key => { 
-                weaponMeshes[key].visible = (key === weaponList[currentWeaponIndex]); 
-                weaponGroup.add(weaponMeshes[key]); 
-            });
+            Object.keys(weaponMeshes).forEach(key => { weaponMeshes[key].visible = (key === weaponList[currentWeaponIndex]); weaponGroup.add(weaponMeshes[key]); });
             camera.add(weaponGroup);
         }
 
-        function triggerExplosiveShockwave(epicenter, radius, knockbackForce) {
-            const expMesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.85 }));
-            expMesh.position.copy(epicenter);
-            scene.add(expMesh);
-            explosions.push({ mesh: expMesh, timer: 0.35 });
-
-            for (let obs of obstacles) {
-                if (obs.userData.isPermanent) continue;
-                if (obs.position.distanceTo(epicenter) <= radius + 1.5) {
-                    destroyPlatformByExplosion(obs);
+        function triggerElementalEffect(epicenter, type) {
+            if (type === 'blackhole') {
+                // 吸力與打擊
+                for (let d of drones) {
+                    if (d.active && d.mesh.position.distanceTo(epicenter) < 12.0) {
+                        d.mesh.position.lerp(epicenter, 0.8);
+                        if (d.mesh.position.distanceTo(epicenter) < 2.5) { d.active = false; scene.remove(d.mesh); }
+                    }
+                }
+                const playerPos = controls.getObject().position;
+                if (playerPos.distanceTo(epicenter) < 10.0) {
+                    const pull = new THREE.Vector3().subVectors(epicenter, playerPos).normalize();
+                    playerVelocity.addScaledVector(pull, 35.0);
+                }
+            } else if (type === 'freeze') {
+                // 凍結方塊與無人機
+                for (let obs of obstacles) {
+                    if (!obs.userData.isPermanent && obs.position.distanceTo(epicenter) < 8.0) {
+                        obs.userData.isFrozen = true;
+                        obs.userData.freezeTimer = 8.0;
+                        obs.material.color.setHex(0x00ffff);
+                    }
+                }
+                for (let d of drones) {
+                    if (d.active && d.mesh.position.distanceTo(epicenter) < 8.0) {
+                        d.isFrozen = true; d.freezeTimer = 8.0;
+                    }
                 }
             }
-
-            for (let i = drones.length - 1; i >= 0; i--) {
-                const d = drones[i];
-                if (d.active && d.mesh.position.distanceTo(epicenter) <= radius + 2.0) {
-                    d.active = false;
-                    scene.remove(d.mesh);
-                }
-            }
-
-            const playerPos = controls.getObject().position;
-            const distToPlayer = playerPos.distanceTo(epicenter);
-
-            if (distToPlayer <= radius + 2.5) {
-                const pushDir = new THREE.Vector3().subVectors(playerPos, epicenter).normalize();
-                pushDir.y = Math.max(pushDir.y + 0.4, 0.7); 
-                pushDir.normalize();
-                const falloff = 1 - (distToPlayer / (radius + 3.0));
-                playerVelocity.addScaledVector(pushDir, knockbackForce * Math.max(falloff, 0.5));
-            }
         }
-
-        function throwGrenade() {
-            const now = performance.now(); if (now - lastGrenadeTime < 1000) return; lastGrenadeTime = now;
-            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
-            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.8));
-            const gGeo = new THREE.SphereGeometry(0.18, 12, 12);
-            const gMat = new THREE.MeshLambertMaterial({ color: 0x336622 });
-            const grenadeMesh = new THREE.Mesh(gGeo, gMat); grenadeMesh.position.copy(spawnPos);
-            const throwVel = dir.clone().multiplyScalar(30.0); throwVel.y += 7.0;
-            grenades.push({ mesh: grenadeMesh, velocity: throwVel, timer: 1.5 }); scene.add(grenadeMesh);
-        }
-
-        function startSlide() {
-            if (isSliding) return; isSliding = true;
-            slideTimer = 0.8; slideSpeedCurrent = 45.0; currentEyeHeight = CROUCH_HEIGHT;
-            const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
-            if (moveForward || moveBackward || moveLeft || moveRight) {
-                const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
-                slideDirection.set(0, 0, 0);
-                if (moveForward) slideDirection.add(frontDir); if (moveBackward) slideDirection.sub(frontDir);
-                if (moveRight) slideDirection.add(sideDir); if (moveLeft) slideDirection.sub(sideDir);
-                slideDirection.normalize();
-            } else { slideDirection.copy(frontDir); }
-        }
-
-        function cancelSlide() { isSliding = false; isCrouching = false; currentEyeHeight = STAND_HEIGHT; }
 
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
-
             switch (e.code) {
                 case 'KeyW': moveForward = true; break; case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break; case 'KeyD': moveRight = true; break;
-                case 'KeyF': throwGrenade(); break;
-                case 'ControlLeft': case 'ControlRight':
-                    if (moveForward || moveBackward || moveLeft || moveRight) startSlide();
-                    else { isCrouching = true; currentEyeHeight = CROUCH_HEIGHT; }
-                    break;
-                case 'KeyC': startSlide(); break;
                 case 'Space': 
-                    if (jumpsLeft > 0) {
-                        playerVelocity.y = 14.5; 
-                        jumpsLeft--;
-                        updateHUD();
-                        if (isSliding) cancelSlide();
-                    }
-                    break;
+                    if (jumpsLeft > 0) { playerVelocity.y = 14.5; jumpsLeft--; updateHUD(); } break;
                 case 'Digit1': selectWeapon(0); break;
                 case 'Digit2': selectWeapon(1); break;
                 case 'Digit3': selectWeapon(2); break;
@@ -455,11 +328,10 @@
             switch (e.code) {
                 case 'KeyW': moveForward = false; break; case 'KeyS': moveBackward = false; break;
                 case 'KeyA': moveLeft = false; break; case 'KeyD': moveRight = false; break;
-                case 'ControlLeft': case 'ControlRight': if (!isSliding) { isCrouching = false; currentEyeHeight = STAND_HEIGHT; } break;
             }
         }
 
-        function onMouseDown(e) { if (!controls.isLocked || isGameOver) return; if (e.button === 0) { isMouseDown = true; tryShoot(); } }
+        function onMouseDown(e) { if (controls.isLocked && !isGameOver && e.button === 0) { isMouseDown = true; tryShoot(); } }
         function onMouseUp(e) { if (e.button === 0) isMouseDown = false; }
         function onMouseWheel(e) { if (!controls.isLocked) return; currentWeaponIndex = (e.deltaY > 0) ? (currentWeaponIndex + 1) % weaponList.length : (currentWeaponIndex - 1 + weaponList.length) % weaponList.length; selectWeapon(currentWeaponIndex); }
 
@@ -474,133 +346,82 @@
             if (ammo[curWeapon] <= 0) return;
 
             const now = performance.now();
-            let cooldown = 900;
-            if (curWeapon === 'grenadeLauncher') cooldown = 120;
-            if (curWeapon === 'rifle') cooldown = 80; // 步槍高射速
-
+            let cooldown = (curWeapon === 'pulse') ? 90 : 600;
             if (now - lastShotTime < cooldown) return;
             lastShotTime = now;
 
-            ammo[curWeapon]--;
-            updateHUD();
-
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
+            ammo[curWeapon]--; updateHUD();
+            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
 
-            if (curWeapon === 'rpg') {
-                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 8), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
-                rocket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-                rocket.position.copy(spawnPos);
-                projectiles.push({ mesh: rocket, velocity: dir.clone().multiplyScalar(55.0), isRPG: true, life: 3.0 });
-                scene.add(rocket);
-            } else if (curWeapon === 'grenadeLauncher') {
-                const glMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
-                glMesh.position.copy(spawnPos);
-                const glVel = dir.clone().multiplyScalar(40.0); glVel.y += 2.5;
-                projectiles.push({ mesh: glMesh, velocity: glVel, isRPG: false, life: 2.5 });
-                scene.add(glMesh);
-            } else if (curWeapon === 'rifle') {
-                // 步槍高速子彈
-                const bulletMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-                bulletMesh.position.copy(spawnPos);
-                projectiles.push({ mesh: bulletMesh, velocity: dir.clone().multiplyScalar(90.0), isRifle: true, life: 1.5 });
-                scene.add(bulletMesh);
-            }
+            const pColor = curWeapon === 'blackhole' ? 0x9900ff : (curWeapon === 'freeze' ? 0x00ffff : 0x00ff66);
+            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: pColor }));
+            bullet.position.copy(spawnPos);
+            projectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(65.0), type: curWeapon, life: 2.5 });
+            scene.add(bullet);
         }
 
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition); playerVelocity.set(0, 0, 0);
-            jumpsLeft = MAX_JUMPS;
-            refillAllAmmo();
+            jumpsLeft = MAX_JUMPS; refillAllAmmo();
         }
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
 
         function restartGame() {
             currentLevel = 1; score = 0; isGameOver = false; hudScore.textContent = score;
-            projectiles.forEach(b => scene.remove(b.mesh)); grenades.forEach(g => scene.remove(g.mesh));
-            projectiles.length = 0; grenades.length = 0; buildTower(currentLevel); controls.lock();
+            buildTower(currentLevel); controls.lock();
         }
 
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now(); const delta = (time - prevTime) / 1000;
+            
             if (controls.isLocked && !isGameOver) {
                 if (isMouseDown) tryShoot();
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
 
-                // 提示視窗自動隱藏計時
-                if (notifyTimer > 0) {
-                    notifyTimer -= delta;
-                    if (notifyTimer <= 0) checkpointNotify.style.display = 'none';
-                }
+                if (notifyTimer > 0) { notifyTimer -= delta; if (notifyTimer <= 0) checkpointNotify.style.display = 'none'; }
 
                 const playerObj = controls.getObject();
 
-                // 無人機
+                // 無人機動態
                 for (let d of drones) {
                     if (!d.active) continue;
-                    d.baseAngle += d.speed * delta;
-                    const radius = 16.0;
-                    d.mesh.position.x = Math.sin(d.baseAngle) * radius;
-                    d.mesh.position.z = Math.cos(d.baseAngle) * radius;
-
-                    if (playerObj.position.distanceTo(d.mesh.position) < 2.2) {
-                        const push = new THREE.Vector3().subVectors(playerObj.position, d.mesh.position).normalize();
-                        playerVelocity.addScaledVector(push, 30.0);
+                    if (d.isFrozen) {
+                        d.freezeTimer -= delta;
+                        if (d.freezeTimer <= 0) d.isFrozen = false;
+                    } else {
+                        d.baseAngle += d.speed * delta;
+                        d.mesh.position.x = Math.sin(d.baseAngle) * 16.0;
+                        d.mesh.position.z = Math.cos(d.baseAngle) * 16.0;
                     }
                 }
 
-                // 雷射牆
-                for (let l of laserWalls) {
-                    l.mesh.rotation.y += l.speed * delta;
-                    if (playerObj.position.distanceTo(l.mesh.position) < 3.2) {
-                        const push = new THREE.Vector3().subVectors(playerObj.position, l.mesh.position).normalize();
-                        push.y = 0.5;
-                        playerVelocity.addScaledVector(push, 25.0);
-                    }
-                }
-
-                // 板塊 disappearance
+                // 板塊凍結與復原
                 for (let obs of obstacles) {
-                    if (obs.userData.isPermanent) continue;
-
-                    if (obs.userData.isStepped && !obs.userData.isDisappeared) {
+                    if (obs.userData.isFrozen) {
+                        obs.userData.freezeTimer -= delta;
+                        if (obs.userData.freezeTimer <= 0) {
+                            obs.userData.isFrozen = false;
+                            obs.material.color.setHex(0xff0055);
+                        }
+                    } else if (obs.userData.isStepped && !obs.userData.isDisappeared && !obs.userData.isPermanent) {
                         obs.userData.stepTimer -= delta;
                         obs.material.opacity = Math.max(0.2, obs.userData.stepTimer / 0.8);
-
-                        if (obs.userData.stepTimer <= 0) {
-                            obs.userData.isDisappeared = true;
-                            obs.visible = false;
-                            obs.userData.reappearTimer = 5.0;
-                        }
-                    }
-
-                    if (obs.userData.isDisappeared) {
+                        if (obs.userData.stepTimer <= 0) { obs.userData.isDisappeared = true; obs.visible = false; obs.userData.reappearTimer = 5.0; }
+                    } else if (obs.userData.isDisappeared) {
                         obs.userData.reappearTimer -= delta;
-                        if (obs.userData.reappearTimer <= 0) {
-                            obs.userData.isDisappeared = false;
-                            obs.userData.isStepped = false;
-                            obs.visible = true;
-                            obs.material.opacity = 1.0;
-                        }
+                        if (obs.userData.reappearTimer <= 0) { obs.userData.isDisappeared = false; obs.userData.isStepped = false; obs.visible = true; obs.material.opacity = 1.0; }
                     }
                 }
 
                 let moveVector = new THREE.Vector3();
-
-                if (isSliding) {
-                    moveVector.copy(slideDirection).multiplyScalar(slideSpeedCurrent * delta);
-                    slideSpeedCurrent = Math.max(26.0, slideSpeedCurrent - 25.0 * delta); slideTimer -= delta;
-                    if (slideTimer <= 0) cancelSlide();
-                } else {
-                    let moveSpeed = (isCrouching ? 10.0 : 26.0) * delta;
-                    const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
-                    const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
-                    if (moveForward) moveVector.addScaledVector(frontDir, moveSpeed); if (moveBackward) moveVector.addScaledVector(frontDir, -moveSpeed);
-                    if (moveLeft) moveVector.addScaledVector(sideDir, moveSpeed); if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
-                }
+                let moveSpeed = 26.0 * delta;
+                const frontDir = new THREE.Vector3(); camera.getWorldDirection(frontDir); frontDir.y = 0; frontDir.normalize();
+                const sideDir = new THREE.Vector3().crossVectors(camera.up, frontDir).normalize();
+                if (moveForward) moveVector.addScaledVector(frontDir, moveSpeed); if (moveBackward) moveVector.addScaledVector(frontDir, -moveSpeed);
+                if (moveLeft) moveVector.addScaledVector(sideDir, moveSpeed); if (moveRight) moveVector.addScaledVector(sideDir, -moveSpeed);
 
                 playerVelocity.y -= GRAVITY * delta; playerVelocity.x *= 0.94; playerVelocity.z *= 0.94;
                 playerObj.position.add(moveVector); playerObj.position.addScaledVector(playerVelocity, delta);
@@ -608,27 +429,25 @@
                 const playerFeetY = playerObj.position.y - currentEyeHeight;
                 for (let obs of obstacles) {
                     if (obs.userData.isDisappeared) continue;
-
                     const obsBox = new THREE.Box3().setFromObject(obs);
                     if (playerObj.position.x >= obsBox.min.x - 0.4 && playerObj.position.x <= obsBox.max.x + 0.4 && playerObj.position.z >= obsBox.min.z - 0.4 && playerObj.position.z <= obsBox.max.z + 0.4) {
                         const platTop = obsBox.max.y;
                         if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
                             playerObj.position.y = platTop + currentEyeHeight; playerVelocity.y = 0;
                             
-                            if (jumpsLeft < MAX_JUMPS) {
-                                jumpsLeft = MAX_JUMPS;
-                                updateHUD();
+                            // 粉紅彈簧墊高彈
+                            if (obs.userData.isBounce) {
+                                playerVelocity.y = 26.0;
+                            } else {
+                                jumpsLeft = MAX_JUMPS; updateHUD();
                             }
 
-                            // 踩到記錄點
                             if (obs.userData.isCheckpoint) {
                                 if (activeCheckpointIndex !== obs.userData.id) {
                                     activeCheckpointIndex = obs.userData.id;
                                     respawnPosition.set(obs.position.x, obs.position.y + 3.0, obs.position.z);
-                                    refillAllAmmo(); // 子彈全部滿彈
-                                    
-                                    checkpointNotify.style.display = 'block';
-                                    notifyTimer = 2.0; // 顯示提示 2 秒
+                                    refillAllAmmo();
+                                    checkpointNotify.style.display = 'block'; notifyTimer = 2.0;
                                 }
                             } else {
                                 triggerPlatformDisappear(obs);
@@ -638,73 +457,33 @@
                     }
                 }
 
-                if (playerObj.position.y <= -3.0) {
-                    respawnAtCheckpoint();
-                }
+                if (playerObj.position.y <= -3.0) respawnAtCheckpoint();
 
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 500; 
-                    hudScore.textContent = score; 
-                    currentLevel++; 
-                    buildTower(currentLevel); 
+                    score += 500; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
                 }
 
-                // 子彈與彈道計算
+                // 子彈碰撞
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     const p = projectiles[i];
-                    if (p.isGrenade) p.velocity.y -= GRAVITY * 0.4 * delta;
-                    p.mesh.position.addScaledVector(p.velocity, delta);
-                    p.life -= delta;
-
+                    p.mesh.position.addScaledVector(p.velocity, delta); p.life -= delta;
                     let hit = false;
 
-                    // 步槍擊中無人機
-                    if (p.isRifle) {
-                        for (let j = drones.length - 1; j >= 0; j--) {
-                            const d = drones[j];
-                            if (d.active && d.mesh.position.distanceTo(p.mesh.position) < 1.5) {
-                                d.active = false;
-                                scene.remove(d.mesh);
-                                hit = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // 碰撞方塊
                     for (let obs of obstacles) {
                         if (!obs.userData.isDisappeared && new THREE.Box3().setFromObject(obs).containsPoint(p.mesh.position)) {
-                            if (!p.isRifle) {
-                                triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
+                            hit = true;
+                            if (p.type === 'pulse') {
+                                // 脈衝電磁槍：擴大階梯
+                                obs.scale.set(1.5, 1.0, 1.5);
+                            } else {
+                                triggerElementalEffect(p.mesh.position, p.type);
                             }
-                            hit = true; break;
+                            break;
                         }
                     }
 
-                    if (p.mesh.position.y <= -4.0) {
-                        if (!p.isRifle) triggerExplosiveShockwave(p.mesh.position, p.isRPG ? 9.0 : 7.5, p.isRPG ? 45.0 : 38.0);
-                        hit = true;
-                    }
-
-                    if (hit || p.life <= 0) {
-                        scene.remove(p.mesh);
-                        projectiles.splice(i, 1);
-                    }
+                    if (hit || p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
                 }
-
-                for (let i = grenades.length - 1; i >= 0; i--) {
-                    const g = grenades[i]; g.timer -= delta; g.velocity.y -= GRAVITY * delta; g.mesh.position.addScaledVector(g.velocity, delta);
-                    for (let obs of obstacles) { 
-                        if (obs.userData.isDisappeared) continue;
-                        const obsBox = new THREE.Box3().setFromObject(obs); 
-                        if (obsBox.containsPoint(g.mesh.position)) { 
-                            g.velocity.y *= -0.4; g.velocity.x *= 0.6; g.velocity.z *= 0.6; g.mesh.position.y = obsBox.max.y + 0.1; break; 
-                        } 
-                    }
-                    if (g.timer <= 0 || g.mesh.position.y <= -4.0) { triggerExplosiveShockwave(g.mesh.position, 9.5, 45.0); scene.remove(g.mesh); grenades.splice(i, 1); }
-                }
-
-                for (let i = explosions.length - 1; i >= 0; i--) { const exp = explosions[i]; exp.timer -= delta; exp.mesh.material.opacity = exp.timer / 0.35; if (exp.timer <= 0) { scene.remove(exp.mesh); explosions.splice(i, 1); } }
             }
             prevTime = time; renderer.render(scene, camera);
         }
