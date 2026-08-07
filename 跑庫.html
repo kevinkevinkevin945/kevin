@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：地獄極限模式</title>
+    <title>3D 跑酷塔：劍雨與賭博補血版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(255, 0, 85, 0.9); border: 2px solid rgba(0, 0, 0, 0.8); pointer-events: none; z-index: 10; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 0, 5, 0.93); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 50px; margin-bottom: 10px; background: linear-gradient(to right, #ff0055, #ffaa00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.93); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
+        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ff3300, #ffcc00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
         #instructions p { font-size: 16px; margin: 5px 0; color: #ddd; }
+        .heal-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 15; opacity: 0; transition: opacity 0.3s; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
@@ -19,29 +20,30 @@
 <body>
 
     <div id="crosshair"></div>
+    <div id="heal-feedback" class="heal-msg"></div>
 
     <div id="hud">
+        血量: <span id="hp-display" style="color: #00ff66;">100 / 100</span> | 
         得分: <span id="score">0</span> | 
-        塔層: <span id="level-display" style="color: #ff2200;">地獄 1</span> | 
-        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 |
-        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span>
+        塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
+        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
+        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> | 
+        <span style="color: #ff00ff;">🎲 賭博補血 (!): <span id="heal-status">就緒 (按 Shift+1)</span></span>
     </div>
 
     <div id="weapon-status">
         <div id="ammo-display" style="color: #ffcc00; font-size: 26px;">1. 無限突擊步槍: ∞ / ∞</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | 按 E 發射凌空石</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | 按 ! 鍵試驗補血</div>
     </div>
 
     <div id="instructions">
-        <h1>☠️ 跑酷塔：地獄極限模式</h1>
-        <p style="color: #ff3366; font-weight: bold; font-size: 20px;">⚠️ 警告：本關卡極度困難，挑戰你的操作極限！</p>
+        <h1>⚔️ 跑酷塔：劍雨試煉版</h1>
+        <p>【🚫 無人機移除】空中不再有無人機襲擊。</p>
+        <p>【⚔️ 高空劍雨】天空每隔一段時間有 <b>20% 機率觸發劍雨</b>！請注意閃避！</p>
+        <p>【🎲 賭博補血】按下 <b>[!] (Shift + 1)</b>：<b>20% 機率補 50% 血</b>！失敗需冷卻等待！</p>
+        <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 凌空石 | ! 賭博補血</p>
         <br>
-        <p>【☠️ 崩塌階梯】踩上平台 <b>0.8 秒後會自動碎裂消失</b>，嚴禁停留！</p>
-        <p>【🤖 狂暴無人機】高密度巡邏，發射帶有高推力的強效擊退彈！</p>
-        <p>【🌪️ 窄版動態地形】平台縮小至 1/3，並且包含高頻移動與亂流！</p>
-        <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 使用凌空石</p>
-        <br>
-        <p style="color: #00ffcc;">👉 點擊螢幕開始接受地獄試煉 👈</p>
+        <p style="color: #00ffcc;">👉 點擊螢幕開始挑戰 👈</p>
     </div>
 
     <script>
@@ -50,6 +52,14 @@
 
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 34;
+
+        // 玩家血量機制
+        const MAX_HP = 100;
+        let playerHp = MAX_HP;
+
+        // 賭博補血技能機制
+        let healCooldownTimer = 0;
+        const HEAL_COOLDOWN_TIME = 8.0; // 失敗或使用後的等待冷卻時間 (秒)
 
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
@@ -66,8 +76,7 @@
         let respawnPosition = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
-        const drones = [];            
-        const droneProjectiles = []; 
+        const fallingSwords = []; // 劍雨陣列
         const playerProjectiles = [];
 
         let skyStoneMesh = null;
@@ -75,6 +84,9 @@
         let skyStoneState = 'READY';
         let skyStoneVelocity = new THREE.Vector3();
         let skyStoneCooldownTimer = 0;
+
+        // 劍雨定時器
+        let swordRainCheckTimer = 0;
 
         let score = 0;
         let isGameOver = false;
@@ -91,24 +103,27 @@
         let weaponMeshes = {};
         let weaponGroup;
 
+        const hudHp = document.getElementById('hp-display');
         const hudScore = document.getElementById('score');
         const hudLevel = document.getElementById('level-display');
         const hudJumps = document.getElementById('jumps-left');
         const stoneStatus = document.getElementById('stone-status');
+        const healStatus = document.getElementById('heal-status');
         const ammoDisplay = document.getElementById('ammo-display');
         const instructions = document.getElementById('instructions');
+        const healFeedback = document.getElementById('heal-feedback');
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050002);
-            scene.fog = new THREE.FogExp2(0x050002, 0.009);
+            scene.background = new THREE.Color(0x05020a);
+            scene.fog = new THREE.FogExp2(0x05020a, 0.008);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xff0055, 0.9);
+            const dirLight = new THREE.DirectionalLight(0xffaa00, 0.9);
             dirLight.position.set(0, 100, 0);
             scene.add(dirLight);
 
@@ -122,7 +137,7 @@
             scene.add(lavaSea);
 
             createSkyStoneObjects();
-            buildHellTower(currentLevel);
+            buildTower(currentLevel);
 
             instructions.addEventListener('click', () => {
                 if (!isGameOver) controls.lock();
@@ -161,32 +176,45 @@
             scene.add(skyStonePlatform);
         }
 
-        function createDrone(x, y, z) {
-            const droneGroup = new THREE.Group();
-            const bodyGeo = new THREE.SphereGeometry(0.6, 8, 8);
-            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            droneGroup.add(body);
+        // 建立單把下落飛劍模型
+        function spawnSword(x, y, z) {
+            const swordGroup = new THREE.Group();
+            
+            // 劍身
+            const bladeGeo = new THREE.ConeGeometry(0.25, 2.2, 4);
+            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.rotation.x = Math.PI; // 尖端朝下
+            swordGroup.add(blade);
 
-            const eyeGeo = new THREE.SphereGeometry(0.25, 8, 8);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-            const eye = new THREE.Mesh(eyeGeo, eyeMat);
-            eye.position.set(0, 0, -0.5);
-            droneGroup.add(eye);
+            swordGroup.position.set(x, y, z);
+            scene.add(swordGroup);
 
-            droneGroup.position.set(x, y, z);
-            scene.add(droneGroup);
-
-            drones.push({
-                mesh: droneGroup,
-                basePos: new THREE.Vector3(x, y, z),
-                shootTimer: Math.random() * 1.5,
-                noiseSeed: Math.random() * 100,
-                hp: 2
+            fallingSwords.push({
+                mesh: swordGroup,
+                speed: 35.0 + Math.random() * 15.0, // 下落速度
+                damage: 25
             });
         }
 
+        // 觸發劍雨 (20% 機率觸發)
+        function triggerSwordRain() {
+            const playerPos = controls.getObject().position;
+            const swordCount = 12 + Math.floor(Math.random() * 8); // 生成 12~20 把飛劍
+
+            for (let i = 0; i < swordCount; i++) {
+                const offsetX = (Math.random() - 0.5) * 28.0;
+                const offsetZ = (Math.random() - 0.5) * 28.0;
+                const spawnY = playerPos.y + 25.0 + Math.random() * 15.0; // 從玩家上方高空掉落
+
+                spawnSword(playerPos.x + offsetX, spawnY, playerPos.z + offsetZ);
+            }
+        }
+
         function updateHUD() {
+            hudHp.textContent = `${Math.max(0, Math.round(playerHp))} / ${MAX_HP}`;
+            hudHp.style.color = playerHp > 50 ? "#00ff66" : (playerHp > 25 ? "#ffcc00" : "#ff3333");
+
             hudJumps.textContent = jumpsLeft;
             hudJumps.style.color = jumpsLeft === 0 ? "#ff3333" : "#00ffff";
 
@@ -195,10 +223,43 @@
             else if (skyStoneState === 'ANCHORED') stoneStatus.textContent = "錨定中 (再按 E 彈射)";
             else if (skyStoneState === 'COOLDOWN') stoneStatus.textContent = `冷卻中 (${skyStoneCooldownTimer.toFixed(1)}s)`;
 
+            if (healCooldownTimer > 0) {
+                healStatus.textContent = `等待中 (${healCooldownTimer.toFixed(1)}s)`;
+                healStatus.style.color = "#ffaa00";
+            } else {
+                healStatus.textContent = "就緒 (按 Shift+1)";
+                healStatus.style.color = "#ff00ff";
+            }
+
             const curKey = weaponList[currentWeaponIndex];
             const currentAmmoVal = ammo[curKey] === Infinity ? '∞' : ammo[curKey];
             const maxAmmoVal = MAX_AMMO[curKey];
             ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
+        }
+
+        // 🎲 按 ! 鍵賭博補血邏輯 (20% 機率補 50% 血)
+        function tryGambleHeal() {
+            if (healCooldownTimer > 0) return; // 冷卻等待中
+
+            const success = Math.random() < 0.20; // 20% 成功率
+
+            if (success) {
+                const healAmount = MAX_HP * 0.5;
+                playerHp = Math.min(MAX_HP, playerHp + healAmount);
+                showHealFeedback("✨ 祈禱成功！補血 +50%", "#00ff66");
+            } else {
+                showHealFeedback("❌ 祈禱失敗！進入等待冷卻...", "#ff3333");
+            }
+
+            healCooldownTimer = HEAL_COOLDOWN_TIME; // 無論成功失敗都進入冷卻等待
+            updateHUD();
+        }
+
+        function showHealFeedback(text, color) {
+            healFeedback.textContent = text;
+            healFeedback.style.color = color;
+            healFeedback.style.opacity = '1';
+            setTimeout(() => { healFeedback.style.opacity = '0'; }, 1500);
         }
 
         function switchWeapon(index) {
@@ -239,22 +300,21 @@
             }
         }
 
-        function buildHellTower(level) {
+        function buildTower(level) {
             obstacles.forEach(obs => scene.remove(obs));
-            drones.forEach(d => scene.remove(d.mesh));
-            obstacles.length = 0; drones.length = 0;
+            fallingSwords.forEach(s => scene.remove(s.mesh));
+            obstacles.length = 0; fallingSwords.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
-            hudLevel.textContent = `地獄 ${level}`;
+            hudLevel.textContent = level;
 
-            // 起始平台
             const startPlat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 6), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
             startPlat.position.set(0, 2, 12);
             startPlat.userData = { isCheckpoint: true, isPermanent: true };
             scene.add(startPlat); obstacles.push(startPlat);
             respawnPosition.set(0, 5, 12);
 
-            const totalSteps = 45 + level * 10;
+            const totalSteps = 45 + level * 8;
             let currentAngle = 0;
             let currentY = 3.5;
 
@@ -267,10 +327,9 @@
                 const posZ = Math.cos(currentAngle) * radius;
 
                 const isCP = (i > 0 && i % 15 === 0);
-                const isMoving = (!isCP && i % 3 === 0);
+                const isMoving = (!isCP && i % 4 === 0);
 
-                // 窄邊平台：只有 1.8 ~ 2.2 寬
-                const stepWidth = isCP ? 4.5 : 1.8;
+                const stepWidth = isCP ? 4.5 : 2.2;
                 const stepGeo = new THREE.BoxGeometry(stepWidth, 0.8, stepWidth);
                 let stepColor = isCP ? 0xffd700 : (isMoving ? 0xff00bb : 0x00ccff);
 
@@ -288,14 +347,8 @@
                 };
 
                 scene.add(step); obstacles.push(step);
-
-                // 生成高密度狂暴無人機
-                if (i > 2 && Math.random() < 0.45) {
-                    createDrone(posX + (Math.random() * 10 - 5), currentY + 3.5, posZ + (Math.random() * 10 - 5));
-                }
             }
 
-            // 頂層終點
             currentY += 4.5;
             const topPlat = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 8), new THREE.MeshLambertMaterial({ color: 0xffff00 }));
             topPlat.position.set(0, currentY, 0);
@@ -331,6 +384,13 @@
 
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
+
+            // 監聽 ! 鍵 (Shift + 1 或 KeyExclamation)
+            if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
+                tryGambleHeal();
+                return;
+            }
+
             switch (e.code) {
                 case 'KeyW': moveForward = true; break;
                 case 'KeyS': moveBackward = true; break;
@@ -338,7 +398,7 @@
                 case 'KeyD': moveRight = true; break;
                 case 'KeyE': handleSkyStoneAbility(); break;
                 case 'KeyQ': switchWeapon(currentWeaponIndex + 1); break;
-                case 'Digit1': switchWeapon(0); break;
+                case 'Digit1': if (!e.shiftKey) switchWeapon(0); break;
                 case 'Digit2': switchWeapon(1); break;
                 case 'Digit3': switchWeapon(2); break;
                 case 'Digit4': switchWeapon(3); break;
@@ -390,6 +450,7 @@
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition);
             playerVelocity.set(0, 0, 0);
+            playerHp = MAX_HP; // 扣血後重生滿血
             jumpsLeft = MAX_JUMPS;
             skyStoneState = 'READY';
             skyStoneMesh.visible = false;
@@ -408,95 +469,84 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
-                // 動態地形擺動 & 踩空崩塌邏輯
+                // 補血技能冷卻計時
+                if (healCooldownTimer > 0) {
+                    healCooldownTimer -= delta;
+                    if (healCooldownTimer <= 0) healCooldownTimer = 0;
+                    updateHUD();
+                }
+
+                // ⚔️ 劍雨機制：每 3.5 秒檢查一次，有 20% 機率爆發劍雨
+                swordRainCheckTimer += delta;
+                if (swordRainCheckTimer >= 3.5) {
+                    swordRainCheckTimer = 0;
+                    if (Math.random() < 0.20) { // 20% 觸發率
+                        triggerSwordRain();
+                        showHealFeedback("⚡ 警報：天空降下劍雨！", "#ff3300");
+                    }
+                }
+
+                // 飛劍下落運動與碰撞傷害判定
+                for (let i = fallingSwords.length - 1; i >= 0; i--) {
+                    const sword = fallingSwords[i];
+                    sword.mesh.position.y -= sword.speed * delta;
+
+                    // 擊中玩家判定
+                    if (sword.mesh.position.distanceTo(playerPos) < 1.4) {
+                        playerHp -= sword.damage;
+                        showHealFeedback(`💥 被劍雨擊中！扣血 -25%`, "#ff0000");
+                        
+                        // 給予些微震撼擊退
+                        playerVelocity.y = -8.0;
+
+                        scene.remove(sword.mesh);
+                        fallingSwords.splice(i, 1);
+                        updateHUD();
+
+                        if (playerHp <= 0) {
+                            respawnAtCheckpoint();
+                        }
+                        continue;
+                    }
+
+                    // 劍落入地底後移除
+                    if (sword.mesh.position.y < -5.0) {
+                        scene.remove(sword.mesh);
+                        fallingSwords.splice(i, 1);
+                    }
+                }
+
+                // 階梯擺動與碎裂邏輯
                 obstacles.forEach(obs => {
                     if (obs.userData.isMoving) {
-                        obs.userData.moveOffset += delta * 3.0;
-                        obs.position.x = obs.userData.basePos.x + Math.sin(obs.userData.moveOffset) * 3.5;
+                        obs.userData.moveOffset += delta * 2.5;
+                        obs.position.x = obs.userData.basePos.x + Math.sin(obs.userData.moveOffset) * 3.0;
                     }
 
                     if (obs.userData.isCollapsing) {
                         obs.userData.collapseTimer += delta;
-                        obs.material.color.setHex(0xff0000); // 警告紅光
-                        
-                        if (obs.userData.collapseTimer >= 0.8) { // 0.8秒後直接掉落消失
+                        obs.material.color.setHex(0xff0000);
+                        if (obs.userData.collapseTimer >= 0.8) {
                             obs.position.y -= delta * 40.0;
                         }
                     }
                 });
 
-                // 無人機 AI 與狂暴攻擊
-                for (let i = drones.length - 1; i >= 0; i--) {
-                    const d = drones[i];
-                    d.noiseSeed += delta * 2.0;
-
-                    const hoverX = Math.sin(d.noiseSeed) * 3.0;
-                    const hoverY = Math.cos(d.noiseSeed * 1.5) * 2.0;
-                    const hoverZ = Math.sin(d.noiseSeed * 0.9) * 3.0;
-
-                    d.mesh.position.set(d.basePos.x + hoverX, d.basePos.y + hoverY, d.basePos.z + hoverZ);
-                    d.mesh.lookAt(playerPos);
-
-                    const distToPlayer = d.mesh.position.distanceTo(playerPos);
-                    if (distToPlayer < 30.0) {
-                        d.shootTimer += delta;
-                        if (d.shootTimer >= 1.6) { // 射速加快
-                            d.shootTimer = 0;
-                            
-                            const bulletGeo = new THREE.SphereGeometry(0.18, 6, 6);
-                            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-                            const pMesh = new THREE.Mesh(bulletGeo, bulletMat);
-                            pMesh.position.copy(d.mesh.position);
-
-                            const shootDir = playerPos.clone().sub(d.mesh.position).normalize();
-                            droneProjectiles.push({
-                                mesh: pMesh,
-                                velocity: shootDir.multiplyScalar(22.0),
-                                life: 3.5
-                            });
-                            scene.add(pMesh);
-                        }
-                    }
-                }
-
-                // 無人機強效擊退彈判定
-                for (let i = droneProjectiles.length - 1; i >= 0; i--) {
-                    const dp = droneProjectiles[i];
-                    dp.mesh.position.addScaledVector(dp.velocity, delta);
-                    dp.life -= delta;
-
-                    if (dp.mesh.position.distanceTo(playerPos) < 1.2) {
-                        const pushDir = dp.velocity.clone().normalize();
-                        playerVelocity.addScaledVector(pushDir, 14.0); // ⚡ 強力擊退！
-                        scene.remove(dp.mesh);
-                        droneProjectiles.splice(i, 1);
-                        continue;
-                    }
-
-                    if (dp.life <= 0) {
-                        scene.remove(dp.mesh);
-                        droneProjectiles.splice(i, 1);
-                    }
-                }
-
-                // 玩家子彈
+                // 玩家發射物更新
                 for (let i = playerProjectiles.length - 1; i >= 0; i--) {
                     const pp = playerProjectiles[i];
                     pp.mesh.position.addScaledVector(pp.velocity, delta);
                     pp.life -= delta;
 
                     let hit = false;
-                    for (let j = drones.length - 1; j >= 0; j--) {
-                        const d = drones[j];
-                        if (pp.mesh.position.distanceTo(d.mesh.position) < 1.0) {
-                            d.hp--;
+                    // 可以用子彈在空中擊碎下落的飛劍！
+                    for (let k = fallingSwords.length - 1; k >= 0; k--) {
+                        if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 1.2) {
+                            scene.remove(fallingSwords[k].mesh);
+                            fallingSwords.splice(k, 1);
                             hit = true;
-                            if (d.hp <= 0) {
-                                scene.remove(d.mesh);
-                                drones.splice(j, 1);
-                                score += 300;
-                                hudScore.textContent = score;
-                            }
+                            score += 50;
+                            hudScore.textContent = score;
                             break;
                         }
                     }
@@ -551,7 +601,6 @@
                             jumpsLeft = MAX_JUMPS; 
                             updateHUD();
 
-                            // 觸發崩塌（永久平台與紀錄點除外）
                             if (!obs.userData.isPermanent && !obs.userData.isCheckpoint) {
                                 obs.userData.isCollapsing = true;
                             }
@@ -564,10 +613,12 @@
                     }
                 }
 
+                // 掉入岩漿海重生
                 if (playerObj.position.y <= -3.0) respawnAtCheckpoint();
 
+                // 抵達終點水晶
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 2000; hudScore.textContent = score; currentLevel++; buildHellTower(currentLevel); 
+                    score += 2000; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
                 }
             }
             prevTime = time; renderer.render(scene, camera);
