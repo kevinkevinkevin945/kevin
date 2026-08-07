@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：劍雨與賭博補血版</title>
+    <title>3D 跑酷塔：濃密長劍雨版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
@@ -37,10 +37,9 @@
     </div>
 
     <div id="instructions">
-        <h1>⚔️ 跑酷塔：劍雨試煉版</h1>
-        <p>【🚫 無人機移除】空中不再有無人機襲擊。</p>
-        <p>【⚔️ 高空劍雨】天空每隔一段時間有 <b>20% 機率觸發劍雨</b>！請注意閃避！</p>
-        <p>【🎲 賭博補血】按下 <b>[!] (Shift + 1)</b>：<b>20% 機率補 50% 血</b>！失敗需冷卻等待！</p>
+        <h1>⚔️ 跑酷塔：密集強劍雨版</h1>
+        <p>【⚔️ 密集持續劍雨】觸發後進入 <b>4 秒密集劍雨風暴</b>，請持續移動閃避！</p>
+        <p>【🎲 賭博補血】按下 <b>[!] (Shift + 1)</b>：<b>20% 機率補 50% 血</b>！失敗進入等待！</p>
         <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 凌空石 | ! 賭博補血</p>
         <br>
         <p style="color: #00ffcc;">👉 點擊螢幕開始挑戰 👈</p>
@@ -59,7 +58,7 @@
 
         // 賭博補血技能機制
         let healCooldownTimer = 0;
-        const HEAL_COOLDOWN_TIME = 8.0; // 失敗或使用後的等待冷卻時間 (秒)
+        const HEAL_COOLDOWN_TIME = 8.0;
 
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
@@ -76,7 +75,7 @@
         let respawnPosition = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
-        const fallingSwords = []; // 劍雨陣列
+        const fallingSwords = [];
         const playerProjectiles = [];
 
         let skyStoneMesh = null;
@@ -85,8 +84,11 @@
         let skyStoneVelocity = new THREE.Vector3();
         let skyStoneCooldownTimer = 0;
 
-        // 劍雨定時器
+        // 劍雨持續狀態與定時器
         let swordRainCheckTimer = 0;
+        let isSwordStormActive = false;
+        let swordStormTimer = 0;
+        let swordSpawnIntervalTimer = 0;
 
         let score = 0;
         let isGameOver = false;
@@ -176,39 +178,30 @@
             scene.add(skyStonePlatform);
         }
 
-        // 建立單把下落飛劍模型
-        function spawnSword(x, y, z) {
+        // 生成單把密集的下落飛劍
+        function spawnDenseSword() {
+            const playerPos = controls.getObject().position;
             const swordGroup = new THREE.Group();
             
-            // 劍身
-            const bladeGeo = new THREE.ConeGeometry(0.25, 2.2, 4);
-            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+            const bladeGeo = new THREE.ConeGeometry(0.22, 2.4, 4);
+            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
             const blade = new THREE.Mesh(bladeGeo, bladeMat);
-            blade.rotation.x = Math.PI; // 尖端朝下
+            blade.rotation.x = Math.PI;
             swordGroup.add(blade);
 
-            swordGroup.position.set(x, y, z);
+            // 範圍縮小至 14 個單位（密度更高更加貼身）
+            const offsetX = (Math.random() - 0.5) * 14.0;
+            const offsetZ = (Math.random() - 0.5) * 14.0;
+            const spawnY = playerPos.y + 22.0 + Math.random() * 8.0;
+
+            swordGroup.position.set(playerPos.x + offsetX, spawnY, playerPos.z + offsetZ);
             scene.add(swordGroup);
 
             fallingSwords.push({
                 mesh: swordGroup,
-                speed: 35.0 + Math.random() * 15.0, // 下落速度
-                damage: 25
+                speed: 30.0 + Math.random() * 12.0,
+                damage: 20
             });
-        }
-
-        // 觸發劍雨 (20% 機率觸發)
-        function triggerSwordRain() {
-            const playerPos = controls.getObject().position;
-            const swordCount = 12 + Math.floor(Math.random() * 8); // 生成 12~20 把飛劍
-
-            for (let i = 0; i < swordCount; i++) {
-                const offsetX = (Math.random() - 0.5) * 28.0;
-                const offsetZ = (Math.random() - 0.5) * 28.0;
-                const spawnY = playerPos.y + 25.0 + Math.random() * 15.0; // 從玩家上方高空掉落
-
-                spawnSword(playerPos.x + offsetX, spawnY, playerPos.z + offsetZ);
-            }
         }
 
         function updateHUD() {
@@ -237,11 +230,10 @@
             ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
         }
 
-        // 🎲 按 ! 鍵賭博補血邏輯 (20% 機率補 50% 血)
         function tryGambleHeal() {
-            if (healCooldownTimer > 0) return; // 冷卻等待中
+            if (healCooldownTimer > 0) return;
 
-            const success = Math.random() < 0.20; // 20% 成功率
+            const success = Math.random() < 0.20;
 
             if (success) {
                 const healAmount = MAX_HP * 0.5;
@@ -251,7 +243,7 @@
                 showHealFeedback("❌ 祈禱失敗！進入等待冷卻...", "#ff3333");
             }
 
-            healCooldownTimer = HEAL_COOLDOWN_TIME; // 無論成功失敗都進入冷卻等待
+            healCooldownTimer = HEAL_COOLDOWN_TIME;
             updateHUD();
         }
 
@@ -385,7 +377,6 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
-            // 監聽 ! 鍵 (Shift + 1 或 KeyExclamation)
             if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
                 tryGambleHeal();
                 return;
@@ -450,7 +441,7 @@
         function respawnAtCheckpoint() {
             controls.getObject().position.copy(respawnPosition);
             playerVelocity.set(0, 0, 0);
-            playerHp = MAX_HP; // 扣血後重生滿血
+            playerHp = MAX_HP;
             jumpsLeft = MAX_JUMPS;
             skyStoneState = 'READY';
             skyStoneMesh.visible = false;
@@ -469,36 +460,47 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
-                // 補血技能冷卻計時
                 if (healCooldownTimer > 0) {
                     healCooldownTimer -= delta;
                     if (healCooldownTimer <= 0) healCooldownTimer = 0;
                     updateHUD();
                 }
 
-                // ⚔️ 劍雨機制：每 3.5 秒檢查一次，有 20% 機率爆發劍雨
-                swordRainCheckTimer += delta;
-                if (swordRainCheckTimer >= 3.5) {
-                    swordRainCheckTimer = 0;
-                    if (Math.random() < 0.20) { // 20% 觸發率
-                        triggerSwordRain();
-                        showHealFeedback("⚡ 警報：天空降下劍雨！", "#ff3300");
+                // ⚡ 劍雨檢查機制：每 4 秒有 20% 機率開啟長達 4 秒的密集暴風雨
+                if (!isSwordStormActive) {
+                    swordRainCheckTimer += delta;
+                    if (swordRainCheckTimer >= 4.0) {
+                        swordRainCheckTimer = 0;
+                        if (Math.random() < 0.20) {
+                            isSwordStormActive = true;
+                            swordStormTimer = 4.0; // 持續 4 秒暴雨
+                            showHealFeedback("⚡ 警報：極致密集劍雨襲來 (持續4秒)！", "#ff1100");
+                        }
+                    }
+                } else {
+                    // 暴風雨期間，每 0.08 秒生成一把飛劍（極其密集！）
+                    swordStormTimer -= delta;
+                    swordSpawnIntervalTimer += delta;
+
+                    if (swordSpawnIntervalTimer >= 0.08) {
+                        swordSpawnIntervalTimer = 0;
+                        spawnDenseSword();
+                    }
+
+                    if (swordStormTimer <= 0) {
+                        isSwordStormActive = false;
                     }
                 }
 
-                // 飛劍下落運動與碰撞傷害判定
+                // 飛劍更新與傷害判定
                 for (let i = fallingSwords.length - 1; i >= 0; i--) {
                     const sword = fallingSwords[i];
                     sword.mesh.position.y -= sword.speed * delta;
 
-                    // 擊中玩家判定
-                    if (sword.mesh.position.distanceTo(playerPos) < 1.4) {
+                    if (sword.mesh.position.distanceTo(playerPos) < 1.3) {
                         playerHp -= sword.damage;
-                        showHealFeedback(`💥 被劍雨擊中！扣血 -25%`, "#ff0000");
+                        showHealFeedback(`💥 被劍刺中！-20%`, "#ff0000");
                         
-                        // 給予些微震撼擊退
-                        playerVelocity.y = -8.0;
-
                         scene.remove(sword.mesh);
                         fallingSwords.splice(i, 1);
                         updateHUD();
@@ -509,14 +511,13 @@
                         continue;
                     }
 
-                    // 劍落入地底後移除
                     if (sword.mesh.position.y < -5.0) {
                         scene.remove(sword.mesh);
                         fallingSwords.splice(i, 1);
                     }
                 }
 
-                // 階梯擺動與碎裂邏輯
+                // 階梯邏輯
                 obstacles.forEach(obs => {
                     if (obs.userData.isMoving) {
                         obs.userData.moveOffset += delta * 2.5;
@@ -532,14 +533,13 @@
                     }
                 });
 
-                // 玩家發射物更新
+                // 玩家發射物
                 for (let i = playerProjectiles.length - 1; i >= 0; i--) {
                     const pp = playerProjectiles[i];
                     pp.mesh.position.addScaledVector(pp.velocity, delta);
                     pp.life -= delta;
 
                     let hit = false;
-                    // 可以用子彈在空中擊碎下落的飛劍！
                     for (let k = fallingSwords.length - 1; k >= 0; k--) {
                         if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 1.2) {
                             scene.remove(fallingSwords[k].mesh);
@@ -613,10 +613,8 @@
                     }
                 }
 
-                // 掉入岩漿海重生
                 if (playerObj.position.y <= -3.0) respawnAtCheckpoint();
 
-                // 抵達終點水晶
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
                     score += 2000; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
                 }
