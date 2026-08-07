@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：濃密長劍雨版</title>
+    <title>3D 跑酷塔</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
@@ -37,8 +37,7 @@
     </div>
 
     <div id="instructions">
-        <h1>⚔️ 跑酷塔：密集強劍雨版</h1>
-        <p>【⚔️ 密集持續劍雨】觸發後進入 <b>4 秒密集劍雨風暴</b>，請持續移動閃避！</p>
+        <h1>⚔️ 跑酷塔</h1
         <p>【🎲 賭博補血】按下 <b>[!] (Shift + 1)</b>：<b>20% 機率補 50% 血</b>！失敗進入等待！</p>
         <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 凌空石 | ! 賭博補血</p>
         <br>
@@ -84,8 +83,7 @@
         let skyStoneVelocity = new THREE.Vector3();
         let skyStoneCooldownTimer = 0;
 
-        // 劍雨持續狀態與定時器
-        let swordRainCheckTimer = 0;
+        // ⚔️ 10 秒劍雨風暴變數
         let isSwordStormActive = false;
         let swordStormTimer = 0;
         let swordSpawnIntervalTimer = 0;
@@ -178,18 +176,18 @@
             scene.add(skyStonePlatform);
         }
 
-        // 生成單把密集的下落飛劍
+        // 生成飛劍
         function spawnDenseSword() {
             const playerPos = controls.getObject().position;
             const swordGroup = new THREE.Group();
             
             const bladeGeo = new THREE.ConeGeometry(0.22, 2.4, 4);
-            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff1100 });
             const blade = new THREE.Mesh(bladeGeo, bladeMat);
             blade.rotation.x = Math.PI;
             swordGroup.add(blade);
 
-            // 範圍縮小至 14 個單位（密度更高更加貼身）
+            // 落在玩家周圍 14 單位範圍內
             const offsetX = (Math.random() - 0.5) * 14.0;
             const offsetZ = (Math.random() - 0.5) * 14.0;
             const spawnY = playerPos.y + 22.0 + Math.random() * 8.0;
@@ -377,13 +375,25 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
+            // 賭博補血 (!) 鍵
             if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
                 tryGambleHeal();
                 return;
             }
 
+            // ⚡ 按 W 鍵有 20% 機率觸發持續 10 秒的劍雨
+            if (e.code === 'KeyW') {
+                if (!moveForward) { // 防止長按重複觸發
+                    moveForward = true;
+                    if (!isSwordStormActive && Math.random() < 0.20) { // 20% 機率
+                        isSwordStormActive = true;
+                        swordStormTimer = 10.0; // 持續 10 秒
+                        showHealFeedback("⚡ 警報：前行觸發 10 秒超長劍雨！", "#ff1100");
+                    }
+                }
+            }
+
             switch (e.code) {
-                case 'KeyW': moveForward = true; break;
                 case 'KeyS': moveBackward = true; break;
                 case 'KeyA': moveLeft = true; break;
                 case 'KeyD': moveRight = true; break;
@@ -446,6 +456,7 @@
             skyStoneState = 'READY';
             skyStoneMesh.visible = false;
             skyStonePlatform.visible = false;
+            isSwordStormActive = false; // 重生時停止劍雨
             updateHUD();
         }
 
@@ -466,22 +477,12 @@
                     updateHUD();
                 }
 
-                // ⚡ 劍雨檢查機制：每 4 秒有 20% 機率開啟長達 4 秒的密集暴風雨
-                if (!isSwordStormActive) {
-                    swordRainCheckTimer += delta;
-                    if (swordRainCheckTimer >= 4.0) {
-                        swordRainCheckTimer = 0;
-                        if (Math.random() < 0.20) {
-                            isSwordStormActive = true;
-                            swordStormTimer = 4.0; // 持續 4 秒暴雨
-                            showHealFeedback("⚡ 警報：極致密集劍雨襲來 (持續4秒)！", "#ff1100");
-                        }
-                    }
-                } else {
-                    // 暴風雨期間，每 0.08 秒生成一把飛劍（極其密集！）
+                // ⚡ 10 秒持續密集劍雨爆發邏輯
+                if (isSwordStormActive) {
                     swordStormTimer -= delta;
                     swordSpawnIntervalTimer += delta;
 
+                    // 每 0.08 秒產出一把密集飛劍
                     if (swordSpawnIntervalTimer >= 0.08) {
                         swordSpawnIntervalTimer = 0;
                         spawnDenseSword();
@@ -492,7 +493,7 @@
                     }
                 }
 
-                // 飛劍更新與傷害判定
+                // 飛劍更新與碰撞扣血
                 for (let i = fallingSwords.length - 1; i >= 0; i--) {
                     const sword = fallingSwords[i];
                     sword.mesh.position.y -= sword.speed * delta;
