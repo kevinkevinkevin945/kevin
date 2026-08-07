@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔</title>
+    <title>3D 跑酷塔：保留進度與分數版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
@@ -27,19 +27,22 @@
         得分: <span id="score">0</span> | 
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
         三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
-        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> | 
-        <span style="color: #ff00ff;">🎲 賭博補血 (!): <span id="heal-status">就緒 (按 Shift+1)</span></span>
+        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> <br>
+        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (按 Shift+1)</span> <br>
+        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (按 Shift+2)</span>
     </div>
 
     <div id="weapon-status">
         <div id="ammo-display" style="color: #ffcc00; font-size: 26px;">1. 無限突擊步槍: ∞ / ∞</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | 按 ! 鍵試驗補血</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | ! 與 @ 鍵進行賭血</div>
     </div>
 
     <div id="instructions">
-        <h1>⚔️ 跑酷塔</h1
-        <p>【🎲 賭博補血】按下 <b>[!] (Shift + 1)</b>：<b>20% 機率補 50% 血</b>！失敗進入等待！</p>
-        <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 凌空石 | ! 賭博補血</p>
+        <h1>⚔️ 跑酷塔：保留進度與分數版</h1>
+        <p>【🛡️ 進度保護】死亡僅回到當層起點，<b>塔層與分數不歸零、不重置</b>！</p>
+        <p>【💀 賭命豪賭 (!)】按 <b>Shift + 1</b>：<b>40% 滿血</b>，<b>60% 瞬間暴斃死亡</b>！</p>
+        <p>【⚖️ 微利小賭 (@)】按 <b>Shift + 2</b>：<b>20% 補 20 血</b>，<b>80% 扣 10 血</b>！</p>
+        <p>【⚠️ W 鍵陷阱】按 <b>W 前進時有 20% 機率</b> 觸發 <b>10 秒劍雨</b>！</p>
         <br>
         <p style="color: #00ffcc;">👉 點擊螢幕開始挑戰 👈</p>
     </div>
@@ -55,10 +58,6 @@
         const MAX_HP = 100;
         let playerHp = MAX_HP;
 
-        // 賭博補血技能機制
-        let healCooldownTimer = 0;
-        const HEAL_COOLDOWN_TIME = 8.0;
-
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
@@ -71,7 +70,8 @@
         let currentLevel = 1;
         let rewardCrystal = null;
 
-        let respawnPosition = new THREE.Vector3(0, 5, 12);
+        // 當前關卡起點位置
+        const START_POSITION = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
         const fallingSwords = [];
@@ -108,7 +108,6 @@
         const hudLevel = document.getElementById('level-display');
         const hudJumps = document.getElementById('jumps-left');
         const stoneStatus = document.getElementById('stone-status');
-        const healStatus = document.getElementById('heal-status');
         const ammoDisplay = document.getElementById('ammo-display');
         const instructions = document.getElementById('instructions');
         const healFeedback = document.getElementById('heal-feedback');
@@ -176,7 +175,6 @@
             scene.add(skyStonePlatform);
         }
 
-        // 生成飛劍
         function spawnDenseSword() {
             const playerPos = controls.getObject().position;
             const swordGroup = new THREE.Group();
@@ -187,7 +185,6 @@
             blade.rotation.x = Math.PI;
             swordGroup.add(blade);
 
-            // 落在玩家周圍 14 單位範圍內
             const offsetX = (Math.random() - 0.5) * 14.0;
             const offsetZ = (Math.random() - 0.5) * 14.0;
             const spawnY = playerPos.y + 22.0 + Math.random() * 8.0;
@@ -214,35 +211,45 @@
             else if (skyStoneState === 'ANCHORED') stoneStatus.textContent = "錨定中 (再按 E 彈射)";
             else if (skyStoneState === 'COOLDOWN') stoneStatus.textContent = `冷卻中 (${skyStoneCooldownTimer.toFixed(1)}s)`;
 
-            if (healCooldownTimer > 0) {
-                healStatus.textContent = `等待中 (${healCooldownTimer.toFixed(1)}s)`;
-                healStatus.style.color = "#ffaa00";
-            } else {
-                healStatus.textContent = "就緒 (按 Shift+1)";
-                healStatus.style.color = "#ff00ff";
-            }
-
             const curKey = weaponList[currentWeaponIndex];
             const currentAmmoVal = ammo[curKey] === Infinity ? '∞' : ammo[curKey];
             const maxAmmoVal = MAX_AMMO[curKey];
             ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
         }
 
-        function tryGambleHeal() {
-            if (healCooldownTimer > 0) return;
+        // 🎲 補血機制 1 (!) : 40% 滿血 / 60% 暴斃
+        function tryGambleHeal1() {
+            const success = Math.random() < 0.40;
 
+            if (success) {
+                playerHp = MAX_HP;
+                showHealFeedback("✨ 豪賭成功！瞬間滿血！", "#00ff66");
+                updateHUD();
+            } else {
+                showHealFeedback("💀 豪賭失敗！暴斃死亡！", "#ff0000");
+                playerHp = 0;
+                updateHUD();
+                handleDeath(); // 死亡回起點，不扣分不重置塔層
+            }
+        }
+
+        // 🎲 補血機制 2 (@) : 20% 補20滴 / 80% 扣10滴
+        function tryGambleHeal2() {
             const success = Math.random() < 0.20;
 
             if (success) {
-                const healAmount = MAX_HP * 0.5;
-                playerHp = Math.min(MAX_HP, playerHp + healAmount);
-                showHealFeedback("✨ 祈禱成功！補血 +50%", "#00ff66");
+                playerHp = Math.min(MAX_HP, playerHp + 20);
+                showHealFeedback("✨ 小賭成功！血量 +20", "#00ff66");
             } else {
-                showHealFeedback("❌ 祈禱失敗！進入等待冷卻...", "#ff3333");
+                playerHp -= 10;
+                showHealFeedback("❌ 小賭失敗！血量 -10", "#ff3333");
             }
 
-            healCooldownTimer = HEAL_COOLDOWN_TIME;
             updateHUD();
+
+            if (playerHp <= 0) {
+                handleDeath();
+            }
         }
 
         function showHealFeedback(text, color) {
@@ -298,11 +305,11 @@
 
             hudLevel.textContent = level;
 
-            const startPlat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 6), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
-            startPlat.position.set(0, 2, 12);
-            startPlat.userData = { isCheckpoint: true, isPermanent: true };
+            // 當前塔層的起始大平台
+            const startPlat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 6), new THREE.MeshLambertMaterial({ color: 0x00ffcc }));
+            startPlat.position.copy(START_POSITION).sub(new THREE.Vector3(0, 3, 0));
+            startPlat.userData = { isPermanent: true };
             scene.add(startPlat); obstacles.push(startPlat);
-            respawnPosition.set(0, 5, 12);
 
             const totalSteps = 45 + level * 8;
             let currentAngle = 0;
@@ -316,19 +323,13 @@
                 const posX = Math.sin(currentAngle) * radius;
                 const posZ = Math.cos(currentAngle) * radius;
 
-                const isCP = (i > 0 && i % 15 === 0);
-                const isMoving = (!isCP && i % 4 === 0);
-
-                const stepWidth = isCP ? 4.5 : 2.2;
-                const stepGeo = new THREE.BoxGeometry(stepWidth, 0.8, stepWidth);
-                let stepColor = isCP ? 0xffd700 : (isMoving ? 0xff00bb : 0x00ccff);
-
-                const stepMat = new THREE.MeshLambertMaterial({ color: stepColor });
+                const isMoving = (i % 4 === 0);
+                const stepGeo = new THREE.BoxGeometry(2.2, 0.8, 2.2);
+                const stepMat = new THREE.MeshLambertMaterial({ color: isMoving ? 0xff00bb : 0x00ccff });
                 const step = new THREE.Mesh(stepGeo, stepMat);
 
                 step.position.set(posX, currentY, posZ);
                 step.userData = { 
-                    isCheckpoint: isCP, 
                     isMoving: isMoving,
                     isCollapsing: false,
                     collapseTimer: 0,
@@ -342,13 +343,29 @@
             currentY += 4.5;
             const topPlat = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 8), new THREE.MeshLambertMaterial({ color: 0xffff00 }));
             topPlat.position.set(0, currentY, 0);
-            topPlat.userData = { isCheckpoint: true, isPermanent: true };
+            topPlat.userData = { isPermanent: true };
             scene.add(topPlat); obstacles.push(topPlat);
 
             spawnGoalCrystal(new THREE.Vector3(0, currentY + 3.0, 0));
-            controls.getObject().position.copy(respawnPosition);
+            respawnPlayerToStart();
+        }
+
+        function respawnPlayerToStart() {
+            controls.getObject().position.copy(START_POSITION);
             playerVelocity.set(0, 0, 0);
+            playerHp = MAX_HP;
             jumpsLeft = MAX_JUMPS;
+            isSwordStormActive = false;
+            skyStoneState = 'READY';
+            skyStoneMesh.visible = false;
+            skyStonePlatform.visible = false;
+            updateHUD();
+        }
+
+        // 死亡處理：分數保留、塔層保留、回當前塔層起點
+        function handleDeath() {
+            showHealFeedback("💥 死亡！返回當前塔層起點", "#ff0000");
+            respawnPlayerToStart();
         }
 
         function spawnGoalCrystal(position) {
@@ -375,19 +392,25 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
-            // 賭博補血 (!) 鍵
+            // 🎲 補血 1 : Shift + 1 (即 !)
             if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
-                tryGambleHeal();
+                tryGambleHeal1();
                 return;
             }
 
-            // ⚡ 按 W 鍵有 20% 機率觸發持續 10 秒的劍雨
+            // 🎲 補血 2 : Shift + 2 (即 @)
+            if (e.key === '@' || (e.shiftKey && e.code === 'Digit2')) {
+                tryGambleHeal2();
+                return;
+            }
+
+            // ⚡ 按 W 鍵有 20% 機率觸發 10 秒劍雨
             if (e.code === 'KeyW') {
-                if (!moveForward) { // 防止長按重複觸發
+                if (!moveForward) {
                     moveForward = true;
-                    if (!isSwordStormActive && Math.random() < 0.20) { // 20% 機率
+                    if (!isSwordStormActive && Math.random() < 0.20) {
                         isSwordStormActive = true;
-                        swordStormTimer = 10.0; // 持續 10 秒
+                        swordStormTimer = 10.0;
                         showHealFeedback("⚡ 警報：前行觸發 10 秒超長劍雨！", "#ff1100");
                     }
                 }
@@ -400,7 +423,7 @@
                 case 'KeyE': handleSkyStoneAbility(); break;
                 case 'KeyQ': switchWeapon(currentWeaponIndex + 1); break;
                 case 'Digit1': if (!e.shiftKey) switchWeapon(0); break;
-                case 'Digit2': switchWeapon(1); break;
+                case 'Digit2': if (!e.shiftKey) switchWeapon(1); break;
                 case 'Digit3': switchWeapon(2); break;
                 case 'Digit4': switchWeapon(3); break;
                 case 'Space': 
@@ -448,18 +471,6 @@
             scene.add(bullet);
         }
 
-        function respawnAtCheckpoint() {
-            controls.getObject().position.copy(respawnPosition);
-            playerVelocity.set(0, 0, 0);
-            playerHp = MAX_HP;
-            jumpsLeft = MAX_JUMPS;
-            skyStoneState = 'READY';
-            skyStoneMesh.visible = false;
-            skyStonePlatform.visible = false;
-            isSwordStormActive = false; // 重生時停止劍雨
-            updateHUD();
-        }
-
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
 
         function animate() {
@@ -471,18 +482,11 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
-                if (healCooldownTimer > 0) {
-                    healCooldownTimer -= delta;
-                    if (healCooldownTimer <= 0) healCooldownTimer = 0;
-                    updateHUD();
-                }
-
                 // ⚡ 10 秒持續密集劍雨爆發邏輯
                 if (isSwordStormActive) {
                     swordStormTimer -= delta;
                     swordSpawnIntervalTimer += delta;
 
-                    // 每 0.08 秒產出一把密集飛劍
                     if (swordSpawnIntervalTimer >= 0.08) {
                         swordSpawnIntervalTimer = 0;
                         spawnDenseSword();
@@ -493,7 +497,7 @@
                     }
                 }
 
-                // 飛劍更新與碰撞扣血
+                // 飛劍更新與扣血
                 for (let i = fallingSwords.length - 1; i >= 0; i--) {
                     const sword = fallingSwords[i];
                     sword.mesh.position.y -= sword.speed * delta;
@@ -507,7 +511,7 @@
                         updateHUD();
 
                         if (playerHp <= 0) {
-                            respawnAtCheckpoint();
+                            handleDeath();
                         }
                         continue;
                     }
@@ -602,22 +606,23 @@
                             jumpsLeft = MAX_JUMPS; 
                             updateHUD();
 
-                            if (!obs.userData.isPermanent && !obs.userData.isCheckpoint) {
+                            if (!obs.userData.isPermanent) {
                                 obs.userData.isCollapsing = true;
-                            }
-
-                            if (obs.userData.isCheckpoint) {
-                                respawnPosition.set(obs.position.x, obs.position.y + 3.0, obs.position.z);
                             }
                             break;
                         }
                     }
                 }
 
-                if (playerObj.position.y <= -3.0) respawnAtCheckpoint();
+                // 跌入岩漿海，只回當前關卡起點
+                if (playerObj.position.y <= -3.0) handleDeath();
 
+                // 通過關卡，塔層+1，累積分數繼續增加
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 2000; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
+                    score += 2000; 
+                    hudScore.textContent = score; 
+                    currentLevel++; 
+                    buildTower(currentLevel); 
                 }
             }
             prevTime = time; renderer.render(scene, camera);
