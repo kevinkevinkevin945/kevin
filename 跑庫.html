@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：自主無人機挑戰版</title>
+    <title>3D 跑酷塔：無限步槍版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ff0055, #00ffcc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ffcc00, #00ffcc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
         #instructions p { font-size: 16px; margin: 5px 0; color: #ddd; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -28,16 +28,17 @@
     </div>
 
     <div id="weapon-status">
-        <div id="ammo-display" style="color: #00ff66; font-size: 26px;">脈衝步槍: 200 / 200</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 Q 換武器 | 按 E 發射凌空石</div>
+        <div id="ammo-display" style="color: #ffcc00; font-size: 26px;">1. 無限突擊步槍: ∞ / ∞</div>
+        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | 按 E 發射凌空石</div>
     </div>
 
     <div id="instructions">
-        <h1>🤖 跑酷塔：自主無人機版</h1>
-        <p>點擊進入遊戲！小心空中的敵對無人機！</p>
-        <p>【🤖 敵意無人機】無軌道自由懸浮，會向你發射微量干擾子彈（可用武器擊毀）。</p>
+        <h1>🔥 跑酷塔：無限火力版</h1>
+        <p>點擊進入遊戲！享受無限火力壓制！</p>
+        <p>【🔫 新增武器】按 <b>[1]</b> 切換至<b>無限突擊步槍 (子彈無限)</b>！</p>
+        <p>【🤖 敵意無人機】自由漂浮，隨時用無限步槍將它們擊落！</p>
         <p>【💎 凌空石】按 <b>[E]</b> 發射，再按 <b>[E]</b> 傳送並向視野方向爆發彈射！</p>
-        <p>【🔫 武器系統】按 <b>[Q]</b> 切換武器擊毀無人機獲得額外分數！</p>
+        <p>【按鍵】W/A/S/D 移動 | Space 跳躍 | Q / 1-4 切換武器 | E 使用凌空石</p>
     </div>
 
     <script>
@@ -50,8 +51,8 @@
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
-        const MAX_AMMO = { 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
-        const ammo = { 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
+        const MAX_AMMO = { 'rifle': '∞', 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
+        const ammo = { 'rifle': Infinity, 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
 
         let prevTime = performance.now();
         const STAND_HEIGHT = 1.6;
@@ -62,9 +63,9 @@
         let respawnPosition = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
-        const drones = [];            // 無人機陣列
-        const droneProjectiles = []; // 無人機子彈
-        const playerProjectiles = [];// 玩家子彈
+        const drones = [];            
+        const droneProjectiles = []; 
+        const playerProjectiles = [];
 
         let skyStoneMesh = null;
         let skyStonePlatform = null;
@@ -75,11 +76,12 @@
         let score = 0;
         let isGameOver = false;
 
-        const weaponList = ['pulse', 'blackhole', 'freeze'];
+        const weaponList = ['rifle', 'pulse', 'blackhole', 'freeze'];
         const weaponNames = {
-            'pulse': '1. 脈衝槍 (200發)',
-            'blackhole': '2. 黑洞彈 (10發)',
-            'freeze': '3. 冰凍槍 (15發)'
+            'rifle': '1. 無限突擊步槍 (∞)',
+            'pulse': '2. 脈衝槍 (200發)',
+            'blackhole': '3. 黑洞彈 (10發)',
+            'freeze': '4. 冰凍槍 (15發)'
         };
 
         let currentWeaponIndex = 0;
@@ -157,17 +159,13 @@
             scene.add(skyStonePlatform);
         }
 
-        // 生成無人的 3D 模型
         function createDrone(x, y, z) {
             const droneGroup = new THREE.Group();
-            
-            // 機身
             const bodyGeo = new THREE.SphereGeometry(0.6, 8, 8);
             const bodyMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             droneGroup.add(body);
 
-            // 紅色眼睛 (槍口)
             const eyeGeo = new THREE.SphereGeometry(0.25, 8, 8);
             const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             const eye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -196,7 +194,9 @@
             else if (skyStoneState === 'COOLDOWN') stoneStatus.textContent = `冷卻中 (${skyStoneCooldownTimer.toFixed(1)}s)`;
 
             const curKey = weaponList[currentWeaponIndex];
-            ammoDisplay.textContent = `${weaponNames[curKey]}: ${ammo[curKey]} / ${MAX_AMMO[curKey]}`;
+            const currentAmmoVal = ammo[curKey] === Infinity ? '∞' : ammo[curKey];
+            const maxAmmoVal = MAX_AMMO[curKey];
+            ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
         }
 
         function switchWeapon(index) {
@@ -278,7 +278,6 @@
 
                 scene.add(step); obstacles.push(step);
 
-                // 在部分階梯附近生成無軌道無人機
                 if (i > 3 && Math.random() < 0.3) {
                     createDrone(posX + (Math.random() * 8 - 4), currentY + 3.0, posZ + (Math.random() * 8 - 4));
                 }
@@ -304,9 +303,30 @@
 
         function createWeapons() {
             weaponGroup = new THREE.Group();
-            const pl = new THREE.Group(); pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ff66 }))); pl.position.set(0.3, -0.22, -0.45); weaponMeshes['pulse'] = pl;
-            const bh = new THREE.Group(); bh.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x9900ff }))); bh.position.set(0.3, -0.25, -0.5); weaponMeshes['blackhole'] = bh;
-            const fr = new THREE.Group(); fr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ffff }))); fr.position.set(0.3, -0.25, -0.5); weaponMeshes['freeze'] = fr;
+
+            // 1. 新增：無限突擊步槍 (金黃色造型)
+            const rf = new THREE.Group();
+            rf.add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.9), new THREE.MeshBasicMaterial({ color: 0xffcc00 })));
+            rf.position.set(0.3, -0.22, -0.45);
+            weaponMeshes['rifle'] = rf;
+
+            // 2. 脈衝槍
+            const pl = new THREE.Group(); 
+            pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ff66 }))); 
+            pl.position.set(0.3, -0.22, -0.45); 
+            weaponMeshes['pulse'] = pl;
+
+            // 3. 黑洞槍
+            const bh = new THREE.Group(); 
+            bh.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x9900ff }))); 
+            bh.position.set(0.3, -0.25, -0.5); 
+            weaponMeshes['blackhole'] = bh;
+
+            // 4. 冰凍槍
+            const fr = new THREE.Group(); 
+            fr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.7), new THREE.MeshBasicMaterial({ color: 0x00ffff }))); 
+            fr.position.set(0.3, -0.25, -0.5); 
+            weaponMeshes['freeze'] = fr;
 
             Object.keys(weaponMeshes).forEach(key => {
                 weaponMeshes[key].visible = (key === weaponList[currentWeaponIndex]);
@@ -327,6 +347,7 @@
                 case 'Digit1': switchWeapon(0); break;
                 case 'Digit2': switchWeapon(1); break;
                 case 'Digit3': switchWeapon(2); break;
+                case 'Digit4': switchWeapon(3); break;
                 case 'Space': 
                     if (jumpsLeft > 0) { playerVelocity.y = 14.5; jumpsLeft--; updateHUD(); } break;
             }
@@ -354,16 +375,24 @@
 
         function tryShoot() {
             const curWeapon = weaponList[currentWeaponIndex];
-            if (ammo[curWeapon] <= 0) return;
-            ammo[curWeapon]--; updateHUD();
+            
+            // 無限步槍不需要扣子彈
+            if (curWeapon !== 'rifle') {
+                if (ammo[curWeapon] <= 0) return;
+                ammo[curWeapon]--; 
+            }
+            updateHUD();
             
             const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
             
-            const colors = { 'pulse': 0x00ff66, 'blackhole': 0x9900ff, 'freeze': 0x00ffff };
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), new THREE.MeshBasicMaterial({ color: colors[curWeapon] }));
+            const colors = { 'rifle': 0xffcc00, 'pulse': 0x00ff66, 'blackhole': 0x9900ff, 'freeze': 0x00ffff };
+            const bulletSize = curWeapon === 'rifle' ? 0.12 : 0.2;
+            const bullet = new THREE.Mesh(new THREE.SphereGeometry(bulletSize, 6, 6), new THREE.MeshBasicMaterial({ color: colors[curWeapon] }));
             bullet.position.copy(spawnPos);
-            playerProjectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(85.0), life: 2.5 });
+            
+            const speed = curWeapon === 'rifle' ? 100.0 : 85.0; // 無限步槍彈速更快！
+            playerProjectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(speed), life: 2.5 });
             scene.add(bullet);
         }
 
@@ -388,29 +417,23 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
-                // --- 🤖 無人機自主飛行與開槍邏輯 ---
                 for (let i = drones.length - 1; i >= 0; i--) {
                     const d = drones[i];
                     d.noiseSeed += delta * 1.5;
 
-                    // 無軌道漂浮：利用三角函數創造自然流暢的三維自由擺動
                     const hoverX = Math.sin(d.noiseSeed) * 2.5;
                     const hoverY = Math.cos(d.noiseSeed * 1.3) * 1.5;
                     const hoverZ = Math.sin(d.noiseSeed * 0.7) * 2.5;
 
                     d.mesh.position.set(d.basePos.x + hoverX, d.basePos.y + hoverY, d.basePos.z + hoverZ);
-                    
-                    // 讓無人機面向玩家
                     d.mesh.lookAt(playerPos);
 
-                    // 開槍邏輯 (距離玩家 25 米內才攻擊)
                     const distToPlayer = d.mesh.position.distanceTo(playerPos);
                     if (distToPlayer < 25.0) {
                         d.shootTimer += delta;
-                        if (d.shootTimer >= 2.5) { // 每 2.5 秒開一槍
+                        if (d.shootTimer >= 2.5) {
                             d.shootTimer = 0;
                             
-                            // 發射低傷害干擾紅彈
                             const bulletGeo = new THREE.SphereGeometry(0.15, 6, 6);
                             const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
                             const pMesh = new THREE.Mesh(bulletGeo, bulletMat);
@@ -419,7 +442,7 @@
                             const shootDir = playerPos.clone().sub(d.mesh.position).normalize();
                             droneProjectiles.push({
                                 mesh: pMesh,
-                                velocity: shootDir.multiplyScalar(18.0), // 速度適中可閃避
+                                velocity: shootDir.multiplyScalar(18.0),
                                 life: 3.0
                             });
                             scene.add(pMesh);
@@ -427,16 +450,14 @@
                     }
                 }
 
-                // 無人機子彈運動與打擊判定
                 for (let i = droneProjectiles.length - 1; i >= 0; i--) {
                     const dp = droneProjectiles[i];
                     dp.mesh.position.addScaledVector(dp.velocity, delta);
                     dp.life -= delta;
 
-                    // 被無人機子彈打中：傷害低，給予輕微物理推力（擊退感）
                     if (dp.mesh.position.distanceTo(playerPos) < 1.2) {
                         const pushDir = dp.velocity.clone().normalize();
-                        playerVelocity.addScaledVector(pushDir, 6.0); // 輕微推開
+                        playerVelocity.addScaledVector(pushDir, 6.0);
                         scene.remove(dp.mesh);
                         droneProjectiles.splice(i, 1);
                         continue;
@@ -448,7 +469,6 @@
                     }
                 }
 
-                // 玩家子彈擊中無人機檢測
                 for (let i = playerProjectiles.length - 1; i >= 0; i--) {
                     const pp = playerProjectiles[i];
                     pp.mesh.position.addScaledVector(pp.velocity, delta);
@@ -463,7 +483,7 @@
                             if (d.hp <= 0) {
                                 scene.remove(d.mesh);
                                 drones.splice(j, 1);
-                                score += 200; // 擊毀無人機加分
+                                score += 200;
                                 hudScore.textContent = score;
                             }
                             break;
@@ -476,7 +496,6 @@
                     }
                 }
 
-                // 凌空石動態
                 if (skyStoneState === 'FLYING') {
                     skyStoneMesh.position.addScaledVector(skyStoneVelocity, delta);
                     if (camera.position.distanceTo(skyStoneMesh.position) > 20.0) {
