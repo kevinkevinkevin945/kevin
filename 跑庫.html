@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：保留進度與分數版</title>
+    <title>3D 跑酷塔：神槍戰術版</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin-top: -5px; margin-left: -5px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 10; }
-        #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
+        #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
         #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
         #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.93); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 46px; margin-bottom: 10px; background: linear-gradient(to right, #ff3300, #ffcc00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
-        #instructions p { font-size: 16px; margin: 5px 0; color: #ddd; }
+        #instructions h1 { font-size: 42px; margin-bottom: 10px; background: linear-gradient(to right, #ff3300, #ffcc00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        #instructions p { font-size: 15px; margin: 4px 0; color: #ddd; }
         .heal-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 15; opacity: 0; transition: opacity 0.3s; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -28,23 +28,24 @@
         塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
         三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
         <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> <br>
-        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (按 Shift+1)</span> <br>
-        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (按 Shift+2)</span>
+        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (Shift+1)</span> <br>
+        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (Shift+2)</span>
     </div>
 
     <div id="weapon-status">
-        <div id="ammo-display" style="color: #ffcc00; font-size: 26px;">1. 無限突擊步槍: ∞ / ∞</div>
-        <div id="weapon-name" style="font-size: 16px; color: #aaa;">按 1-4 或 Q 換武器 | ! 與 @ 鍵進行賭血</div>
+        <div id="ammo-display" style="color: #ffcc00; font-size: 24px;">1. 無限步槍(火箭推力): ∞ / ∞</div>
+        <div id="weapon-name" style="font-size: 15px; color: #aaa;">按 1-4 / Q 換槍 | 左鍵射擊戰術功能</div>
     </div>
 
     <div id="instructions">
-        <h1>⚔️ 跑酷塔：保留進度與分數版</h1>
-        <p>【🛡️ 進度保護】死亡僅回到當層起點，<b>塔層與分數不歸零、不重置</b>！</p>
-        <p>【💀 賭命豪賭 (!)】按 <b>Shift + 1</b>：<b>40% 滿血</b>，<b>60% 瞬間暴斃死亡</b>！</p>
-        <p>【⚖️ 微利小賭 (@)】按 <b>Shift + 2</b>：<b>20% 補 20 血</b>，<b>80% 扣 10 血</b>！</p>
-        <p>【⚠️ W 鍵陷阱】按 <b>W 前進時有 20% 機率</b> 觸發 <b>10 秒劍雨</b>！</p>
+        <h1>⚔️ 跑酷塔：全戰術武器升級版</h1>
+        <p>【🚀 1. 無限步槍】開槍帶有<b>反衝推力</b>！對地射擊可火箭跳躍！</p>
+        <p>【🧱 2. 脈衝槍】子彈飛行終點會生成<b>綠色臨時平台</b>！</p>
+        <p>【🛡️ 3. 黑洞彈】發射可<b>吸入並清除周圍所有飛劍</b>！</p>
+        <p>【🧊 4. 冰凍槍】擊中飛劍會將其<b>凍結成冰塊平台</b>！</p>
+        <p>【🎲 賭血機制】<b>! (Shift+1)</b> 賭命豪賭 | <b>@ (Shift+2)</b> 微利小賭</p>
         <br>
-        <p style="color: #00ffcc;">👉 點擊螢幕開始挑戰 👈</p>
+        <p style="color: #00ffcc;">👉 點擊螢幕開始遊戲 👈</p>
     </div>
 
     <script>
@@ -54,15 +55,14 @@
         let playerVelocity = new THREE.Vector3();
         const GRAVITY = 34;
 
-        // 玩家血量機制
         const MAX_HP = 100;
         let playerHp = MAX_HP;
 
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
-        const MAX_AMMO = { 'rifle': '∞', 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
-        const ammo = { 'rifle': Infinity, 'pulse': 200, 'blackhole': 10, 'freeze': 15 };
+        const MAX_AMMO = { 'rifle': '∞', 'pulse': 20, 'blackhole': 5, 'freeze': 10 };
+        const ammo = { 'rifle': Infinity, 'pulse': 20, 'blackhole': 5, 'freeze': 10 };
 
         let prevTime = performance.now();
         const STAND_HEIGHT = 1.6;
@@ -70,10 +70,10 @@
         let currentLevel = 1;
         let rewardCrystal = null;
 
-        // 當前關卡起點位置
         const START_POSITION = new THREE.Vector3(0, 5, 12);
 
         const obstacles = [];
+        const tempPlatforms = []; // 臨時平台 (子彈生成/冰凍生成)
         const fallingSwords = [];
         const playerProjectiles = [];
 
@@ -83,7 +83,6 @@
         let skyStoneVelocity = new THREE.Vector3();
         let skyStoneCooldownTimer = 0;
 
-        // ⚔️ 10 秒劍雨風暴變數
         let isSwordStormActive = false;
         let swordStormTimer = 0;
         let swordSpawnIntervalTimer = 0;
@@ -93,10 +92,10 @@
 
         const weaponList = ['rifle', 'pulse', 'blackhole', 'freeze'];
         const weaponNames = {
-            'rifle': '1. 無限突擊步槍 (∞)',
-            'pulse': '2. 脈衝槍 (200發)',
-            'blackhole': '3. 黑洞彈 (10發)',
-            'freeze': '4. 冰凍槍 (15發)'
+            'rifle': '1. 無限步槍 (火箭推力)',
+            'pulse': '2. 脈衝槍 (造路平台)',
+            'blackhole': '3. 黑洞彈 (吞噬飛劍)',
+            'freeze': '4. 冰凍槍 (凍劍成階)'
         };
 
         let currentWeaponIndex = 0;
@@ -217,11 +216,8 @@
             ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
         }
 
-        // 🎲 補血機制 1 (!) : 40% 滿血 / 60% 暴斃
         function tryGambleHeal1() {
-            const success = Math.random() < 0.40;
-
-            if (success) {
+            if (Math.random() < 0.40) {
                 playerHp = MAX_HP;
                 showHealFeedback("✨ 豪賭成功！瞬間滿血！", "#00ff66");
                 updateHUD();
@@ -229,27 +225,20 @@
                 showHealFeedback("💀 豪賭失敗！暴斃死亡！", "#ff0000");
                 playerHp = 0;
                 updateHUD();
-                handleDeath(); // 死亡回起點，不扣分不重置塔層
+                handleDeath();
             }
         }
 
-        // 🎲 補血機制 2 (@) : 20% 補20滴 / 80% 扣10滴
         function tryGambleHeal2() {
-            const success = Math.random() < 0.20;
-
-            if (success) {
+            if (Math.random() < 0.20) {
                 playerHp = Math.min(MAX_HP, playerHp + 20);
                 showHealFeedback("✨ 小賭成功！血量 +20", "#00ff66");
             } else {
                 playerHp -= 10;
                 showHealFeedback("❌ 小賭失敗！血量 -10", "#ff3333");
             }
-
             updateHUD();
-
-            if (playerHp <= 0) {
-                handleDeath();
-            }
+            if (playerHp <= 0) handleDeath();
         }
 
         function showHealFeedback(text, color) {
@@ -300,12 +289,12 @@
         function buildTower(level) {
             obstacles.forEach(obs => scene.remove(obs));
             fallingSwords.forEach(s => scene.remove(s.mesh));
-            obstacles.length = 0; fallingSwords.length = 0;
+            tempPlatforms.forEach(p => scene.remove(p.mesh));
+            obstacles.length = 0; fallingSwords.length = 0; tempPlatforms.length = 0;
             if (rewardCrystal) scene.remove(rewardCrystal);
 
             hudLevel.textContent = level;
 
-            // 當前塔層的起始大平台
             const startPlat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 6), new THREE.MeshLambertMaterial({ color: 0x00ffcc }));
             startPlat.position.copy(START_POSITION).sub(new THREE.Vector3(0, 3, 0));
             startPlat.userData = { isPermanent: true };
@@ -362,7 +351,6 @@
             updateHUD();
         }
 
-        // 死亡處理：分數保留、塔層保留、回當前塔層起點
         function handleDeath() {
             showHealFeedback("💥 死亡！返回當前塔層起點", "#ff0000");
             respawnPlayerToStart();
@@ -392,19 +380,9 @@
         function onKeyDown(e) {
             if (!controls.isLocked || isGameOver) return;
 
-            // 🎲 補血 1 : Shift + 1 (即 !)
-            if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) {
-                tryGambleHeal1();
-                return;
-            }
+            if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) { tryGambleHeal1(); return; }
+            if (e.key === '@' || (e.shiftKey && e.code === 'Digit2')) { tryGambleHeal2(); return; }
 
-            // 🎲 補血 2 : Shift + 2 (即 @)
-            if (e.key === '@' || (e.shiftKey && e.code === 'Digit2')) {
-                tryGambleHeal2();
-                return;
-            }
-
-            // ⚡ 按 W 鍵有 20% 機率觸發 10 秒劍雨
             if (e.code === 'KeyW') {
                 if (!moveForward) {
                     moveForward = true;
@@ -461,14 +439,37 @@
             
             const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
-            
+
+            // 🚀 方案 A：火箭推力 (所有槍開火都有微小反衝，1號槍反衝最強)
+            const pushBackForce = curWeapon === 'rifle' ? 18.0 : 8.0;
+            playerVelocity.subScaledVector(dir, pushBackForce * 0.4);
+
             const colors = { 'rifle': 0xffcc00, 'pulse': 0x00ff66, 'blackhole': 0x9900ff, 'freeze': 0x00ffff };
-            const bulletSize = curWeapon === 'rifle' ? 0.12 : 0.2;
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(bulletSize, 6, 6), new THREE.MeshBasicMaterial({ color: colors[curWeapon] }));
+            const bulletSize = curWeapon === 'blackhole' ? 0.35 : 0.15;
+            const bullet = new THREE.Mesh(new THREE.SphereGeometry(bulletSize, 8, 8), new THREE.MeshBasicMaterial({ color: colors[curWeapon] }));
             bullet.position.copy(spawnPos);
             
-            playerProjectiles.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(100.0), life: 2.5 });
+            playerProjectiles.push({ 
+                mesh: bullet, 
+                velocity: dir.clone().multiplyScalar(curWeapon === 'pulse' ? 50.0 : 90.0), 
+                life: 2.0,
+                type: curWeapon
+            });
             scene.add(bullet);
+        }
+
+        // 產生臨時平台 (方案 B & D)
+        function createTempPlatform(pos, color, duration = 4.0, size = 2.5) {
+            const geo = new THREE.BoxGeometry(size, 0.4, size);
+            const mat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 0.85 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+
+            tempPlatforms.push({
+                mesh: mesh,
+                timer: duration
+            });
         }
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
@@ -482,7 +483,6 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
-                // ⚡ 10 秒持續密集劍雨爆發邏輯
                 if (isSwordStormActive) {
                     swordStormTimer -= delta;
                     swordSpawnIntervalTimer += delta;
@@ -497,7 +497,7 @@
                     }
                 }
 
-                // 飛劍更新與扣血
+                // 飛劍更新
                 for (let i = fallingSwords.length - 1; i >= 0; i--) {
                     const sword = fallingSwords[i];
                     sword.mesh.position.y -= sword.speed * delta;
@@ -505,14 +505,10 @@
                     if (sword.mesh.position.distanceTo(playerPos) < 1.3) {
                         playerHp -= sword.damage;
                         showHealFeedback(`💥 被劍刺中！-20%`, "#ff0000");
-                        
                         scene.remove(sword.mesh);
                         fallingSwords.splice(i, 1);
                         updateHUD();
-
-                        if (playerHp <= 0) {
-                            handleDeath();
-                        }
+                        if (playerHp <= 0) handleDeath();
                         continue;
                     }
 
@@ -522,38 +518,74 @@
                     }
                 }
 
+                // 臨時平台更新 (倒數消失)
+                for (let i = tempPlatforms.length - 1; i >= 0; i--) {
+                    const tp = tempPlatforms[i];
+                    tp.timer -= delta;
+                    if (tp.timer <= 1.0) tp.mesh.material.opacity = tp.timer; // 閃爍消失
+                    if (tp.timer <= 0) {
+                        scene.remove(tp.mesh);
+                        tempPlatforms.splice(i, 1);
+                    }
+                }
+
                 // 階梯邏輯
                 obstacles.forEach(obs => {
                     if (obs.userData.isMoving) {
                         obs.userData.moveOffset += delta * 2.5;
                         obs.position.x = obs.userData.basePos.x + Math.sin(obs.userData.moveOffset) * 3.0;
                     }
-
                     if (obs.userData.isCollapsing) {
                         obs.userData.collapseTimer += delta;
                         obs.material.color.setHex(0xff0000);
-                        if (obs.userData.collapseTimer >= 0.8) {
-                            obs.position.y -= delta * 40.0;
-                        }
+                        if (obs.userData.collapseTimer >= 0.8) obs.position.y -= delta * 40.0;
                     }
                 });
 
-                // 玩家發射物
+                // 玩家子彈邏輯與武器戰術觸發
                 for (let i = playerProjectiles.length - 1; i >= 0; i--) {
                     const pp = playerProjectiles[i];
                     pp.mesh.position.addScaledVector(pp.velocity, delta);
                     pp.life -= delta;
 
+                    // 🛡️ 方案 C：黑洞彈吸引並清空周圍飛劍
+                    if (pp.type === 'blackhole') {
+                        for (let k = fallingSwords.length - 1; k >= 0; k--) {
+                            if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 8.0) {
+                                scene.remove(fallingSwords[k].mesh);
+                                fallingSwords.splice(k, 1);
+                                score += 30; hudScore.textContent = score;
+                            }
+                        }
+                    }
+
                     let hit = false;
                     for (let k = fallingSwords.length - 1; k >= 0; k--) {
-                        if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 1.2) {
+                        if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 1.4) {
+                            const hitSwordPos = fallingSwords[k].mesh.position.clone();
                             scene.remove(fallingSwords[k].mesh);
                             fallingSwords.splice(k, 1);
                             hit = true;
-                            score += 50;
-                            hudScore.textContent = score;
+                            score += 50; hudScore.textContent = score;
+
+                            // 🧊 方案 B：冰凍槍打中飛劍，凍結變成「冰塊平台」
+                            if (pp.type === 'freeze') {
+                                createTempPlatform(hitSwordPos, 0x00ffff, 5.0, 2.2);
+                                showHealFeedback("🧊 飛劍被凍結成階梯！", "#00ffff");
+                            }
+
+                            // 🎯 打中飛劍機率終止劍雨風暴
+                            if (isSwordStormActive && Math.random() < 0.35) {
+                                isSwordStormActive = false;
+                                showHealFeedback("🛡️ 成功擊中核心！終止劍雨！", "#00ff66");
+                            }
                             break;
                         }
+                    }
+
+                    // 🧱 方案 D：脈衝槍子彈消失時生成光能平台
+                    if (pp.type === 'pulse' && (hit || pp.life <= 0)) {
+                        createTempPlatform(pp.mesh.position, 0x00ff66, 4.0, 2.6);
                     }
 
                     if (hit || pp.life <= 0) {
@@ -593,7 +625,9 @@
                 playerObj.position.add(moveVector); playerObj.position.addScaledVector(playerVelocity, delta);
 
                 const playerFeetY = playerObj.position.y - STAND_HEIGHT;
-                const allPlatforms = [...obstacles];
+                
+                // 碰撞檢測包含：塔樓平台 + 凌空石 + 戰術生成的臨時平台
+                const allPlatforms = [...obstacles, ...tempPlatforms.map(p => p.mesh)];
                 if (skyStonePlatform.visible) allPlatforms.push(skyStonePlatform);
 
                 for (let obs of allPlatforms) {
@@ -606,7 +640,7 @@
                             jumpsLeft = MAX_JUMPS; 
                             updateHUD();
 
-                            if (!obs.userData.isPermanent) {
+                            if (obs.userData && !obs.userData.isPermanent) {
                                 obs.userData.isCollapsing = true;
                             }
                             break;
@@ -614,15 +648,10 @@
                     }
                 }
 
-                // 跌入岩漿海，只回當前關卡起點
                 if (playerObj.position.y <= -3.0) handleDeath();
 
-                // 通過關卡，塔層+1，累積分數繼續增加
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 2000; 
-                    hudScore.textContent = score; 
-                    currentLevel++; 
-                    buildTower(currentLevel); 
+                    score += 2000; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
                 }
             }
             prevTime = time; renderer.render(scene, camera);
