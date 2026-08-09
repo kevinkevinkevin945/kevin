@@ -3,16 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：槍械修復版</title>
+    <title>3D 跑酷塔：終極戰術巨無霸版</title>
     <style>
+        * { box-sizing: border-box; }
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; margin-top: -6px; margin-left: -6px; border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); border: 2px solid rgba(0, 0, 0, 0.8); pointer-events: none; z-index: 10; transition: transform 0.05s; }
-        #hud { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; }
-        #weapon-status { position: absolute; bottom: 20px; right: 20px; color: #ffcc00; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; text-align: right; }
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 5, 20, 0.93); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; }
-        #instructions h1 { font-size: 42px; margin-bottom: 10px; background: linear-gradient(to right, #ff3300, #ffcc00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
-        #instructions p { font-size: 15px; margin: 4px 0; color: #ddd; }
-        .heal-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 15; opacity: 0; transition: opacity 0.3s; }
+        
+        /* 準心 */
+        #crosshair { 
+            position: absolute; top: 50%; left: 50%; 
+            width: 14px; height: 14px; margin-top: -7px; margin-left: -7px; 
+            border-radius: 50%; background-color: rgba(0, 255, 200, 0.9); 
+            border: 2px solid rgba(0, 0, 0, 0.8); pointer-events: none; z-index: 10; 
+            transition: transform 0.05s, background-color 0.2s; 
+        }
+        #crosshair::after {
+            content: ''; position: absolute; top: 4px; left: 4px; width: 2px; height: 2px;
+            background: #fff; border-radius: 50%;
+        }
+
+        /* 主 UI 資訊面板 */
+        #hud { 
+            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 16px; 
+            font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10; 
+            background: rgba(10, 10, 25, 0.65); padding: 15px 20px; border-radius: 12px;
+            border: 1px solid rgba(0, 255, 200, 0.3); backdrop-filter: blur(5px);
+            line-height: 1.6;
+        }
+        
+        /* 連擊倍率 UI */
+        #combo-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            text-align: center; pointer-events: none; z-index: 10;
+        }
+        #combo-count { font-size: 38px; font-weight: 900; color: #ff00ff; text-shadow: 0 0 12px #ff00ff; opacity: 0; transition: opacity 0.2s, transform 0.1s; }
+        #combo-multiplier { font-size: 20px; color: #ffff00; text-shadow: 0 0 8px #ffff00; }
+
+        /* 雷達小地圖 */
+        #minimap-container {
+            position: absolute; top: 20px; right: 20px; width: 140px; height: 140px;
+            background: rgba(5, 5, 15, 0.8); border: 2px solid #00ffcc; border-radius: 50%;
+            overflow: hidden; pointer-events: none; z-index: 10; box-shadow: 0 0 15px rgba(0,255,200,0.4);
+        }
+        #minimap-canvas { width: 100%; height: 100%; }
+
+        /* 武器狀態列 */
+        #weapon-status { 
+            position: absolute; bottom: 20px; right: 20px; color: #ffcc00; 
+            font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; 
+            pointer-events: none; z-index: 10; text-align: right; 
+            background: rgba(10, 10, 25, 0.65); padding: 15px 20px; border-radius: 12px;
+            border: 1px solid rgba(255, 204, 0, 0.3); backdrop-filter: blur(5px);
+        }
+
+        /* 遊戲說明視窗 */
+        #instructions { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(5, 2, 12, 0.94); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; 
+        }
+        #instructions h1 { 
+            font-size: 46px; margin-bottom: 12px; 
+            background: linear-gradient(to right, #ff3300, #ffcc00, #00ffcc); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; 
+            letter-spacing: 2px;
+        }
+        #instructions p { font-size: 15px; margin: 5px 0; color: #ddd; max-width: 650px; text-align: center; line-height: 1.5; }
+        .key-badge { background: #ffaa00; color: #000; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        /* 回饋與成就彈窗 */
+        .heal-msg { 
+            position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 30px; font-weight: 900; text-shadow: 0 0 12px #000; pointer-events: none; 
+            z-index: 15; opacity: 0; transition: opacity 0.3s, transform 0.3s; 
+        }
+        #achievement-popup {
+            position: absolute; bottom: 100px; left: 20px; background: rgba(0, 255, 150, 0.85);
+            color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 900; font-size: 18px;
+            box-shadow: 0 0 20px #00ff96; transform: translateX(-150%); transition: transform 0.4s ease-out;
+            pointer-events: none; z-index: 15;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
@@ -21,33 +90,136 @@
 
     <div id="crosshair"></div>
     <div id="heal-feedback" class="heal-msg"></div>
+    <div id="achievement-popup">🏆 成就解鎖！</div>
+
+    <div id="combo-container">
+        <div id="combo-count">0 COMBO!</div>
+        <div id="combo-multiplier">得分倍率 x1.0</div>
+    </div>
 
     <div id="hud">
-        血量: <span id="hp-display" style="color: #00ff66;">100 / 100</span> | 
-        得分: <span id="score">0</span> | 
-        塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
-        三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
+        🩸 血量: <span id="hp-display" style="color: #00ff66;">100 / 100</span> | 
+        ⭐ 分數: <span id="score">0</span> | 
+        🏰 塔層: <span id="level-display" style="color: #ffaa00;">1</span> | 
+        🦘 三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
         <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> <br>
-        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (Shift+1)</span> <br>
-        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (Shift+2)</span>
+        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (<span class="key-badge">Shift+1</span>)</span> <br>
+        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (<span class="key-badge">Shift+2</span>)</span>
+    </div>
+
+    <div id="minimap-container">
+        <canvas id="minimap-canvas" width="140" height="140"></canvas>
     </div>
 
     <div id="weapon-status">
-        <div id="ammo-display" style="color: #ffcc00; font-size: 24px;">1. 無限步槍: ∞ / ∞</div>
-        <div id="weapon-name" style="font-size: 15px; color: #aaa;">按 1-4 換槍 | 左鍵發射子彈</div>
+        <div id="ammo-display" style="color: #ffcc00; font-size: 22px;">1. 無限突擊步槍: ∞ / ∞</div>
+        <div id="weapon-name" style="font-size: 14px; color: #aaa; margin-top: 4px;">按 1-6 或 滾輪 換槍 | 滑鼠左鍵開火</div>
     </div>
 
     <div id="instructions">
-        <h1>⚔️ 跑酷塔：槍械修復完成版</h1>
-        <p>【🚀 1. 無限步槍】強烈後座力！對腳下開槍可火箭跳飛天！</p>
-        <p>【🧱 2. 脈衝槍】子彈飛到盡頭變出超大<b>綠色臨時平台</b>！</p>
-        <p>【🛡️ 3. 黑洞彈】發射大紫球，吸光周圍所有飛劍！</p>
-        <p>【🧊 4. 冰凍槍】擊中飛劍變成<b>冰塊平台</b>！</p>
+        <h1>⚔️ 跑酷塔：終極戰術巨無霸版</h1>
+        <p>【🚀 1. 無限步槍】無限彈藥，強烈後座力，對地開槍觸發<b>火箭跳</b>！</p>
+        <p>【🧱 2. 脈衝造路槍】彈藥終點擴張生成<b>綠色防摔 platform</b>！</p>
+        <p>【🛡️ 3. 黑洞力場彈】引力漩渦吸入並打碎範圍內所有飛劍！</p>
+        <p>【🧊 4. 霜凍冰晶槍】命中降落飛劍將其封印成<b>冰雕階梯</b>！</p>
+        <p>【🔥 5. 烈焰爆裂砲】巨型火球打擊產生範圍粒子爆炸！</p>
+        <p>【⏳ 6. 時空停滯槍】發射減速時空波，使全場飛劍極致減速 5 秒！</p>
+        <p>【🔊 原生 8-Bit 音效】內建 Web Audio 聲波合成器，帶來真實打擊回饋！</p>
         <br>
-        <p style="color: #00ffcc;">👉 點擊螢幕開始遊戲 👈</p>
+        <p style="color: #00ffcc; font-size: 18px; font-weight: bold;">👉 點擊螢幕開啟終極挑戰 👈</p>
     </div>
 
     <script>
+        // ==========================================
+        // 🔊 原生 Web Audio 聲波音效合成器
+        // ==========================================
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playShoot(type) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                if (type === 'rifle') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1);
+                } else if (type === 'pulse') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.2);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                } else if (type === 'blackhole') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.linearRampToValueAtTime(40, now + 0.4);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now); osc.stop(now + 0.4);
+                } else if (type === 'freeze') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now); osc.stop(now + 0.15);
+                } else {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now); osc.stop(now + 0.3);
+                }
+            }
+            playJump() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                const now = this.ctx.currentTime;
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(450, now + 0.15);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            }
+            playExplode() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                const now = this.ctx.currentTime;
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(20, now + 0.35);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now); osc.stop(now + 0.35);
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        // ==========================================
+        // 🎮 全局變數與遊戲狀態定義
+        // ==========================================
         let camera, scene, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 
@@ -60,8 +232,8 @@
         const MAX_JUMPS = 3;
         let jumpsLeft = MAX_JUMPS;
 
-        const MAX_AMMO = { 'rifle': '∞', 'pulse': 30, 'blackhole': 10, 'freeze': 15 };
-        const ammo = { 'rifle': Infinity, 'pulse': 30, 'blackhole': 10, 'freeze': 15 };
+        const MAX_AMMO = { 'rifle': '∞', 'pulse': 30, 'blackhole': 10, 'freeze': 15, 'fireball': 8, 'timestop': 5 };
+        const ammo = { 'rifle': Infinity, 'pulse': 30, 'blackhole': 10, 'freeze': 15, 'fireball': 8, 'timestop': 5 };
 
         let prevTime = performance.now();
         const STAND_HEIGHT = 1.6;
@@ -75,6 +247,7 @@
         const tempPlatforms = [];
         const fallingSwords = [];
         const playerProjectiles = [];
+        const particles = []; // 粒子特效陣列
 
         let skyStoneMesh = null;
         let skyStonePlatform = null;
@@ -86,19 +259,26 @@
         let swordStormTimer = 0;
         let swordSpawnIntervalTimer = 0;
 
+        let timeStopTimer = 0; // 時空停滯時間
+
         let score = 0;
+        let comboCount = 0;
+        let comboTimer = 0;
         let isGameOver = false;
 
-        const weaponList = ['rifle', 'pulse', 'blackhole', 'freeze'];
+        const weaponList = ['rifle', 'pulse', 'blackhole', 'freeze', 'fireball', 'timestop'];
         const weaponNames = {
             'rifle': '1. 無限步槍 (火箭跳推力)',
-            'pulse': '2. 脈衝槍 (生成綠平台)',
-            'blackhole': '3. 黑洞彈 (吸光飛劍)',
-            'freeze': '4. 冰凍槍 (飛劍變冰塊)'
+            'pulse': '2. 脈衝造路槍 (生成綠平台)',
+            'blackhole': '3. 黑洞力場彈 (吸光飛劍)',
+            'freeze': '4. 霜凍冰晶槍 (飛劍變冰階)',
+            'fireball': '5. 烈焰爆裂砲 (粒子大爆炸)',
+            'timestop': '6. 時空停滯槍 (減速全場5秒)'
         };
 
         let currentWeaponIndex = 0;
 
+        // UI 元素綁定
         const hudHp = document.getElementById('hp-display');
         const hudScore = document.getElementById('score');
         const hudLevel = document.getElementById('level-display');
@@ -108,24 +288,34 @@
         const instructions = document.getElementById('instructions');
         const healFeedback = document.getElementById('heal-feedback');
         const crosshair = document.getElementById('crosshair');
+        const comboCountUI = document.getElementById('combo-count');
+        const comboMultUI = document.getElementById('combo-multiplier');
+        const achievementUI = document.getElementById('achievement-popup');
 
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        // ==========================================
+        // 🚀 初始化引擎與場景設定
+        // ==========================================
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x05020a);
-            scene.fog = new THREE.FogExp2(0x05020a, 0.008);
+            scene.fog = new THREE.FogExp2(0x05020a, 0.006);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffaa00, 0.9);
-            dirLight.position.set(0, 100, 0);
+            const dirLight = new THREE.DirectionalLight(0xffaa00, 1.0);
+            dirLight.position.set(0, 120, 0);
             scene.add(dirLight);
 
             controls = new THREE.PointerLockControls(camera, document.body);
             
-            const lavaGeo = new THREE.PlaneGeometry(1000, 1000);
+            // 岩漿海
+            const lavaGeo = new THREE.PlaneGeometry(1200, 1200);
             const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff0022, side: THREE.DoubleSide });
             const lavaSea = new THREE.Mesh(lavaGeo, lavaMat);
             lavaSea.rotation.x = Math.PI / 2;
@@ -136,6 +326,7 @@
             buildTower(currentLevel);
 
             instructions.addEventListener('click', () => {
+                sfx.init();
                 if (!isGameOver) controls.lock();
             });
 
@@ -147,11 +338,8 @@
             window.addEventListener('keydown', onKeyDown, false);
             window.addEventListener('keyup', onKeyUp, false);
             
-            // 強制監聽全螢幕點擊事件發射子彈
             document.addEventListener('mousedown', (e) => {
-                if (controls.isLocked && e.button === 0) {
-                    tryShoot();
-                }
+                if (controls.isLocked && e.button === 0) tryShoot();
             });
 
             window.addEventListener('wheel', onMouseWheel, { passive: false });
@@ -162,6 +350,27 @@
 
             window.addEventListener('resize', onWindowResize);
             animate();
+        }
+
+        // ==========================================
+        // ✨ 粒子系統 (開火、爆炸、冰碎粒子)
+        // ==========================================
+        function createExplosionParticles(pos, colorHex, count = 25) {
+            for (let i = 0; i < count; i++) {
+                const pGeo = new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 6, 6);
+                const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+                const pMesh = new THREE.Mesh(pGeo, pMat);
+                pMesh.position.copy(pos);
+                scene.add(pMesh);
+
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 18.0,
+                    (Math.random() - 0.2) * 18.0,
+                    (Math.random() - 0.5) * 18.0
+                );
+
+                particles.push({ mesh: pMesh, velocity: vel, life: 0.6 + Math.random() * 0.4 });
+            }
         }
 
         function createSkyStoneObjects() {
@@ -188,8 +397,8 @@
             blade.rotation.x = Math.PI;
             swordGroup.add(blade);
 
-            const offsetX = (Math.random() - 0.5) * 14.0;
-            const offsetZ = (Math.random() - 0.5) * 14.0;
+            const offsetX = (Math.random() - 0.5) * 16.0;
+            const offsetZ = (Math.random() - 0.5) * 16.0;
             const spawnY = playerPos.y + 22.0 + Math.random() * 8.0;
 
             swordGroup.position.set(playerPos.x + offsetX, spawnY, playerPos.z + offsetZ);
@@ -200,6 +409,28 @@
                 speed: 28.0 + Math.random() * 10.0,
                 damage: 20
             });
+        }
+
+        function triggerAchievement(title) {
+            achievementUI.textContent = `🏆 成就解鎖：${title}`;
+            achievementUI.style.transform = 'translateX(0)';
+            setTimeout(() => { achievementUI.style.transform = 'translateX(-150%)'; }, 2500);
+        }
+
+        function addCombo() {
+            comboCount++;
+            comboTimer = 3.0; // 3 秒內保持連擊
+            comboCountUI.textContent = `${comboCount} COMBO!`;
+            comboCountUI.style.opacity = '1';
+            comboCountUI.style.transform = 'scale(1.2)';
+            setTimeout(() => { comboCountUI.style.transform = 'scale(1.0)'; }, 100);
+
+            const mult = 1 + Math.min(4, Math.floor(comboCount / 3) * 0.5);
+            comboMultUI.textContent = `得分倍率 x${mult.toFixed(1)}`;
+
+            if (comboCount === 5) triggerAchievement("連擊新星 (5連擊)");
+            if (comboCount === 10) triggerAchievement("劍雨煞星 (10連擊)");
+            return mult;
         }
 
         function updateHUD() {
@@ -224,12 +455,11 @@
             if (Math.random() < 0.40) {
                 playerHp = MAX_HP;
                 showHealFeedback("✨ 豪賭成功！瞬間滿血！", "#00ff66");
+                triggerAchievement("天選之子 (豪賭成功)");
                 updateHUD();
             } else {
                 showHealFeedback("💀 豪賭失敗！暴斃死亡！", "#ff0000");
-                playerHp = 0;
-                updateHUD();
-                handleDeath();
+                playerHp = 0; updateHUD(); handleDeath();
             }
         }
 
@@ -241,8 +471,7 @@
                 playerHp -= 10;
                 showHealFeedback("❌ 小賭失敗！血量 -10", "#ff3333");
             }
-            updateHUD();
-            if (playerHp <= 0) handleDeath();
+            updateHUD(); if (playerHp <= 0) handleDeath();
         }
 
         function showHealFeedback(text, color) {
@@ -263,10 +492,8 @@
                 camera.getWorldDirection(dir);
                 skyStoneMesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.2));
                 skyStoneVelocity.copy(dir).multiplyScalar(45.0);
-                skyStoneMesh.visible = true;
-                skyStonePlatform.visible = false;
-                skyStoneState = 'FLYING';
-                updateHUD();
+                skyStoneMesh.visible = true; skyStonePlatform.visible = false;
+                skyStoneState = 'FLYING'; updateHUD();
             } else if (skyStoneState === 'FLYING' || skyStoneState === 'ANCHORED') {
                 const targetPos = skyStoneMesh.position.clone();
                 targetPos.y += 1.2;
@@ -278,11 +505,9 @@
                 playerVelocity.y = Math.max(playerVelocity.y, 14.0);
 
                 jumpsLeft = MAX_JUMPS;
-                skyStoneMesh.visible = false;
-                skyStonePlatform.visible = false;
-                skyStoneState = 'COOLDOWN';
-                skyStoneCooldownTimer = 2.0;
-                updateHUD();
+                skyStoneMesh.visible = false; skyStonePlatform.visible = false;
+                skyStoneState = 'COOLDOWN'; skyStoneCooldownTimer = 2.0; updateHUD();
+                sfx.playJump();
             }
         }
 
@@ -319,11 +544,8 @@
 
                 step.position.set(posX, currentY, posZ);
                 step.userData = { 
-                    isMoving: isMoving,
-                    isCollapsing: false,
-                    collapseTimer: 0,
-                    basePos: new THREE.Vector3(posX, currentY, posZ),
-                    moveOffset: Math.random() * 10
+                    isMoving: isMoving, isCollapsing: false, collapseTimer: 0,
+                    basePos: new THREE.Vector3(posX, currentY, posZ), moveOffset: Math.random() * 10
                 };
 
                 scene.add(step); obstacles.push(step);
@@ -341,17 +563,15 @@
 
         function respawnPlayerToStart() {
             controls.getObject().position.copy(START_POSITION);
-            playerVelocity.set(0, 0, 0);
-            playerHp = MAX_HP;
-            jumpsLeft = MAX_JUMPS;
-            isSwordStormActive = false;
-            skyStoneState = 'READY';
-            skyStoneMesh.visible = false;
-            skyStonePlatform.visible = false;
+            playerVelocity.set(0, 0, 0); playerHp = MAX_HP; jumpsLeft = MAX_JUMPS;
+            isSwordStormActive = false; skyStoneState = 'READY';
+            skyStoneMesh.visible = false; skyStonePlatform.visible = false;
             updateHUD();
         }
 
         function handleDeath() {
+            sfx.playExplode();
+            createExplosionParticles(controls.getObject().position, 0xff0000, 35);
             showHealFeedback("💥 死亡！返回當前塔層起點", "#ff0000");
             respawnPlayerToStart();
         }
@@ -362,7 +582,7 @@
             rewardCrystal.position.copy(position); scene.add(rewardCrystal);
         }
 
-        // 🔥 開槍邏輯（經過絕對修復優化）
+        // 💥 槍械發射邏輯
         function tryShoot() {
             const curWeapon = weaponList[currentWeaponIndex];
             if (curWeapon !== 'rifle') {
@@ -370,31 +590,34 @@
                 ammo[curWeapon]--; 
             }
             updateHUD();
+            sfx.playShoot(curWeapon);
 
-            // 準心擴張效果
             crosshair.style.transform = "scale(2.2)";
             setTimeout(() => { crosshair.style.transform = "scale(1.0)"; }, 80);
 
-            // 取得視角方向
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
+            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
 
-            // 反衝力計算 (1號步槍反衝超強)
-            const pushBackForce = curWeapon === 'rifle' ? 22.0 : 8.0;
+            // 🚀 火箭跳反衝推力
+            const pushBackForce = curWeapon === 'rifle' ? 24.0 : (curWeapon === 'fireball' ? 18.0 : 8.0);
             playerVelocity.subScaledVector(dir, pushBackForce * 0.45);
 
-            // 子彈位置：從視角前方 1 公尺處發射
             const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(1.0));
 
-            const colors = { 'rifle': 0xffff00, 'pulse': 0x00ff66, 'blackhole': 0xcc00ff, 'freeze': 0x00ffff };
-            const sizes = { 'rifle': 0.25, 'pulse': 0.35, 'blackhole': 0.55, 'freeze': 0.3 };
+            // 時空停滯槍特殊處理
+            if (curWeapon === 'timestop') {
+                timeStopTimer = 5.0;
+                showHealFeedback("⏳ 全場時空停滯 5 秒！", "#ff00ff");
+                createExplosionParticles(spawnPos, 0xff00ff, 30);
+                return;
+            }
 
-            // 建立高亮子彈實體
+            const colors = { 'rifle': 0xffff00, 'pulse': 0x00ff66, 'blackhole': 0xcc00ff, 'freeze': 0x00ffff, 'fireball': 0xff3300 };
+            const sizes = { 'rifle': 0.22, 'pulse': 0.35, 'blackhole': 0.55, 'freeze': 0.3, 'fireball': 0.65 };
+
             const bulletGeo = new THREE.SphereGeometry(sizes[curWeapon], 12, 12);
             const bulletMat = new THREE.MeshBasicMaterial({ color: colors[curWeapon] });
             const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-            bullet.position.copy(spawnPos);
-            scene.add(bullet);
+            bullet.position.copy(spawnPos); scene.add(bullet);
 
             playerProjectiles.push({
                 mesh: bullet,
@@ -402,20 +625,17 @@
                 life: curWeapon === 'pulse' ? 1.5 : 2.5,
                 type: curWeapon
             });
+
+            // 產生發射開火粒子
+            createExplosionParticles(spawnPos, colors[curWeapon], 8);
         }
 
-        // 產生臨時平台 (方案 B & D)
-        function createTempPlatform(pos, colorHex, duration = 5.0, size = 3.0) {
+        function createTempPlatform(pos, colorHex, duration = 5.0, size = 3.2) {
             const geo = new THREE.BoxGeometry(size, 0.5, size);
             const mat = new THREE.MeshLambertMaterial({ color: colorHex, transparent: true, opacity: 0.85 });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(pos);
-            scene.add(mesh);
-
-            tempPlatforms.push({
-                mesh: mesh,
-                timer: duration
-            });
+            mesh.position.copy(pos); scene.add(mesh);
+            tempPlatforms.push({ mesh: mesh, timer: duration });
         }
 
         function onKeyDown(e) {
@@ -428,8 +648,7 @@
                 if (!moveForward) {
                     moveForward = true;
                     if (!isSwordStormActive && Math.random() < 0.20) {
-                        isSwordStormActive = true;
-                        swordStormTimer = 10.0;
+                        isSwordStormActive = true; swordStormTimer = 10.0;
                         showHealFeedback("⚡ 警報：前行觸發 10 秒超長劍雨！", "#ff1100");
                     }
                 }
@@ -445,8 +664,13 @@
                 case 'Digit2': if (!e.shiftKey) switchWeapon(1); break;
                 case 'Digit3': switchWeapon(2); break;
                 case 'Digit4': switchWeapon(3); break;
+                case 'Digit5': switchWeapon(4); break;
+                case 'Digit6': switchWeapon(5); break;
                 case 'Space': 
-                    if (jumpsLeft > 0) { playerVelocity.y = 15.0; jumpsLeft--; updateHUD(); } break;
+                    if (jumpsLeft > 0) { 
+                        playerVelocity.y = 15.0; jumpsLeft--; updateHUD(); 
+                        sfx.playJump();
+                    } break;
             }
         }
 
@@ -468,6 +692,41 @@
 
         function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
 
+        // ==========================================
+        // 🗺️ 雷達小地圖渲染邏輯
+        // ==========================================
+        function drawMinimap() {
+            minimapCtx.clearRect(0, 0, 140, 140);
+            const playerPos = controls.getObject().position;
+
+            // 中心點 (玩家)
+            minimapCtx.fillStyle = '#00ffcc';
+            minimapCtx.beginPath(); minimapCtx.arc(70, 70, 5, 0, Math.PI * 2); minimapCtx.fill();
+
+            // 飛劍威脅 (紅點)
+            minimapCtx.fillStyle = '#ff0033';
+            fallingSwords.forEach(s => {
+                const dx = (s.mesh.position.x - playerPos.x) * 1.8;
+                const dz = (s.mesh.position.z - playerPos.z) * 1.8;
+                if (Math.abs(dx) < 65 && Math.abs(dz) < 65) {
+                    minimapCtx.beginPath(); minimapCtx.arc(70 + dx, 70 + dz, 3, 0, Math.PI * 2); minimapCtx.fill();
+                }
+            });
+
+            // 通關水晶 (黃點)
+            if (rewardCrystal) {
+                minimapCtx.fillStyle = '#ffff00';
+                const dx = (rewardCrystal.position.x - playerPos.x) * 1.5;
+                const dz = (rewardCrystal.position.z - playerPos.z) * 1.5;
+                if (Math.abs(dx) < 65 && Math.abs(dz) < 65) {
+                    minimapCtx.beginPath(); minimapCtx.arc(70 + dx, 70 + dz, 6, 0, Math.PI * 2); minimapCtx.fill();
+                }
+            }
+        }
+
+        // ==========================================
+        // 🔄 主遊戲循環 (Animate)
+        // ==========================================
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
@@ -477,49 +736,71 @@
                 if (rewardCrystal) rewardCrystal.rotation.y += 2.0 * delta;
                 const playerPos = controls.getObject().position.clone();
 
+                // Combo 倒數
+                if (comboTimer > 0) {
+                    comboTimer -= delta;
+                    if (comboTimer <= 0) {
+                        comboCount = 0; comboCountUI.style.opacity = '0';
+                    }
+                }
+
+                // 時空停滯計時器
+                let swordSpeedMult = 1.0;
+                if (timeStopTimer > 0) {
+                    timeStopTimer -= delta;
+                    swordSpeedMult = 0.15; // 飛劍減速 85%
+                }
+
+                // 劍雨計時
                 if (isSwordStormActive) {
                     swordStormTimer -= delta;
                     swordSpawnIntervalTimer += delta;
 
                     if (swordSpawnIntervalTimer >= 0.08) {
-                        swordSpawnIntervalTimer = 0;
-                        spawnDenseSword();
+                        swordSpawnIntervalTimer = 0; spawnDenseSword();
                     }
 
-                    if (swordStormTimer <= 0) {
-                        isSwordStormActive = false;
-                    }
+                    if (swordStormTimer <= 0) isSwordStormActive = false;
                 }
 
-                // 飛劍邏輯
+                // 飛劍更新與碰撞
                 for (let i = fallingSwords.length - 1; i >= 0; i--) {
                     const sword = fallingSwords[i];
-                    sword.mesh.position.y -= sword.speed * delta;
+                    sword.mesh.position.y -= sword.speed * delta * swordSpeedMult;
 
                     if (sword.mesh.position.distanceTo(playerPos) < 1.3) {
                         playerHp -= sword.damage;
                         showHealFeedback(`💥 被劍刺中！-20%`, "#ff0000");
-                        scene.remove(sword.mesh);
-                        fallingSwords.splice(i, 1);
-                        updateHUD();
-                        if (playerHp <= 0) handleDeath();
+                        sfx.playExplode();
+                        createExplosionParticles(sword.mesh.position, 0xff1100, 15);
+                        scene.remove(sword.mesh); fallingSwords.splice(i, 1);
+                        updateHUD(); if (playerHp <= 0) handleDeath();
                         continue;
                     }
 
                     if (sword.mesh.position.y < -5.0) {
-                        scene.remove(sword.mesh);
-                        fallingSwords.splice(i, 1);
+                        scene.remove(sword.mesh); fallingSwords.splice(i, 1);
                     }
                 }
 
-                // 臨時平台邏輯
+                // 粒子更新
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.mesh.position.addScaledVector(p.velocity, delta);
+                    p.life -= delta;
+                    p.mesh.material.opacity = p.life;
+                    if (p.life <= 0) {
+                        scene.remove(p.mesh); particles.splice(i, 1);
+                    }
+                }
+
+                // 臨時平台更新
                 for (let i = tempPlatforms.length - 1; i >= 0; i--) {
                     const tp = tempPlatforms[i];
                     tp.timer -= delta;
                     if (tp.timer <= 1.0) tp.mesh.material.opacity = tp.timer;
                     if (tp.timer <= 0) {
-                        scene.remove(tp.mesh);
-                        tempPlatforms.splice(i, 1);
+                        scene.remove(tp.mesh); tempPlatforms.splice(i, 1);
                     }
                 }
 
@@ -536,19 +817,20 @@
                     }
                 });
 
-                // 💥 玩家子彈飛行與命中邏輯（即時更新）
+                // 子彈碰撞與特效 logic
                 for (let i = playerProjectiles.length - 1; i >= 0; i--) {
                     const pp = playerProjectiles[i];
                     pp.mesh.position.addScaledVector(pp.velocity, delta);
                     pp.life -= delta;
 
-                    // 3號黑洞彈吸劍
+                    // 黑洞引力
                     if (pp.type === 'blackhole') {
                         for (let k = fallingSwords.length - 1; k >= 0; k--) {
-                            if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 9.0) {
-                                scene.remove(fallingSwords[k].mesh);
-                                fallingSwords.splice(k, 1);
-                                score += 30; hudScore.textContent = score;
+                            if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 9.5) {
+                                createExplosionParticles(fallingSwords[k].mesh.position, 0x9900ff, 10);
+                                scene.remove(fallingSwords[k].mesh); fallingSwords.splice(k, 1);
+                                const mult = addCombo();
+                                score += Math.round(30 * mult); hudScore.textContent = score;
                             }
                         }
                     }
@@ -557,56 +839,59 @@
                     for (let k = fallingSwords.length - 1; k >= 0; k--) {
                         if (pp.mesh.position.distanceTo(fallingSwords[k].mesh.position) < 1.8) {
                             const hitSwordPos = fallingSwords[k].mesh.position.clone();
-                            scene.remove(fallingSwords[k].mesh);
-                            fallingSwords.splice(k, 1);
+                            scene.remove(fallingSwords[k].mesh); fallingSwords.splice(k, 1);
                             hit = true;
-                            score += 50; hudScore.textContent = score;
 
-                            // 4號冰凍槍：將劍變成冰平台
+                            const mult = addCombo();
+                            score += Math.round(50 * mult); hudScore.textContent = score;
+
+                            // 火球粒子大爆炸
+                            if (pp.type === 'fireball') {
+                                createExplosionParticles(hitSwordPos, 0xff3300, 40);
+                                sfx.playExplode();
+                            }
+
+                            // 冰晶槍生成冰雕平台
                             if (pp.type === 'freeze') {
                                 createTempPlatform(hitSwordPos, 0x00ffff, 5.0, 2.5);
+                                createExplosionParticles(hitSwordPos, 0x00ffff, 20);
                                 showHealFeedback("🧊 飛劍凍結成平台！", "#00ffff");
                             }
 
                             if (isSwordStormActive && Math.random() < 0.40) {
                                 isSwordStormActive = false;
-                                showHealFeedback("🛡️ 成功擊落核心！終止劍雨！", "#00ff66");
+                                showHealFeedback("🛡️ 擊落核心！終止劍雨！", "#00ff66");
                             }
                             break;
                         }
                     }
 
-                    // 2號脈衝槍：飛行結束變綠色平台
                     if (pp.type === 'pulse' && (hit || pp.life <= 0)) {
                         createTempPlatform(pp.mesh.position, 0x00ff66, 4.5, 3.2);
+                        createExplosionParticles(pp.mesh.position, 0x00ff66, 15);
                         showHealFeedback("🧱 脈衝槍生成造路平台！", "#00ff66");
                     }
 
                     if (hit || pp.life <= 0) {
-                        scene.remove(pp.mesh);
-                        playerProjectiles.splice(i, 1);
+                        scene.remove(pp.mesh); playerProjectiles.splice(i, 1);
                     }
                 }
 
-                // 凌空石
+                // 凌空石能力
                 if (skyStoneState === 'FLYING') {
                     skyStoneMesh.position.addScaledVector(skyStoneVelocity, delta);
                     if (camera.position.distanceTo(skyStoneMesh.position) > 22.0) {
                         skyStoneState = 'ANCHORED';
                         skyStonePlatform.position.copy(skyStoneMesh.position);
                         skyStonePlatform.position.y -= 0.3;
-                        skyStonePlatform.visible = true;
-                        updateHUD();
+                        skyStonePlatform.visible = true; updateHUD();
                     }
                 } else if (skyStoneState === 'COOLDOWN') {
-                    skyStoneCooldownTimer -= delta;
-                    updateHUD();
-                    if (skyStoneCooldownTimer <= 0) {
-                        skyStoneState = 'READY';
-                        updateHUD();
-                    }
+                    skyStoneCooldownTimer -= delta; updateHUD();
+                    if (skyStoneCooldownTimer <= 0) { skyStoneState = 'READY'; updateHUD(); }
                 }
 
+                // 玩家角色移動
                 const playerObj = controls.getObject();
                 let moveVector = new THREE.Vector3();
                 let moveSpeed = 28.0 * delta;
@@ -619,7 +904,6 @@
                 playerObj.position.add(moveVector); playerObj.position.addScaledVector(playerVelocity, delta);
 
                 const playerFeetY = playerObj.position.y - STAND_HEIGHT;
-                
                 const allPlatforms = [...obstacles, ...tempPlatforms.map(p => p.mesh)];
                 if (skyStonePlatform.visible) allPlatforms.push(skyStonePlatform);
 
@@ -629,13 +913,8 @@
                         const platTop = obsBox.max.y;
                         if (playerFeetY <= platTop && playerFeetY >= platTop - 1.4 && playerVelocity.y <= 0) {
                             playerObj.position.y = platTop + STAND_HEIGHT; 
-                            playerVelocity.y = 0;
-                            jumpsLeft = MAX_JUMPS; 
-                            updateHUD();
-
-                            if (obs.userData && !obs.userData.isPermanent) {
-                                obs.userData.isCollapsing = true;
-                            }
+                            playerVelocity.y = 0; jumpsLeft = MAX_JUMPS; updateHUD();
+                            if (obs.userData && !obs.userData.isPermanent) obs.userData.isCollapsing = true;
                             break;
                         }
                     }
@@ -644,8 +923,12 @@
                 if (playerObj.position.y <= -3.0) handleDeath();
 
                 if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 2000; hudScore.textContent = score; currentLevel++; buildTower(currentLevel); 
+                    score += 2000; hudScore.textContent = score; currentLevel++; 
+                    triggerAchievement(`勇闖塔層 LV.${currentLevel}`);
+                    buildTower(currentLevel); 
                 }
+
+                drawMinimap();
             }
             prevTime = time; renderer.render(scene, camera);
         }
