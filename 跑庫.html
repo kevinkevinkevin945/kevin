@@ -3,197 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Refined Parkour - 精緻科幻版</title>
+    <title>3D 第一人稱無限跑酷 (FPV Parkour)</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; background-color: #050509; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #050509; }
         #ui {
             position: absolute; top: 30px; left: 30px; color: #fff;
-            background: rgba(10, 10, 20, 0.5); padding: 15px 30px;
+            background: rgba(10, 10, 20, 0.6); padding: 15px 30px;
             border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.3);
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); pointer-events: none;
         }
         #dist { font-size: 32px; font-weight: 800; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
-        #instructions {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.8); text-align: center;
-            background: rgba(10, 10, 20, 0.8); padding: 12px 40px;
-            border-radius: 30px; font-size: 14px; letter-spacing: 1px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 6px; height: 6px; background: rgba(0, 255, 255, 0.9);
+            border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; box-shadow: 0 0 8px #00ffff;
         }
+        #instructions {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 10, 0.85); color: white; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 99;
+        }
+        #instructions h1 { font-size: 40px; margin-bottom: 10px; color: #00ffff; text-shadow: 0 0 15px #00ffff; }
+        #instructions p { font-size: 18px; color: #ccc; margin: 5px 0; }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
 
     <div id="ui">距離 <div id="dist">0</div> M</div>
+    <div id="crosshair"></div>
+
     <div id="instructions">
-        <b>[WASD]</b> 移動 ｜ <b>[空白鍵]</b> 跳躍
+        <h1>第一人稱 3D 跑酷</h1>
+        <p>點擊畫面鎖定滑鼠並開始遊戲</p>
+        <p><b>[WASD]</b> 移動 ｜ <b>[滑鼠]</b> 旋轉視角 ｜ <b>[空白鍵]</b> 跳躍</p>
     </div>
 
     <script>
         // ==========================================
-        // --- 1. 場景設定 (Core Scene) ---
+        // --- 1. 場景與第一人稱控制器 ---
         // ==========================================
         const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0x050509, 30, 90);
+        scene.fog = new THREE.Fog(0x050509, 20, 80);
 
-        // 生成一個簡易的環境反射貼圖 (CubeCamera) 給 PBR 材質使用
-        const cubeMat = new THREE.MeshStandardMaterial({ roughness: 0.1, metalness: 0.9, color: 0x111111 });
-        const cubeTarget = new THREE.WebGLCubeRenderTarget( 128 );
-        const cubeCamera = new THREE.CubeCamera( 0.1, 100, cubeTarget );
-        scene.add(cubeCamera);
-        scene.environment = cubeTarget.texture;
-
-        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio); // 支援高解析度螢幕
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 軟陰影
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // 漸層天空 (Shader)
-        function createGradientSky() {
-            const geo = new THREE.SphereGeometry(200, 32, 15);
-            const mat = new THREE.ShaderMaterial({
-                side: THREE.BackSide,
-                uniforms: {
-                    topColor: { value: new THREE.Color(0x00020a) },
-                    bottomColor: { value: new THREE.Color(0x1a0a2e) }
-                },
-                vertexShader: `varying vec3 vWorldPosition; void main() { vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-                fragmentShader: `varying vec3 vWorldPosition; uniforms vec3 topColor; uniforms vec3 bottomColor; void main() { float h = normalize( vWorldPosition ).y; gl_FragColor = vec4( mix( bottomColor, topColor, max( h, 0.0 ) ), 1.0 ); }`
-            });
-            scene.add(new THREE.Mesh(geo, mat));
-        }
-        createGradientSky();
+        // 第一人稱滑鼠鎖定控制器
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
 
-        // ==========================================
-        // --- 2. 光照與質感 (Lighting & Texture) ---
-        // ==========================================
-        scene.add(new THREE.AmbientLight(0x404040, 1.5)); // 提升環境光，增加質感
+        instructions.addEventListener('click', () => { controls.lock(); });
+        controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
+        controls.addEventListener('unlock', () => { instructions.style.display = 'flex'; });
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight.position.set(15, 30, 5);
+        // 漸層天空
+        const skyGeo = new THREE.SphereGeometry(200, 32, 15);
+        const skyMat = new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            uniforms: {
+                topColor: { value: new THREE.Color(0x020208) },
+                bottomColor: { value: new THREE.Color(0x110826) }
+            },
+            vertexShader: `varying vec3 vWorldPosition; void main() { vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+            fragmentShader: `varying vec3 vWorldPosition; uniforms vec3 topColor; uniforms vec3 bottomColor; void main() { float h = normalize( vWorldPosition ).y; gl_FragColor = vec4( mix( bottomColor, topColor, max( h, 0.0 ) ), 1.0 ); }`
+        });
+        scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+        // 光照
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(20, 40, 10);
         dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048; // 更精細的陰影貼圖
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 1;
-        dirLight.shadow.camera.far = 100;
-        dirLight.shadow.camera.left = -20;
-        dirLight.shadow.camera.right = 20;
-        dirLight.shadow.camera.top = 20;
-        dirLight.shadow.camera.bottom = -20;
         scene.add(dirLight);
 
-        // 材質定義 - 使用 PBR
+        // ==========================================
+        // --- 2. 第一人稱手臂 (FPS Hands) ---
+        // ==========================================
+        const handGroup = new THREE.Group();
+        camera.add(handGroup); // 手臂綁定至視角
+        scene.add(camera);
+
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.8 });
+        const handMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.6 });
+
+        // 左手
+        const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        lArm.position.set(-0.35, -0.25, -0.5);
+        handGroup.add(lArm);
+        const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), handMat);
+        lHand.position.set(-0.35, -0.25, -0.8);
+        handGroup.add(lHand);
+
+        // 右手
+        const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        rArm.position.set(0.35, -0.25, -0.5);
+        handGroup.add(rArm);
+        const rHand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), handMat);
+        rHand.position.set(0.35, -0.25, -0.8);
+        handGroup.add(rHand);
+
+        // 初始化玩家位置 (相機即玩家眼睛)
+        camera.position.set(0, 1.8, 0);
+
+        // ==========================================
+        // --- 3. 平台與物件池 ---
+        // ==========================================
         const materials = {
-            robot: new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.1, flatShading: true }),
-            head: new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.9, roughness: 0.0, emissive: 0x00ffff, emissiveIntensity: 0.5 }), // 發光頭部
-            edge: new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4 }),
-            platformBase: new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 }),
-            platformNeon: new THREE.MeshStandardMaterial({ color: 0xff00cc, emissive: 0xff00cc, emissiveIntensity: 1.0 }), // 移動平台霓虹燈
-            finish: new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 2.0 }) // 結束點發光
+            base: new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 }),
+            neon: new THREE.MeshStandardMaterial({ color: 0xff00cc, emissive: 0xff00cc, emissiveIntensity: 1.0 }),
+            edge: new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4 })
         };
 
-        // ==========================================
-        // --- 3. 精緻角色與動畫 (Character & Anim) ---
-        // ==========================================
-        const playerGroup = new THREE.Group();
-        playerGroup.position.set(0, 1, 0);
-        scene.add(playerGroup);
-
-        // 輔助函式：建立幾何體與邊框
-        function createRobotPart(geo, mat, parent, x, y, z) {
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, y, z);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            parent.add(mesh);
-
-            const edges = new THREE.EdgesGeometry(geo);
-            const line = new THREE.LineSegments(edges, materials.edge);
-            mesh.add(line); // 將邊框附在幾何體上
-            return mesh;
-        }
-
-        const bodyPart = createRobotPart(new THREE.BoxGeometry(0.8, 1.0, 0.4), materials.robot, playerGroup, 0, 1.0, 0);
-        const headPart = createRobotPart(new THREE.BoxGeometry(0.5, 0.5, 0.5), materials.head, playerGroup, 0, 1.8, 0);
-        const lArm = createRobotPart(new THREE.BoxGeometry(0.2, 0.9, 0.2), materials.robot, playerGroup, -0.55, 1.05, 0);
-        const rArm = createRobotPart(new THREE.BoxGeometry(0.2, 0.9, 0.2), materials.robot, playerGroup, 0.55, 1.05, 0);
-        const lLeg = createRobotPart(new THREE.BoxGeometry(0.3, 0.8, 0.3), materials.robot, playerGroup, -0.25, 0.4, 0);
-        const rLeg = createRobotPart(new THREE.BoxGeometry(0.3, 0.8, 0.3), materials.robot, playerGroup, 0.25, 0.4, 0);
-
-        // ==========================================
-        // --- 4. 物件池與平台生成 (Pooling & Maps) ---
-        // ==========================================
-        const platformPool = []; // 物件池
+        const platformPool = [];
         const activePlatforms = [];
         let nextZ = 0;
-        const spacing = 10;
+        const spacing = 11;
         const poolSize = 12;
 
-        // 建立精緻平台
         function createPlatform(width, depth, isMoving) {
             const group = new THREE.Group();
-
-            // 主體平台
-            const base = new THREE.Mesh(new THREE.BoxGeometry(width, 0.8, depth), materials.platformBase);
+            const base = new THREE.Mesh(new THREE.BoxGeometry(width, 0.8, depth), materials.base);
             base.position.y = -0.4;
             base.castShadow = true;
             base.receiveShadow = true;
             group.add(base);
 
-            // 主體邊框
             const edges = new THREE.EdgesGeometry(base.geometry);
-            const baseLine = new THREE.LineSegments(edges, materials.edge);
-            base.add(baseLine);
+            const line = new THREE.LineSegments(edges, materials.edge);
+            base.add(line);
 
-            let neonMesh;
-            if (isMoving) {
-                // 移動平台的霓虹燈條
-                neonMesh = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.1, 0.1), materials.platformNeon);
-                neonMesh.position.y = 0.05;
-                neonMesh.position.z = depth / 2 - 0.1;
-                group.add(neonMesh);
-            }
+            const neon = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.1, 0.1), materials.neon);
+            neon.position.y = 0.05;
+            neon.position.z = depth / 2 - 0.1;
+            group.add(neon);
 
-            return {
-                group, base, baseLine, neonMesh,
-                data: { width, depth, isMoving, moveRange: 3.5, moveSpeed: 0.02, moveOffset: 0, deltaX: 0 }
-            };
+            return { group, base, neon, data: { width, depth, isMoving, moveRange: 4, moveSpeed: 0.02, moveOffset: 0, deltaX: 0 } };
         }
 
-        // 初始化物件池
         for (let i = 0; i < poolSize; i++) {
-            const p = createPlatform(5, 6, i > 1); // 預設大小
+            const p = createPlatform(5, 6, false);
             scene.add(p.group);
             p.group.visible = false;
             platformPool.push(p);
         }
 
-        // 從池中取一個平台放到 nextZ
         function spawnPlatform() {
-            if (platformPool.length === 0) return; // 池已空，這不應該發生在無限生成中
-
+            if (platformPool.length === 0) return;
             const p = platformPool.shift();
             p.group.visible = true;
             p.group.position.set(0, 0, nextZ);
 
-            // 更新平台的個性化數據（例如：是否移動、隨機大小）
             const isStart = nextZ === 0;
             const isMoving = !isStart && Math.random() > 0.4;
             const newW = isStart ? 8 : (4.5 + Math.random() * 2);
-            const newD = isStart ? 10 : (5 + Math.random() * 3);
+            const newD = isStart ? 10 : (5.5 + Math.random() * 2.5);
 
-            p.group.children.forEach(child => child.visible = false); // 先隱藏所有，再顯示需要的
-            p.base.visible = true; // 總是顯示基底
-
-            // 更新基底幾何體（這在精緻代碼中通常不鼓勵，應用池重新組合，但這裡是簡易物件池，使用此法）
             p.base.geometry.dispose();
             p.base.geometry = new THREE.BoxGeometry(newW, 0.8, newD);
-            p.base.children[0].geometry.dispose(); // 更新邊框
+            p.base.children[0].geometry.dispose();
             p.base.children[0].geometry = new THREE.EdgesGeometry(p.base.geometry);
 
             p.data.isMoving = isMoving;
@@ -201,154 +177,150 @@
             p.data.depth = newD;
             p.data.moveOffset = Math.random() * Math.PI * 2;
             p.data.deltaX = 0;
-            p.base.material = isStart ? materials.robot : materials.platformBase; // 起點用不同質感
 
-            // 處理霓虹燈
-            if (p.neonMesh) {
-                p.neonMesh.visible = isMoving;
-                if (isMoving) {
-                    p.neonMesh.geometry.dispose();
-                    p.neonMesh.geometry = new THREE.BoxGeometry(newW + 0.1, 0.1, 0.1);
-                    p.neonMesh.position.z = newD / 2 - 0.1;
-                }
+            p.neon.visible = isMoving;
+            if (isMoving) {
+                p.neon.geometry.dispose();
+                p.neon.geometry = new THREE.BoxGeometry(newW + 0.1, 0.1, 0.1);
+                p.neon.position.z = newD / 2 - 0.1;
             }
 
             activePlatforms.push(p);
             nextZ -= spacing;
         }
 
-        // 預生成
-        for (let i = 0; i < poolSize - 1; i++) {
-            spawnPlatform();
-        }
+        for (let i = 0; i < poolSize - 1; i++) spawnPlatform();
 
         // ==========================================
-        // --- 5. 移動與動畫邏輯 (Logic & Physics) ---
+        // --- 4. 物理與第一人稱控制邏輯 ---
         // ==========================================
-        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const moveState = { forward: false, backward: false, left: false, right: false, jump: false };
         window.addEventListener('keydown', (e) => {
-            const k = e.key.toLowerCase(); if(k in keys) keys[k] = true; if(e.code === 'Space') keys.space = true;
+            if (e.code === 'KeyW') moveState.forward = true;
+            if (e.code === 'KeyS') moveState.backward = true;
+            if (e.code === 'KeyA') moveState.left = true;
+            if (e.code === 'KeyD') moveState.right = true;
+            if (e.code === 'Space') moveState.jump = true;
         });
         window.addEventListener('keyup', (e) => {
-            const k = e.key.toLowerCase(); if(k in keys) keys[k] = false; if(e.code === 'Space') keys.space = false;
+            if (e.code === 'KeyW') moveState.forward = false;
+            if (e.code === 'KeyS') moveState.backward = false;
+            if (e.code === 'KeyA') moveState.left = false;
+            if (e.code === 'KeyD') moveState.right = false;
+            if (e.code === 'Space') moveState.jump = false;
         });
 
-        let velX = 0, velY = 0, velZ = 0;
-        const playerSpeed = 0.13, gravity = -0.012, jumpForce = 0.3;
+        let velY = 0;
+        const playerSpeed = 0.13, gravity = -0.012, jumpForce = 0.28;
         let isGrounded = false, currentPlatform = null;
         let time = 0;
 
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.03;
+            time += 0.04;
 
-            // 1. 更新移動平台（物件池內部的平台）
-            activePlatforms.forEach(p => {
-                if (p.data.isMoving) {
-                    const oldX = p.group.position.x;
-                    p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * p.data.moveRange;
-                    p.data.deltaX = p.group.position.x - oldX;
+            if (controls.isLocked) {
+                // 1. 更新移動平台
+                activePlatforms.forEach(p => {
+                    if (p.data.isMoving) {
+                        const oldX = p.group.position.x;
+                        p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * p.data.moveRange;
+                        p.data.deltaX = p.group.position.x - oldX;
+                    } else {
+                        p.data.deltaX = 0;
+                    }
+                });
+
+                // 2. 第一人稱視角方向移動
+                const moveVector = new THREE.Vector3();
+                if (moveState.forward) moveVector.z -= 1;
+                if (moveState.backward) moveVector.z += 1;
+                if (moveState.left) moveVector.x -= 1;
+                if (moveState.right) moveVector.x += 1;
+                moveVector.normalize();
+
+                // 沿著相機視角方向水平移動 (忽略 Pitch 上下仰角)
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                cameraDirection.y = 0;
+                cameraDirection.normalize();
+
+                const sideVector = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
+
+                if (moveVector.z !== 0) camera.position.addScaledVector(cameraDirection, -moveVector.z * playerSpeed);
+                if (moveVector.x !== 0) camera.position.addScaledVector(sideVector, moveVector.x * playerSpeed);
+
+                // 跟隨移動平台
+                if (isGrounded && currentPlatform) {
+                    camera.position.x += currentPlatform.data.deltaX;
+                }
+
+                // 3. 第一人稱手臂擺動與視角搖晃 (View Bobbing)
+                const isMoving = moveState.forward || moveState.backward || moveState.left || moveState.right;
+                if (isMoving && isGrounded) {
+                    handGroup.position.y = Math.sin(time * 8) * 0.03;
+                    handGroup.position.x = Math.cos(time * 4) * 0.02;
                 } else {
-                    p.data.deltaX = 0;
+                    handGroup.position.y = THREE.MathUtils.lerp(handGroup.position.y, 0, 0.1);
+                    handGroup.position.x = THREE.MathUtils.lerp(handGroup.position.x, 0, 0.1);
                 }
-            });
 
-            // 2. 玩家移動與「跟隨平台」
-            velX = 0; velZ = 0;
-            if (keys.w) velZ -= playerSpeed; if (keys.s) velZ += playerSpeed;
-            if (keys.a) velX -= playerSpeed; if (keys.d) velX += playerSpeed;
-
-            playerGroup.position.x += velX;
-            playerGroup.position.z += velZ;
-
-            // 平台跟隨
-            if (isGrounded && currentPlatform) {
-                playerGroup.position.x += currentPlatform.data.deltaX;
-            }
-
-            // 旋轉轉向 (精緻平滑轉身)
-            if (velX !== 0 || velZ !== 0) {
-                const targetAngle = Math.atan2(velX, velZ);
-                // 使用 Lerp 轉身 (線性差值)，更加平滑
-                playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetAngle, 0.15);
-            }
-
-            // 3. 機器人動畫 (手寫幾何體動畫)
-            if (!isGrounded) {
-                // 跳躍動畫（手腳微縮）
-                lArm.rotation.x = -0.5; rArm.rotation.x = -0.5;
-                lLeg.rotation.x = 0.3; rLeg.rotation.x = -0.3;
-            } else if (velX !== 0 || velZ !== 0) {
-                // 跑步動畫（手腳交替擺動）
-                const runCycle = Math.sin(time * 5);
-                lArm.rotation.x = runCycle * 0.5;
-                rArm.rotation.x = -runCycle * 0.5;
-                lLeg.rotation.x = -runCycle * 0.4;
-                rLeg.rotation.x = runCycle * 0.4;
-            } else {
-                // 站立動畫（微擺動）
-                lArm.rotation.x = 0; rArm.rotation.x = 0;
-                lLeg.rotation.x = 0; rLeg.rotation.x = 0;
-            }
-
-            // 4. 跳躍與重力
-            if (keys.space && isGrounded) { velY = jumpForce; isGrounded = false; currentPlatform = null; }
-            playerGroup.position.y += velY; velY += gravity;
-
-            // 5. 碰撞檢測 (精緻 Box 檢測)
-            isGrounded = false; currentPlatform = null;
-            const pX = playerGroup.position.x, pY = playerGroup.position.y, pZ = playerGroup.position.z;
-
-            for (let p of activePlatforms) {
-                const pPos = p.group.position, d = p.data;
-                const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.3;
-                const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.3;
-                const onY = pY <= pPos.y + 1.0 && pY >= pPos.y + 0.1; // 提升 Y 軸檢測精度
-
-                if (inX && inZ && onY && velY <= 0) {
-                    playerGroup.position.y = pPos.y + 1.0;
-                    velY = 0; isGrounded = true; currentPlatform = p; break;
+                // 4. 跳躍與重力
+                if (moveState.jump && isGrounded) {
+                    velY = jumpForce;
+                    isGrounded = false;
+                    currentPlatform = null;
                 }
+
+                camera.position.y += velY;
+                velY += gravity;
+
+                // 5. 地面/平台碰撞檢測 (眼睛高度為 1.8 米)
+                isGrounded = false;
+                currentPlatform = null;
+                const pX = camera.position.x, pY = camera.position.y - 1.8, pZ = camera.position.z;
+
+                for (let p of activePlatforms) {
+                    const pPos = p.group.position, d = p.data;
+                    const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.3;
+                    const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.3;
+                    const onY = pY <= pPos.y + 0.2 && pY >= pPos.y - 0.5;
+
+                    if (inX && inZ && onY && velY <= 0) {
+                        camera.position.y = pPos.y + 1.8;
+                        velY = 0;
+                        isGrounded = true;
+                        currentPlatform = p;
+                        break;
+                    }
+                }
+
+                // 6. 跌落判定死亡
+                if (camera.position.y < -8) {
+                    controls.unlock();
+                    alert(`GAME OVER 你的距離: ${Math.max(0, Math.floor(-camera.position.z))} M`);
+                    location.reload();
+                }
+
+                // 7. 無限平台生成與回收
+                if (activePlatforms.length > 0 && camera.position.z < activePlatforms[0].group.position.z - spacing * 2) {
+                    const oldP = activePlatforms.shift();
+                    oldP.group.visible = false;
+                    platformPool.push(oldP);
+                    spawnPlatform();
+                }
+
+                // 更新UI距離
+                document.getElementById('dist').innerText = Math.max(0, Math.floor(-camera.position.z));
             }
-
-            // 6. 跌落與回收平台 (無限生成)
-            if (playerGroup.position.y < -10) { alert(`GAME OVER 你的距離: ${Math.floor(-playerGroup.position.z)} M`); location.reload(); }
-
-            // 當玩家超越當前平台一定距離，將後方的平台回收到物件池並生成前方新的
-            if (activePlatforms.length > 0 && playerGroup.position.z < activePlatforms[0].group.position.z - spacing * 2) {
-                const oldP = activePlatforms.shift();
-                oldP.group.visible = false; // 隱藏
-                platformPool.push(oldP); // 回池
-                spawnPlatform(); // 生成前方的
-            }
-
-            // 7. 更新 UI 與攝影機跟隨
-            document.getElementById('dist').innerText = Math.max(0, Math.floor(-playerGroup.position.z));
-
-            // 精緻相機：動態調整角度，給人一種跑酷的速度感 (Lerp)
-            const targetCamY = isGrounded ? 4 : 5.5; // 跳躍時視角微提升
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, playerGroup.position.x, 0.1);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, playerGroup.position.y + targetCamY, 0.08);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, playerGroup.position.z + 8.5, 0.12);
-            
-            // 相機焦點 Lerp，營造順滑感
-            const lookAtTarget = playerGroup.position.clone();
-            lookAtTarget.y += 1;
-            lookAtTarget.z -= 2;
-            // camera.lookAt(lookAtTarget); // 原版死板 lookAt
-            const currentLookAt = new THREE.Vector3();
-            camera.getWorldDirection(currentLookAt);
-            currentLookAt.add(camera.position); // 得到當前的 lookAt 點
-            const refinedLookAt = THREE.MathUtils.lerp(currentLookAt.z, lookAtTarget.z, 0.1); // 只 Lerp Z 營造動態感
-            
-            // 使用內建 lookAt，相機角度需要更平滑的處理
-            camera.lookAt(playerGroup.position.x, THREE.MathUtils.lerp(camera.position.y - 1.5, playerGroup.position.y + 1.0, 0.2), playerGroup.position.z - 2.5);
 
             renderer.render(scene, camera);
         }
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         animate();
