@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 第一人稱無限跑酷 (FPV Parkour)</title>
+    <title>3D 極速第一人稱跑酷 + 手榴彈</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #050509; }
         #ui {
             position: absolute; top: 30px; left: 30px; color: #fff;
             background: rgba(10, 10, 20, 0.6); padding: 15px 30px;
-            border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.3);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); pointer-events: none;
+            border-radius: 12px; border: 1px solid rgba(255, 0, 85, 0.5);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.3); pointer-events: none;
         }
-        #dist { font-size: 32px; font-weight: 800; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+        #dist { font-size: 32px; font-weight: 800; color: #ff0055; text-shadow: 0 0 10px #ff0055; }
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 6px; height: 6px; background: rgba(0, 255, 255, 0.9);
+            width: 8px; height: 8px; background: rgba(255, 0, 85, 0.9);
             border-radius: 50%; transform: translate(-50%, -50%);
-            pointer-events: none; box-shadow: 0 0 8px #00ffff;
+            pointer-events: none; box-shadow: 0 0 10px #ff0055;
         }
         #instructions {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -25,7 +25,7 @@
             flex-direction: column; justify-content: center; align-items: center;
             cursor: pointer; z-index: 99;
         }
-        #instructions h1 { font-size: 40px; margin-bottom: 10px; color: #00ffff; text-shadow: 0 0 15px #00ffff; }
+        #instructions h1 { font-size: 40px; margin-bottom: 10px; color: #ff0055; text-shadow: 0 0 15px #ff0055; }
         #instructions p { font-size: 18px; color: #ccc; margin: 5px 0; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -37,27 +37,25 @@
     <div id="crosshair"></div>
 
     <div id="instructions">
-        <h1>第一人稱 3D 跑酷</h1>
+        <h1>10X 極速手榴彈跑酷</h1>
         <p>點擊畫面鎖定滑鼠並開始遊戲</p>
-        <p><b>[WASD]</b> 移動 ｜ <b>[滑鼠]</b> 旋轉視角 ｜ <b>[空白鍵]</b> 跳躍</p>
+        <p><b>[WASD]</b> 極速移動 ｜ <b>[F]</b> 發射瞬爆手榴彈 ｜ <b>[空白鍵]</b> 大跳躍</p>
     </div>
 
     <script>
         // ==========================================
-        // --- 1. 場景與第一人稱控制器 ---
+        // --- 1. 場景與控制器設定 ---
         // ==========================================
         const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0x050509, 20, 80);
+        scene.fog = new THREE.Fog(0x050509, 30, 200);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // 第一人稱滑鼠鎖定控制器
         const controls = new THREE.PointerLockControls(camera, document.body);
         const instructions = document.getElementById('instructions');
 
@@ -65,92 +63,56 @@
         controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
         controls.addEventListener('unlock', () => { instructions.style.display = 'flex'; });
 
-        // 漸層天空
-        const skyGeo = new THREE.SphereGeometry(200, 32, 15);
-        const skyMat = new THREE.ShaderMaterial({
-            side: THREE.BackSide,
-            uniforms: {
-                topColor: { value: new THREE.Color(0x020208) },
-                bottomColor: { value: new THREE.Color(0x110826) }
-            },
-            vertexShader: `varying vec3 vWorldPosition; void main() { vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-            fragmentShader: `varying vec3 vWorldPosition; uniforms vec3 topColor; uniforms vec3 bottomColor; void main() { float h = normalize( vWorldPosition ).y; gl_FragColor = vec4( mix( bottomColor, topColor, max( h, 0.0 ) ), 1.0 ); }`
-        });
-        scene.add(new THREE.Mesh(skyGeo, skyMat));
-
         // 光照
-        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(20, 40, 10);
-        dirLight.castShadow = true;
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 50, 10);
         scene.add(dirLight);
 
-        // ==========================================
-        // --- 2. 第一人稱手臂 (FPS Hands) ---
-        // ==========================================
+        // 手臂
         const handGroup = new THREE.Group();
-        camera.add(handGroup); // 手臂綁定至視角
+        camera.add(handGroup);
         scene.add(camera);
 
-        const armMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.8 });
-        const handMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.6 });
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+        const handMat = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.8 });
 
-        // 左手
         const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
         lArm.position.set(-0.35, -0.25, -0.5);
         handGroup.add(lArm);
-        const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), handMat);
-        lHand.position.set(-0.35, -0.25, -0.8);
-        handGroup.add(lHand);
-
-        // 右手
         const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
         rArm.position.set(0.35, -0.25, -0.5);
         handGroup.add(rArm);
-        const rHand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), handMat);
-        rHand.position.set(0.35, -0.25, -0.8);
-        handGroup.add(rHand);
 
-        // 初始化玩家位置 (相機即玩家眼睛)
         camera.position.set(0, 1.8, 0);
 
         // ==========================================
-        // --- 3. 平台與物件池 ---
+        // --- 2. 物件池與平台（對應 10 倍速度延長） ---
         // ==========================================
-        const materials = {
-            base: new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 }),
-            neon: new THREE.MeshStandardMaterial({ color: 0xff00cc, emissive: 0xff00cc, emissiveIntensity: 1.0 }),
-            edge: new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4 })
-        };
-
         const platformPool = [];
         const activePlatforms = [];
         let nextZ = 0;
-        const spacing = 11;
-        const poolSize = 12;
+        const spacing = 35; // 因應 10 倍速度，平台間距與長度拉長
+        const poolSize = 15;
 
-        function createPlatform(width, depth, isMoving) {
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0.6 });
+
+        function createPlatform() {
             const group = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(width, 0.8, depth), materials.base);
-            base.position.y = -0.4;
-            base.castShadow = true;
-            base.receiveShadow = true;
+            const base = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 20), baseMat);
+            base.position.y = -0.5;
             group.add(base);
 
             const edges = new THREE.EdgesGeometry(base.geometry);
-            const line = new THREE.LineSegments(edges, materials.edge);
+            const line = new THREE.LineSegments(edges, edgeMat);
             base.add(line);
 
-            const neon = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.1, 0.1), materials.neon);
-            neon.position.y = 0.05;
-            neon.position.z = depth / 2 - 0.1;
-            group.add(neon);
-
-            return { group, base, neon, data: { width, depth, isMoving, moveRange: 4, moveSpeed: 0.02, moveOffset: 0, deltaX: 0 } };
+            return { group, base, data: { width: 10, depth: 20, isMoving: false, moveSpeed: 0.05, moveOffset: 0, deltaX: 0 } };
         }
 
         for (let i = 0; i < poolSize; i++) {
-            const p = createPlatform(5, 6, false);
+            const p = createPlatform();
             scene.add(p.group);
             p.group.visible = false;
             platformPool.push(p);
@@ -163,12 +125,12 @@
             p.group.position.set(0, 0, nextZ);
 
             const isStart = nextZ === 0;
-            const isMoving = !isStart && Math.random() > 0.4;
-            const newW = isStart ? 8 : (4.5 + Math.random() * 2);
-            const newD = isStart ? 10 : (5.5 + Math.random() * 2.5);
+            const isMoving = !isStart && Math.random() > 0.3;
+            const newW = isStart ? 12 : (8 + Math.random() * 6);
+            const newD = isStart ? 25 : (15 + Math.random() * 15);
 
             p.base.geometry.dispose();
-            p.base.geometry = new THREE.BoxGeometry(newW, 0.8, newD);
+            p.base.geometry = new THREE.BoxGeometry(newW, 1, newD);
             p.base.children[0].geometry.dispose();
             p.base.children[0].geometry = new THREE.EdgesGeometry(p.base.geometry);
 
@@ -176,14 +138,6 @@
             p.data.width = newW;
             p.data.depth = newD;
             p.data.moveOffset = Math.random() * Math.PI * 2;
-            p.data.deltaX = 0;
-
-            p.neon.visible = isMoving;
-            if (isMoving) {
-                p.neon.geometry.dispose();
-                p.neon.geometry = new THREE.BoxGeometry(newW + 0.1, 0.1, 0.1);
-                p.neon.position.z = newD / 2 - 0.1;
-            }
 
             activePlatforms.push(p);
             nextZ -= spacing;
@@ -192,7 +146,44 @@
         for (let i = 0; i < poolSize - 1; i++) spawnPlatform();
 
         // ==========================================
-        // --- 4. 物理與第一人稱控制邏輯 ---
+        // --- 3. 手榴彈系統 (Grenade & Explosion) ---
+        // ==========================================
+        const grenades = [];
+        const explosions = [];
+
+        const grenadeGeo = new THREE.SphereGeometry(0.25, 8, 8);
+        const grenadeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1.0 });
+
+        function throwGrenade() {
+            const grenade = new THREE.Mesh(grenadeGeo, grenadeMat);
+            grenade.position.copy(camera.position);
+
+            // 計算射擊方向與高速度
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            const velocity = dir.clone().multiplyScalar(3.5); // 高速飛行
+
+            scene.add(grenade);
+            grenades.push({ mesh: grenade, vel: velocity, life: 60 });
+        }
+
+        // 爆炸效果特效（瞬間產生與擴散）
+        function createExplosion(pos) {
+            const expGroup = new THREE.Group();
+            expGroup.position.copy(pos);
+
+            const expGeo = new THREE.SphereGeometry(1, 16, 16);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.9 });
+            const expMesh = new THREE.Mesh(expGeo, expMat);
+            expGroup.add(expMesh);
+
+            scene.add(expGroup);
+            explosions.push({ group: expGroup, mesh: expMesh, scale: 1, maxScale: 8, opacity: 1.0 });
+        }
+
+        // ==========================================
+        // --- 4. 10倍極速移動與主循環 ---
         // ==========================================
         const moveState = { forward: false, backward: false, left: false, right: false, jump: false };
         window.addEventListener('keydown', (e) => {
@@ -201,6 +192,7 @@
             if (e.code === 'KeyA') moveState.left = true;
             if (e.code === 'KeyD') moveState.right = true;
             if (e.code === 'Space') moveState.jump = true;
+            if (e.code === 'KeyF' && controls.isLocked) throwGrenade(); // 按 F 發射手榴彈
         });
         window.addEventListener('keyup', (e) => {
             if (e.code === 'KeyW') moveState.forward = false;
@@ -211,35 +203,29 @@
         });
 
         let velY = 0;
-        const playerSpeed = 0.13, gravity = -0.012, jumpForce = 0.28;
+        const playerSpeed = 1.3; // 10 倍移動速度！
+        const gravity = -0.04;
+        const jumpForce = 0.85;   // 對應 10 倍速的大跳躍
         let isGrounded = false, currentPlatform = null;
         let time = 0;
 
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.04;
+            time += 0.05;
 
             if (controls.isLocked) {
-                // 1. 更新移動平台
+                // 1. 移動平台更新
                 activePlatforms.forEach(p => {
                     if (p.data.isMoving) {
                         const oldX = p.group.position.x;
-                        p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * p.data.moveRange;
+                        p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * 8;
                         p.data.deltaX = p.group.position.x - oldX;
                     } else {
                         p.data.deltaX = 0;
                     }
                 });
 
-                // 2. 第一人稱視角方向移動
-                const moveVector = new THREE.Vector3();
-                if (moveState.forward) moveVector.z -= 1;
-                if (moveState.backward) moveVector.z += 1;
-                if (moveState.left) moveVector.x -= 1;
-                if (moveState.right) moveVector.x += 1;
-                moveVector.normalize();
-
-                // 沿著相機視角方向水平移動 (忽略 Pitch 上下仰角)
+                // 2. 視角方向極速移動
                 const cameraDirection = new THREE.Vector3();
                 camera.getWorldDirection(cameraDirection);
                 cameraDirection.y = 0;
@@ -247,25 +233,16 @@
 
                 const sideVector = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
 
-                if (moveVector.z !== 0) camera.position.addScaledVector(cameraDirection, -moveVector.z * playerSpeed);
-                if (moveVector.x !== 0) camera.position.addScaledVector(sideVector, moveVector.x * playerSpeed);
+                if (moveState.forward) camera.position.addScaledVector(cameraDirection, playerSpeed);
+                if (moveState.backward) camera.position.addScaledVector(cameraDirection, -playerSpeed);
+                if (moveState.left) camera.position.addScaledVector(sideVector, playerSpeed);
+                if (moveState.right) camera.position.addScaledVector(sideVector, -playerSpeed);
 
-                // 跟隨移動平台
                 if (isGrounded && currentPlatform) {
                     camera.position.x += currentPlatform.data.deltaX;
                 }
 
-                // 3. 第一人稱手臂擺動與視角搖晃 (View Bobbing)
-                const isMoving = moveState.forward || moveState.backward || moveState.left || moveState.right;
-                if (isMoving && isGrounded) {
-                    handGroup.position.y = Math.sin(time * 8) * 0.03;
-                    handGroup.position.x = Math.cos(time * 4) * 0.02;
-                } else {
-                    handGroup.position.y = THREE.MathUtils.lerp(handGroup.position.y, 0, 0.1);
-                    handGroup.position.x = THREE.MathUtils.lerp(handGroup.position.x, 0, 0.1);
-                }
-
-                // 4. 跳躍與重力
+                // 3. 跳躍與重力
                 if (moveState.jump && isGrounded) {
                     velY = jumpForce;
                     isGrounded = false;
@@ -275,16 +252,16 @@
                 camera.position.y += velY;
                 velY += gravity;
 
-                // 5. 地面/平台碰撞檢測 (眼睛高度為 1.8 米)
+                // 4. 地面碰撞
                 isGrounded = false;
                 currentPlatform = null;
                 const pX = camera.position.x, pY = camera.position.y - 1.8, pZ = camera.position.z;
 
                 for (let p of activePlatforms) {
                     const pPos = p.group.position, d = p.data;
-                    const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.3;
-                    const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.3;
-                    const onY = pY <= pPos.y + 0.2 && pY >= pPos.y - 0.5;
+                    const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.5;
+                    const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.5;
+                    const onY = pY <= pPos.y + 0.4 && pY >= pPos.y - 1.0;
 
                     if (inX && inZ && onY && velY <= 0) {
                         camera.position.y = pPos.y + 1.8;
@@ -295,14 +272,57 @@
                     }
                 }
 
-                // 6. 跌落判定死亡
-                if (camera.position.y < -8) {
+                // 5. 手榴彈飛行與瞬爆邏輯
+                for (let i = grenades.length - 1; i >= 0; i--) {
+                    const g = grenades[i];
+                    g.mesh.position.add(g.vel);
+                    g.life--;
+
+                    // 檢測是否撞擊平台，撞擊立刻瞬爆
+                    let hit = false;
+                    for (let p of activePlatforms) {
+                        const pPos = p.group.position, d = p.data;
+                        if (Math.abs(g.mesh.position.x - pPos.x) <= d.width / 2 &&
+                            Math.abs(g.mesh.position.z - pPos.z) <= d.depth / 2 &&
+                            Math.abs(g.mesh.position.y - pPos.y) <= 1.0) {
+                            hit = true;
+                            break;
+                        }
+                    }
+
+                    if (hit || g.life <= 0) {
+                        createExplosion(g.mesh.position);
+                        scene.remove(g.mesh);
+                        g.mesh.geometry.dispose();
+                        g.mesh.material.dispose();
+                        grenades.splice(i, 1);
+                    }
+                }
+
+                // 6. 爆炸動畫更新
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    const exp = explosions[i];
+                    exp.scale += 0.8; // 快速擴散
+                    exp.group.scale.set(exp.scale, exp.scale, exp.scale);
+                    exp.opacity -= 0.08;
+                    exp.mesh.material.opacity = exp.opacity;
+
+                    if (exp.opacity <= 0) {
+                        scene.remove(exp.group);
+                        exp.mesh.geometry.dispose();
+                        exp.mesh.material.dispose();
+                        explosions.splice(i, 1);
+                    }
+                }
+
+                // 7. 跌落死亡判定
+                if (camera.position.y < -15) {
                     controls.unlock();
-                    alert(`GAME OVER 你的距離: ${Math.max(0, Math.floor(-camera.position.z))} M`);
+                    alert(`GAME OVER！你的距離: ${Math.max(0, Math.floor(-camera.position.z))} M`);
                     location.reload();
                 }
 
-                // 7. 無限平台生成與回收
+                // 8. 無限平台動態循環
                 if (activePlatforms.length > 0 && camera.position.z < activePlatforms[0].group.position.z - spacing * 2) {
                     const oldP = activePlatforms.shift();
                     oldP.group.visible = false;
@@ -310,7 +330,6 @@
                     spawnPlatform();
                 }
 
-                // 更新UI距離
                 document.getElementById('dist').innerText = Math.max(0, Math.floor(-camera.position.z));
             }
 
