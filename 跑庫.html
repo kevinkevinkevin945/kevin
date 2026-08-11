@@ -1,1038 +1,311 @@
-_oo0oo_
-                   o8888888o
-                   88" . "88
-                   (| -_- |)
-                   0\  =  /0
-                 ___/`---'\___
-               .' \\|     |# '.
-              / \\|||  :  |||# \
-             / _||||| -:- |||||- \
-            |   | \\\\\\  -  #/ |   |
-            | \_|  ''\---/''  |_/ |
-            \  .-\__  '-'  ___/-. /
-          ___'. .'  /--.--\  `. .'___
-       ."" '<  `.___\\_<|>_/___.' >' "".
-      | | :  `- \\`.;`\\ _ /`;.`/ - ` : | |
-      \\  \\ `_.   \\_ __\\ /__ _/   .-` /  /
-  =====`-.____`.___ \\_____/___.-`___.-'=====
-                    `=---='
-
-
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    佛祖保佑                       永無 BUG
-
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 跑酷塔：終極戰術巨無霸版 (修復版)</title>
+    <title>3D Parkour - 移動平台與無限關卡</title>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background-color: #000; }
-        
-        /* 準心 */
-        #crosshair { 
-            position: absolute; top: 50%; left: 50%; 
-            width: 14px; height: 14px; margin-top: -7px; margin-left: -7px; 
-            border-radius: 50%; background-color: rgba(0, 255, 200, 0.9);
-            border: 2px solid rgba(0, 0, 0, 0.8); pointer-events: none; z-index: 10; 
-            transition: transform 0.05s, background-color 0.2s;
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
         }
-        #crosshair::after {
-            content: ''; position: absolute; top: 4px; left: 4px; width: 2px; height: 2px;
-            background: #fff; border-radius: 50%;
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-
-        /* 主 UI 資訊面板 */
-        #hud { 
-            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 16px; 
-            font-weight: bold; text-shadow: 2px 2px 6px #000; pointer-events: none; z-index: 10;
-            background: rgba(10, 10, 25, 0.65); padding: 15px 20px; border-radius: 12px;
-            border: 1px solid rgba(0, 255, 200, 0.3); backdrop-filter: blur(5px);
-            line-height: 1.6;
-        }
-        
-        /* 連擊倍率 UI */
-        #combo-container {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            text-align: center; pointer-events: none; z-index: 10;
-        }
-        #combo-count { font-size: 38px; font-weight: 900; color: #ff00ff; text-shadow: 0 0 12px #ff00ff; opacity: 0; transition: opacity 0.2s, transform 0.1s; }
-        #combo-multiplier { font-size: 20px; color: #ffff00; text-shadow: 0 0 8px #ffff00; }
-
-        /* 雷達小地圖 */
-        #minimap-container {
-            position: absolute; top: 20px; right: 20px; width: 140px; height: 140px;
-            background: rgba(5, 5, 15, 0.8); border: 2px solid #00ffcc; border-radius: 50%;
-            overflow: hidden; pointer-events: none; z-index: 10; box-shadow: 0 0 15px rgba(0,255,200,0.4);
-        }
-        #minimap-canvas { width: 100%; height: 100%; }
-
-        /* 武器狀態列 */
-        #weapon-status { 
-            position: absolute; bottom: 20px; right: 20px; color: #ffcc00; 
-            font-size: 20px; font-weight: bold; text-shadow: 2px 2px 6px #000; 
-            pointer-events: none; z-index: 10; text-align: right; 
-            background: rgba(10, 10, 25, 0.65); padding: 15px 20px; border-radius: 12px;
-            border: 1px solid rgba(255, 204, 0, 0.3); backdrop-filter: blur(5px);
-        }
-
-        /* 遊戲說明視窗 */
-        #instructions { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(5, 2, 12, 0.94); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; color: #fff; z-index: 20; cursor: pointer; 
-        }
-        #instructions h1 { 
-            font-size: 46px; margin-bottom: 12px; 
-            background: linear-gradient(to right, #ff3300, #ffcc00, #00ffcc); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; 
-            letter-spacing: 2px;
-        }
-        #instructions p { font-size: 15px; margin: 5px 0; color: #ddd; max-width: 650px; text-align: center; line-height: 1.5; }
-        .key-badge { background: #ffaa00; color: #000; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-
-        /* 回饋與成就彈窗 */
-        .heal-msg { 
-            position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 30px; font-weight: 900; text-shadow: 0 0 12px #000; pointer-events: none; 
-            z-index: 15; opacity: 0; transition: opacity 0.3s, transform 0.3s; 
-        }
-        #achievement-popup {
-            position: absolute; bottom: 100px; left: 20px; background: rgba(0, 255, 150, 0.85);
-            color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 900; font-size: 18px;
-            box-shadow: 0 0 20px #00ff96; transform: translateX(-150%); transition: transform 0.4s ease-out;
-            pointer-events: none; z-index: 15;
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 30px;
+            border-radius: 20px;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
 
-    <div id="crosshair"></div>
-    <div id="heal-feedback" class="heal-msg"></div>
-    <div id="achievement-popup">🏆 成就解鎖！</div>
-
-    <div id="combo-container">
-        <div id="combo-count">0 COMBO!</div>
-        <div id="combo-multiplier">得分倍率 x1.0</div>
-    </div>
-
-    <div id="hud">
-        🩸 血量: <span id="hp-display" style="color: #00ff66;">100 / 100</span> |
-        ⭐ 分數: <span id="score">0</span> | 
-        🏰 塔層: <span id="level-display" style="color: #ffaa00;">1</span> |
-        🦘 三連跳: <span id="jumps-left" style="color: #00ffff;">3</span> / 3 <br>
-        <span style="color: #00ffcc;">💎 凌空石: <span id="stone-status">就緒 (按 E)</span></span> <br>
-        <span style="color: #ff00ff;">🎲 賭命豪賭 (!): 40%滿血 / 60%暴斃 (<span class="key-badge">Shift+1</span>)</span> <br>
-        <span style="color: #ffcc00;">🎲 微利小賭 (@): 20%+20血 / 80%-10血 (<span class="key-badge">Shift+2</span>)</span>
-    </div>
-
-    <div id="minimap-container">
-        <canvas id="minimap-canvas" width="140" height="140"></canvas>
-    </div>
-
-    <div id="weapon-status">
-        <div id="ammo-display" style="color: #ffcc00; font-size: 22px;">1. 無限突擊步槍: ∞ / ∞</div>
-        <div id="weapon-name" style="font-size: 14px; color: #aaa; margin-top: 4px;">按 1-6 或 滾輪 換槍 | 滑鼠左鍵開火</div>
-    </div>
-
+    <div id="ui">距離: <span id="progress">0</span> 米</div>
     <div id="instructions">
-        <h1>⚔️ 跑酷塔：終極戰術巨無霸版</h1>
-        <p>【🚀 1. 無限步槍】無限彈藥，強烈後座力，對地開槍觸發<b>火箭跳</b>！</p>
-        <p>【🧱 2. 脈衝造路槍】彈藥終點擴張生成<b>綠色防摔 platform</b>！</p>
-        <p>【🛡️ 3. 黑洞力場彈】引力漩渦吸入並打碎範圍內所有飛劍！</p>
-        <p>【🧊 4. 霜凍冰晶槍】命中降落飛劍將其封印成<b>冰雕階梯</b>！</p>
-        <p>【🔥 5. 烈焰爆裂砲】巨型火球打擊產生範圍粒子爆炸！</p>
-        <p>【⏳ 6. 時空停滯槍】發射減速時空波，使全場飛劍極致減速 5 秒！</p>
-        <p>【🔊 原生 8-Bit 音效】內建 Web Audio 聲波合成器，帶來真實打擊回饋！</p>
-        <br>
-        <p style="color: #00ffcc; font-size: 18px; font-weight: bold;">👉 點擊螢幕開啟終極挑戰 👈</p>
+        <b>[W][A][S][D]</b> 平穩移動 ｜ <b>[空白鍵]</b> 跳躍 ｜ 注意移動平台！
     </div>
 
     <script>
-        // ==========================================
-        // 🔊 原生 Web Audio 聲波音效合成器
-        // ==========================================
-        class SoundFX {
-            constructor() { this.ctx = null; }
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-            playShoot(type) {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                const now = this.ctx.currentTime;
+        // --- 1. 初始化場景與相機 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e1e2f);
+        scene.fog = new THREE.Fog(0x1e1e2f, 20, 90);
 
-                if (type === 'rifle') {
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                    gain.gain.setValueAtTime(0.3, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                    osc.start(now); osc.stop(now + 0.1);
-                } else if (type === 'pulse') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.2);
-                    gain.gain.setValueAtTime(0.4, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                    osc.start(now); osc.stop(now + 0.2);
-                } else if (type === 'blackhole') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(120, now);
-                    osc.frequency.linearRampToValueAtTime(40, now + 0.4);
-                    gain.gain.setValueAtTime(0.5, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now); osc.stop(now + 0.4);
-                } else if (type === 'freeze') {
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                    osc.start(now); osc.stop(now + 0.15);
-                } else {
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(200, now);
-                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-                    gain.gain.setValueAtTime(0.5, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                    osc.start(now); osc.stop(now + 0.3);
-                }
-            }
-            playJump() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                const now = this.ctx.currentTime;
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(450, now + 0.15);
-                gain.gain.setValueAtTime(0.25, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                osc.start(now); osc.stop(now + 0.15);
-            }
-            playExplode() {
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                const now = this.ctx.currentTime;
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(20, now + 0.35);
-                gain.gain.setValueAtTime(0.6, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-                osc.start(now); osc.stop(now + 0.35);
-            }
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. 光照 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(15, 30, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // --- 3. 建立 3D 角色 ---
+        function createCharacter() {
+            const group = new THREE.Group();
+
+            // 身體
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 1.2, 0.5),
+                new THREE.MeshStandardMaterial({ color: 0x4cc9f0 })
+            );
+            body.position.y = 1.2;
+            body.castShadow = true;
+            group.add(body);
+
+            // 頭部
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.MeshStandardMaterial({ color: 0xffddd2 })
+            );
+            head.position.y = 2.1;
+            head.castShadow = true;
+            group.add(head);
+
+            return group;
         }
 
-        const sfx = new SoundFX();
+        const player = createCharacter();
+        scene.add(player);
 
-        // ==========================================
-        // 🎮 全局變數與遊戲狀態定義
-        // ==========================================
-        let camera, scene, renderer, controls;
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        // --- 4. 平台與動態無限生成屬性 ---
+        const platforms = [];
+        let nextZ = 0; // 下一個生成的 Z 軸位置
+        const platformSpacing = 10; // 平台間隔
 
-        let playerVelocity = new THREE.Vector3();
-        const GRAVITY = 34;
+        // 建立單個平台
+        function spawnPlatform(zPos) {
+            const isStart = zPos === 0;
+            const isMoving = !isStart && Math.random() > 0.4; // 60% 機率是移動平台
+            const width = isStart ? 8 : (4 + Math.random() * 2);
+            const depth = isStart ? 10 : (5 + Math.random() * 3);
 
-        const MAX_HP = 100;
-        let playerHp = MAX_HP;
-
-        const MAX_JUMPS = 3;
-        let jumpsLeft = MAX_JUMPS;
-
-        const MAX_AMMO = { 'rifle': '∞', 'pulse': 30, 'blackhole': 10, 'freeze': 15, 'fireball': 8, 'timestop': 5 };
-        const ammo = { 'rifle': Infinity, 'pulse': 30, 'blackhole': 10, 'freeze': 15, 'fireball': 8, 'timestop': 5 };
-        let prevTime = performance.now();
-        const STAND_HEIGHT = 1.6;
-
-        let currentLevel = 1;
-        let rewardCrystal = null;
-        const START_POSITION = new THREE.Vector3(0, 5, 12);
-
-        const obstacles = [];
-        const tempPlatforms = [];
-        const fallingSwords = [];
-        const playerProjectiles = [];
-        const particles = [];
-
-        let skyStoneMesh = null;
-        let skyStonePlatform = null;
-        let skyStoneState = 'READY';
-        let skyStoneVelocity = new THREE.Vector3();
-        let skyStoneCooldownTimer = 0;
-
-        let isSwordStormActive = false;
-        let swordStormTimer = 0;
-        let swordSpawnIntervalTimer = 0;
-
-        let timeStopTimer = 0;
-
-        let score = 0;
-        let comboCount = 0;
-        let comboTimer = 0;
-        let isGameOver = false;
-
-        const weaponList = ['rifle', 'pulse', 'blackhole', 'freeze', 'fireball', 'timestop'];
-        const weaponNames = {
-            'rifle': '1. 無限步槍 (火箭跳推力)',
-            'pulse': '2. 脈衝造路槍 (生成綠平台)',
-            'blackhole': '3. 黑洞力場彈 (吸光飛劍)',
-            'freeze': '4. 霜凍冰晶槍 (飛劍變冰階)',
-            'fireball': '5. 烈焰爆裂砲 (粒子大爆炸)',
-            'timestop': '6. 時空停滯槍 (減速全場5秒)'
-        };
-
-        let currentWeaponIndex = 0;
-
-        // UI 元素綁定
-        const hudHp = document.getElementById('hp-display');
-        const hudScore = document.getElementById('score');
-        const hudLevel = document.getElementById('level-display');
-        const hudJumps = document.getElementById('jumps-left');
-        const stoneStatus = document.getElementById('stone-status');
-        const ammoDisplay = document.getElementById('ammo-display');
-        const instructions = document.getElementById('instructions');
-        const healFeedback = document.getElementById('heal-feedback');
-        const crosshair = document.getElementById('crosshair');
-        const comboCountUI = document.getElementById('combo-count');
-        const comboMultUI = document.getElementById('combo-multiplier');
-        const achievementUI = document.getElementById('achievement-popup');
-        const minimapCanvas = document.getElementById('minimap-canvas');
-        const minimapCtx = minimapCanvas.getContext('2d');
-
-        // 🔧 記憶體釋放輔助函數
-        function disposeMesh(obj) {
-            if (!obj) return;
-            obj.traverse((child) => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                        else child.material.dispose();
-                    }
-                }
+            const geo = new THREE.BoxGeometry(width, 1, depth);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: isStart ? 0x4361ee : (isMoving ? 0xf72585 : 0x3a0ca3) 
             });
-            scene.remove(obj);
-        }
-
-        // ==========================================
-        // 🚀 初始化引擎與場景設定
-        // ==========================================
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x05020a);
-            scene.fog = new THREE.FogExp2(0x05020a, 0.006);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffaa00, 1.0);
-            dirLight.position.set(0, 120, 0);
-            scene.add(dirLight);
-
-            controls = new THREE.PointerLockControls(camera, document.body);
-            
-            // 岩漿海
-            const lavaGeo = new THREE.PlaneGeometry(1200, 1200);
-            const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff0022, side: THREE.DoubleSide });
-            const lavaSea = new THREE.Mesh(lavaGeo, lavaMat);
-            lavaSea.rotation.x = Math.PI / 2;
-            lavaSea.position.set(0, -5, 0);
-            scene.add(lavaSea);
-
-            createSkyStoneObjects();
-            buildTower(currentLevel);
-
-            instructions.addEventListener('click', () => {
-                sfx.init();
-                if (!isGameOver) controls.lock();
-            });
-
-            controls.addEventListener('lock', () => instructions.style.display = 'none');
-            controls.addEventListener('unlock', () => { if (!isGameOver) instructions.style.display = 'flex'; });
-
-            scene.add(controls.getObject());
-
-            window.addEventListener('keydown', onKeyDown, false);
-            window.addEventListener('keyup', onKeyUp, false);
-            
-            document.addEventListener('mousedown', (e) => {
-                if (controls.isLocked && e.button === 0) tryShoot();
-            });
-
-            window.addEventListener('wheel', onMouseWheel, { passive: false });
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            window.addEventListener('resize', onWindowResize);
-            animate();
-        }
-
-        // ==========================================
-        // ✨ 粒子系統 (開火、爆炸、冰碎粒子)
-        // ==========================================
-        function createExplosionParticles(pos, colorHex, count = 25) {
-            for (let i = 0; i < count; i++) {
-                const pGeo = new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 6, 6);
-                const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
-                const pMesh = new THREE.Mesh(pGeo, pMat);
-                pMesh.position.copy(pos);
-                scene.add(pMesh);
-
-                const vel = new THREE.Vector3(
-                    (Math.random() - 0.5) * 18.0,
-                    (Math.random() - 0.2) * 18.0,
-                    (Math.random() - 0.5) * 18.0
-                );
-                particles.push({ mesh: pMesh, velocity: vel, life: 0.6 + Math.random() * 0.4 });
-            }
-        }
-
-        function createSkyStoneObjects() {
-            const stoneGeo = new THREE.OctahedronGeometry(0.5, 0);
-            const stoneMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
-            skyStoneMesh = new THREE.Mesh(stoneGeo, stoneMat);
-            skyStoneMesh.visible = false;
-            scene.add(skyStoneMesh);
-
-            const platGeo = new THREE.CylinderGeometry(2.0, 2.0, 0.4, 16);
-            const platMat = new THREE.MeshLambertMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.8 });
-            skyStonePlatform = new THREE.Mesh(platGeo, platMat);
-            skyStonePlatform.visible = false;
-            scene.add(skyStonePlatform);
-        }
-
-        function spawnDenseSword() {
-            const playerPos = controls.getObject().position;
-            const swordGroup = new THREE.Group();
-            
-            const bladeGeo = new THREE.ConeGeometry(0.25, 2.5, 4);
-            const bladeMat = new THREE.MeshBasicMaterial({ color: 0xff1100 });
-            const blade = new THREE.Mesh(bladeGeo, bladeMat);
-            blade.rotation.x = Math.PI;
-            swordGroup.add(blade);
-
-            const offsetX = (Math.random() - 0.5) * 16.0;
-            const offsetZ = (Math.random() - 0.5) * 16.0;
-            const spawnY = playerPos.y + 22.0 + Math.random() * 8.0;
-
-            swordGroup.position.set(playerPos.x + offsetX, spawnY, playerPos.z + offsetZ);
-            scene.add(swordGroup);
-
-            fallingSwords.push({
-                mesh: swordGroup,
-                speed: 28.0 + Math.random() * 10.0,
-                damage: 20
-            });
-        }
-
-        function triggerAchievement(title) {
-            achievementUI.textContent = `🏆 成就解鎖：${title}`;
-            achievementUI.style.transform = 'translateX(0)';
-            setTimeout(() => { achievementUI.style.transform = 'translateX(-150%)'; }, 2500);
-        }
-
-        function addCombo() {
-            comboCount++;
-            comboTimer = 3.0;
-            comboCountUI.textContent = `${comboCount} COMBO!`;
-            comboCountUI.style.opacity = '1';
-            comboCountUI.style.transform = 'scale(1.2)';
-            setTimeout(() => { comboCountUI.style.transform = 'scale(1.0)'; }, 100);
-
-            const mult = 1 + Math.min(4, Math.floor(comboCount / 3) * 0.5);
-            comboMultUI.textContent = `得分倍率 x${mult.toFixed(1)}`;
-
-            if (comboCount === 5) triggerAchievement("連擊新星 (5連擊)");
-            if (comboCount === 10) triggerAchievement("劍雨煞星 (10連擊)");
-            return mult;
-        }
-
-        function updateHUD() {
-            hudHp.textContent = `${Math.max(0, Math.round(playerHp))} / ${MAX_HP}`;
-            hudHp.style.color = playerHp > 50 ? "#00ff66" : (playerHp > 25 ? "#ffcc00" : "#ff3333");
-
-            hudJumps.textContent = jumpsLeft;
-            hudJumps.style.color = jumpsLeft === 0 ? "#ff3333" : "#00ffff";
-
-            if (skyStoneState === 'READY') stoneStatus.textContent = "就緒 (按 E)";
-            else if (skyStoneState === 'FLYING') stoneStatus.textContent = "飛行中...";
-            else if (skyStoneState === 'ANCHORED') stoneStatus.textContent = "錨定中 (再按 E 彈射)";
-            else if (skyStoneState === 'COOLDOWN') stoneStatus.textContent = `冷卻中 (${skyStoneCooldownTimer.toFixed(1)}s)`;
-
-            const curKey = weaponList[currentWeaponIndex];
-            const currentAmmoVal = ammo[curKey] === Infinity ? '∞' : ammo[curKey];
-            const maxAmmoVal = MAX_AMMO[curKey];
-            ammoDisplay.textContent = `${weaponNames[curKey]}: ${currentAmmoVal} / ${maxAmmoVal}`;
-        }
-
-        function tryGambleHeal1() {
-            if (Math.random() < 0.40) {
-                playerHp = MAX_HP;
-                showHealFeedback("✨ 豪賭成功！瞬間滿血！", "#00ff66");
-                triggerAchievement("天選之子 (豪賭成功)");
-                updateHUD();
-            } else {
-                showHealFeedback("💀 豪賭失敗！暴斃死亡！", "#ff0000");
-                playerHp = 0; updateHUD(); handleDeath();
-            }
-        }
-
-        function tryGambleHeal2() {
-            if (Math.random() < 0.20) {
-                playerHp = Math.min(MAX_HP, playerHp + 20);
-                showHealFeedback("✨ 小賭成功！血量 +20", "#00ff66");
-            } else {
-                playerHp -= 10;
-                showHealFeedback("❌ 小賭失敗！血量 -10", "#ff3333");
-            }
-            updateHUD();
-            if (playerHp <= 0) handleDeath();
-        }
-
-        function showHealFeedback(text, color) {
-            healFeedback.textContent = text;
-            healFeedback.style.color = color;
-            healFeedback.style.opacity = '1';
-            setTimeout(() => { healFeedback.style.opacity = '0'; }, 1500);
-        }
-
-        function switchWeapon(index) {
-            currentWeaponIndex = (index + weaponList.length) % weaponList.length;
-            updateHUD();
-        }
-
-        function handleSkyStoneAbility() {
-            if (skyStoneState === 'READY') {
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-                skyStoneMesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.2));
-                skyStoneVelocity.copy(dir).multiplyScalar(45.0);
-                skyStoneMesh.visible = true; skyStonePlatform.visible = false;
-                skyStoneState = 'FLYING'; updateHUD();
-            } else if (skyStoneState === 'FLYING' || skyStoneState === 'ANCHORED') {
-                const targetPos = skyStoneMesh.position.clone();
-                targetPos.y += 1.2;
-                controls.getObject().position.copy(targetPos);
-                
-                const launchDir = new THREE.Vector3();
-                camera.getWorldDirection(launchDir);
-                playerVelocity.copy(launchDir).multiplyScalar(24.0);
-                playerVelocity.y = Math.max(playerVelocity.y, 14.0);
-
-                jumpsLeft = MAX_JUMPS;
-                skyStoneMesh.visible = false; skyStonePlatform.visible = false;
-                skyStoneState = 'COOLDOWN'; skyStoneCooldownTimer = 2.0; updateHUD();
-                sfx.playJump();
-            }
-        }
-
-        function buildTower(level) {
-            // 🔧 移除物體並釋放顯存
-            obstacles.forEach(obs => disposeMesh(obs));
-            fallingSwords.forEach(s => disposeMesh(s.mesh));
-            tempPlatforms.forEach(p => disposeMesh(p.mesh));
-            obstacles.length = 0; fallingSwords.length = 0; tempPlatforms.length = 0;
-            if (rewardCrystal) disposeMesh(rewardCrystal);
-            hudLevel.textContent = level;
-
-            const startPlat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 6), new THREE.MeshLambertMaterial({ color: 0x00ffcc }));
-            startPlat.position.copy(START_POSITION).sub(new THREE.Vector3(0, 3, 0));
-            startPlat.userData = { isPermanent: true };
-            scene.add(startPlat); obstacles.push(startPlat);
-
-            const totalSteps = 45 + level * 8;
-            let currentAngle = 0;
-            let currentY = 3.5;
-
-            for (let i = 0; i < totalSteps; i++) {
-                currentAngle += 0.4 + (Math.random() * 0.5 - 0.25);
-                currentY += 1.8 + Math.random() * 1.2;
-
-                const radius = 13.0 + Math.sin(i * 0.6) * 6.0;
-                const posX = Math.sin(currentAngle) * radius;
-                const posZ = Math.cos(currentAngle) * radius;
-
-                const isMoving = (i % 4 === 0);
-                const stepGeo = new THREE.BoxGeometry(2.2, 0.8, 2.2);
-                const stepMat = new THREE.MeshLambertMaterial({ color: isMoving ? 0xff00bb : 0x00ccff });
-                const step = new THREE.Mesh(stepGeo, stepMat);
-
-                step.position.set(posX, currentY, posZ);
-                step.userData = { 
-                    isMoving: isMoving, isCollapsing: false, collapseTimer: 0,
-                    basePos: new THREE.Vector3(posX, currentY, posZ), moveOffset: Math.random() * 10
-                };
-                scene.add(step); obstacles.push(step);
-            }
-
-            currentY += 4.5;
-            const topPlat = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 8), new THREE.MeshLambertMaterial({ color: 0xffff00 }));
-            topPlat.position.set(0, currentY, 0);
-            topPlat.userData = { isPermanent: true };
-            scene.add(topPlat); obstacles.push(topPlat);
-
-            spawnGoalCrystal(new THREE.Vector3(0, currentY + 3.0, 0));
-            respawnPlayerToStart();
-        }
-
-        function respawnPlayerToStart() {
-            controls.getObject().position.copy(START_POSITION);
-            playerVelocity.set(0, 0, 0); 
-            playerHp = MAX_HP; 
-            jumpsLeft = MAX_JUMPS;
-            
-            // 🔧 補滿所有武器彈藥
-            Object.keys(MAX_AMMO).forEach(key => {
-                ammo[key] = MAX_AMMO[key] === '∞' ? Infinity : MAX_AMMO[key];
-            });
-
-            isSwordStormActive = false; 
-            skyStoneState = 'READY';
-            skyStoneMesh.visible = false;
-            skyStonePlatform.visible = false;
-            updateHUD();
-        }
-
-        function handleDeath() {
-            sfx.playExplode();
-            createExplosionParticles(controls.getObject().position, 0xff0000, 35);
-            showHealFeedback("💥 死亡！返回當前塔層起點", "#ff0000");
-            respawnPlayerToStart();
-        }
-
-        function spawnGoalCrystal(position) {
-            if (rewardCrystal) disposeMesh(rewardCrystal);
-            rewardCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(2.0, 0), new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }));
-            rewardCrystal.position.copy(position); 
-            scene.add(rewardCrystal);
-        }
-
-        // 💥 槍械發射邏輯
-        function tryShoot() {
-            const curWeapon = weaponList[currentWeaponIndex];
-            if (curWeapon !== 'rifle') {
-                if (ammo[curWeapon] <= 0) {
-                    showHealFeedback("⚠️ 彈藥已用盡！", "#ff3333");
-                    return;
-                }
-                ammo[curWeapon]--; 
-            }
-            updateHUD();
-            sfx.playShoot(curWeapon);
-
-            crosshair.style.transform = "scale(2.2)";
-            setTimeout(() => { crosshair.style.transform = "scale(1.0)"; }, 80);
-
-            const dir = new THREE.Vector3(); 
-            camera.getWorldDirection(dir);
-
-            // 🚀 火火箭跳反衝推力
-            const pushBackForce = curWeapon === 'rifle' ? 24.0 : (curWeapon === 'fireball' ? 18.0 : 8.0);
-            playerVelocity.subScaledVector(dir, pushBackForce * 0.45);
-
-            const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(1.0));
-
-            // 時空停滯槍特殊處理
-            if (curWeapon === 'timestop') {
-                timeStopTimer = 5.0;
-                showHealFeedback("⏳ 全場時空停滯 5 秒！", "#ff00ff");
-                createExplosionParticles(spawnPos, 0xff00ff, 30);
-                return;
-            }
-
-            const colors = { 'rifle': 0xffff00, 'pulse': 0x00ff66, 'blackhole': 0xcc00ff, 'freeze': 0x00ffff, 'fireball': 0xff3300 };
-            const sizes = { 'rifle': 0.22, 'pulse': 0.35, 'blackhole': 0.55, 'freeze': 0.3, 'fireball': 0.65 };
-
-            const bulletGeo = new THREE.SphereGeometry(sizes[curWeapon], 12, 12);
-            const bulletMat = new THREE.MeshBasicMaterial({ color: colors[curWeapon] });
-            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-            bullet.position.copy(spawnPos); 
-            scene.add(bullet);
-
-            playerProjectiles.push({
-                mesh: bullet,
-                velocity: dir.clone().multiplyScalar(curWeapon === 'pulse' ? 35.0 : 75.0),
-                life: curWeapon === 'pulse' ? 1.5 : 2.5,
-                type: curWeapon
-            });
-
-            createExplosionParticles(spawnPos, colors[curWeapon], 8);
-        }
-
-        function createTempPlatform(pos, colorHex, duration = 5.0, size = 3.2) {
-            const geo = new THREE.BoxGeometry(size, 0.5, size);
-            const mat = new THREE.MeshLambertMaterial({ color: colorHex, transparent: true, opacity: 0.85 });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(pos); 
+            mesh.position.set(0, -0.5, zPos);
+            mesh.receiveShadow = true;
             scene.add(mesh);
-            tempPlatforms.push({ mesh: mesh, timer: duration });
+
+            // 平台物件資料
+            const platformObj = {
+                mesh: mesh,
+                width: width,
+                depth: depth,
+                isMoving: isMoving,
+                moveRange: 3.5 + Math.random() * 2,
+                moveSpeed: 0.02 + Math.random() * 0.015, // 控制移動平台速度（較慢且平穩）
+                moveOffset: Math.random() * Math.PI * 2,
+                deltaX: 0 // 本影格的位移量
+            };
+
+            platforms.push(platformObj);
         }
 
-        function onKeyDown(e) {
-            if (!controls.isLocked || isGameOver) return;
-
-            if (e.key === '!' || (e.shiftKey && e.code === 'Digit1')) { tryGambleHeal1(); return; }
-            if (e.key === '@' || (e.shiftKey && e.code === 'Digit2')) { tryGambleHeal2(); return; }
-
-            if (e.code === 'KeyW') {
-                if (!moveForward) {
-                    moveForward = true;
-                    if (!isSwordStormActive && Math.random() < 0.20) {
-                        isSwordStormActive = true;
-                        swordStormTimer = 10.0;
-                        showHealFeedback("⚡ 警報：前行觸發 10 秒超長劍雨！", "#ff1100");
-                    }
-                }
-            }
-
-            switch (e.code) {
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyD': moveRight = true; break;
-                case 'KeyE': handleSkyStoneAbility(); break;
-                case 'KeyQ': switchWeapon(currentWeaponIndex + 1); break;
-                case 'Digit1': if (!e.shiftKey) switchWeapon(0); break;
-                case 'Digit2': if (!e.shiftKey) switchWeapon(1); break;
-                case 'Digit3': switchWeapon(2); break;
-                case 'Digit4': switchWeapon(3); break;
-                case 'Digit5': switchWeapon(4); break;
-                case 'Digit6': switchWeapon(5); break;
-                case 'Space':
-                    if (jumpsLeft > 0) {
-                        playerVelocity.y = 15.0;
-                        jumpsLeft--;
-                        updateHUD();
-                        sfx.playJump();
-                    }
-                    break;
-            }
+        // 初始化前幾個平台
+        for (let i = 0; i < 15; i++) {
+            spawnPlatform(nextZ);
+            nextZ -= platformSpacing;
         }
 
-        function onKeyUp(e) {
-            switch (e.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyD': moveRight = false; break;
-            }
-        }
+        // --- 5. 控制邏輯 ---
+        const keys = { w: false, a: false, s: false, d: false, space: false };
 
-        function onMouseWheel(e) {
-            if (!controls.isLocked) return;
-            e.preventDefault();
-            if (e.deltaY > 0) switchWeapon(currentWeaponIndex + 1);
-            else switchWeapon(currentWeaponIndex - 1);
-        }
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = true;
+            if (k === 'a') keys.a = true;
+            if (k === 's') keys.s = true;
+            if (k === 'd') keys.d = true;
+            if (e.code === 'Space') keys.space = true;
+        });
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = false;
+            if (k === 'a') keys.a = false;
+            if (k === 's') keys.s = false;
+            if (k === 'd') keys.d = false;
+            if (e.code === 'Space') keys.space = false;
+        });
 
-        // ==========================================
-        // 🗺️ 雷達小地圖渲染邏輯
-        // ==========================================
-        function drawMinimap() {
-            minimapCtx.clearRect(0, 0, 140, 140);
-            const playerPos = controls.getObject().position;
+        // 玩家物理變數
+        let velX = 0, velZ = 0, velY = 0;
+        const speed = 0.12; // 調整為平穩的速度
+        const gravity = -0.012;
+        const jumpForce = 0.28;
+        let isGrounded = false;
+        let currentPlatform = null; // 當前踩著的平台
 
-            // 中心點 (玩家)
-            minimapCtx.fillStyle = '#00ffcc';
-            minimapCtx.beginPath();
-            minimapCtx.arc(70, 70, 5, 0, Math.PI * 2);
-            minimapCtx.fill();
+        // --- 6. 主遊戲循環 ---
+        let time = 0;
 
-            // 飛劍威脅 (紅點)
-            minimapCtx.fillStyle = '#ff0033';
-            fallingSwords.forEach(s => {
-                const dx = (s.mesh.position.x - playerPos.x) * 1.8;
-                const dz = (s.mesh.position.z - playerPos.z) * 1.8;
-                if (Math.abs(dx) < 65 && Math.abs(dz) < 65) {
-                    minimapCtx.beginPath();
-                    minimapCtx.arc(70 + dx, 70 + dz, 3, 0, Math.PI * 2);
-                    minimapCtx.fill();
-                }
-            });
-
-            // 通關水晶 (黃點)
-            if (rewardCrystal) {
-                minimapCtx.fillStyle = '#ffff00';
-                const dx = (rewardCrystal.position.x - playerPos.x) * 1.5;
-                const dz = (rewardCrystal.position.z - playerPos.z) * 1.5;
-                if (Math.abs(dx) < 65 && Math.abs(dz) < 65) {
-                    minimapCtx.beginPath();
-                    minimapCtx.arc(70 + dx, 70 + dz, 6, 0, Math.PI * 2);
-                    minimapCtx.fill();
-                }
-            }
-        }
-
-        // ==========================================
-        // 🔄 主遊戲循環 (Animate)
-        // ==========================================
         function animate() {
             requestAnimationFrame(animate);
+            time += 0.03;
 
-            const time = performance.now();
-            const delta = Math.min((time - prevTime) / 1000, 0.1);
-            prevTime = time;
-
-            if (controls.isLocked) {
-                // 連擊計時
-                if (comboCount > 0) {
-                    comboTimer -= delta;
-                    if (comboTimer <= 0) {
-                        comboCount = 0;
-                        comboCountUI.style.opacity = '0';
-                        comboMultUI.textContent = '得分倍率 x1.0';
-                    }
+            // 1. 更新所有移動平台位置，並計算它們本幀的移動量 (deltaX)
+            platforms.forEach(p => {
+                if (p.isMoving) {
+                    const oldX = p.mesh.position.x;
+                    p.mesh.position.x = Math.sin(time * p.moveSpeed * 5 + p.moveOffset) * p.moveRange;
+                    p.deltaX = p.mesh.position.x - oldX;
+                } else {
+                    p.deltaX = 0;
                 }
+            });
 
-                // 時空停滯計時
-                const isTimeStopped = timeStopTimer > 0;
-                if (isTimeStopped) timeStopTimer -= delta;
+            // 2. 角色 WASD 移動計算
+            velX = 0;
+            velZ = 0;
+            if (keys.w) velZ -= speed;
+            if (keys.s) velZ += speed;
+            if (keys.a) velX -= speed;
+            if (keys.d) velX += speed;
 
-                // 凌空石冷卻
-                if (skyStoneState === 'COOLDOWN') {
-                    skyStoneCooldownTimer -= delta;
-                    if (skyStoneCooldownTimer <= 0) {
-                        skyStoneState = 'READY';
-                        updateHUD();
-                    }
-                }
+            player.position.x += velX;
+            player.position.z += velZ;
 
-                // 凌空石飛行狀態
-                if (skyStoneState === 'FLYING') {
-                    skyStoneMesh.position.addScaledVector(skyStoneVelocity, delta);
-                    skyStoneMesh.rotation.y += delta * 5.0;
-
-                    if (skyStoneMesh.position.distanceTo(camera.position) > 40.0) {
-                        skyStonePlatform.position.copy(skyStoneMesh.position);
-                        skyStonePlatform.visible = true;
-                        skyStoneState = 'ANCHORED';
-                        updateHUD();
-                    }
-                }
-
-                // 劍雨觸發與生成
-                if (isSwordStormActive) {
-                    swordStormTimer -= delta;
-                    swordSpawnIntervalTimer -= delta;
-                    if (swordSpawnIntervalTimer <= 0) {
-                        spawnDenseSword();
-                        swordSpawnIntervalTimer = isTimeStopped ? 0.6 : 0.12;
-                    }
-                    if (swordStormTimer <= 0) isSwordStormActive = false;
-                }
-
-                // 粒子更新
-                for (let i = particles.length - 1; i >= 0; i--) {
-                    const p = particles[i];
-                    p.life -= delta;
-                    p.mesh.position.addScaledVector(p.velocity, delta);
-                    p.velocity.y -= 9.8 * delta;
-                    if (p.life <= 0) {
-                        disposeMesh(p.mesh);
-                        particles.splice(i, 1);
-                    }
-                }
-
-                // 玩家發射物更新
-                for (let i = playerProjectiles.length - 1; i >= 0; i--) {
-                    const proj = playerProjectiles[i];
-                    proj.life -= delta;
-                    proj.mesh.position.addScaledVector(proj.velocity, delta);
-
-                    // 脈衝槍生成平台
-                    if (proj.type === 'pulse' && proj.life <= 0) {
-                        createTempPlatform(proj.mesh.position, 0x00ff66, 6.0, 3.5);
-                        sfx.playExplode();
-                    }
-
-                    // 黑洞引力吸引與打碎飛劍
-                    if (proj.type === 'blackhole') {
-                        for (let j = fallingSwords.length - 1; j >= 0; j--) {
-                            const s = fallingSwords[j];
-                            if (s.mesh.position.distanceTo(proj.mesh.position) < 8.0) {
-                                createExplosionParticles(s.mesh.position, 0xcc00ff, 12);
-                                disposeMesh(s.mesh);
-                                fallingSwords.splice(j, 1);
-                                score += Math.round(150 * addCombo());
-                                hudScore.textContent = score;
-                                sfx.playExplode();
-                            }
-                        }
-                    }
-
-                    // 冰凍槍凍結飛劍
-                    if (proj.type === 'freeze') {
-                        for (let j = fallingSwords.length - 1; j >= 0; j--) {
-                            const s = fallingSwords[j];
-                            if (s.mesh.position.distanceTo(proj.mesh.position) < 2.5) {
-                                createTempPlatform(s.mesh.position, 0x00ffff, 8.0, 2.5);
-                                createExplosionParticles(s.mesh.position, 0x00ffff, 15);
-                                disposeMesh(s.mesh);
-                                fallingSwords.splice(j, 1);
-                                score += Math.round(100 * addCombo());
-                                hudScore.textContent = score;
-                                sfx.playExplode();
-                            }
-                        }
-                    }
-
-                    // 火球爆炸
-                    if (proj.type === 'fireball') {
-                        for (let j = fallingSwords.length - 1; j >= 0; j--) {
-                            const s = fallingSwords[j];
-                            if (s.mesh.position.distanceTo(proj.mesh.position) < 3.5) {
-                                createExplosionParticles(proj.mesh.position, 0xff3300, 30);
-                                disposeMesh(s.mesh);
-                                fallingSwords.splice(j, 1);
-                                score += Math.round(200 * addCombo());
-                                hudScore.textContent = score;
-                                proj.life = 0;
-                                sfx.playExplode();
-                                break;
-                            }
-                        }
-                    }
-
-                    if (proj.life <= 0) {
-                        disposeMesh(proj.mesh);
-                        playerProjectiles.splice(i, 1);
-                    }
-                }
-
-                // 臨時平台生命週期
-                for (let i = tempPlatforms.length - 1; i >= 0; i--) {
-                    const tp = tempPlatforms[i];
-                    tp.timer -= delta;
-                    if (tp.timer <= 0) {
-                        disposeMesh(tp.mesh);
-                        tempPlatforms.splice(i, 1);
-                    }
-                }
-
-                // 飛劍更新與碰撞
-                const speedFactor = isTimeStopped ? 0.1 : 1.0;
-                const playerPos = controls.getObject().position;
-
-                for (let i = fallingSwords.length - 1; i >= 0; i--) {
-                    const s = fallingSwords[i];
-                    s.mesh.position.y -= s.speed * delta * speedFactor;
-
-                    // 飛劍命中玩家
-                    if (s.mesh.position.distanceTo(playerPos) < 1.8) {
-                        playerHp -= s.damage;
-                        showHealFeedback(`💥 被飛劍擊中 -${s.damage} HP!`, "#ff0000");
-                        createExplosionParticles(s.mesh.position, 0xff0000, 15);
-                        disposeMesh(s.mesh);
-                        fallingSwords.splice(i, 1);
-                        updateHUD();
-                        if (playerHp <= 0) handleDeath();
-                        continue;
-                    }
-
-                    // 飛劍落入深淵刪除
-                    if (s.mesh.position.y < -10.0) {
-                        disposeMesh(s.mesh);
-                        fallingSwords.splice(i, 1);
-                    }
-                }
-
-                // 玩家移動物理
-                playerVelocity.x -= playerVelocity.x * 10.0 * delta;
-                playerVelocity.z -= playerVelocity.z * 10.0 * delta;
-                playerVelocity.y -= GRAVITY * delta;
-
-                const moveDir = new THREE.Vector3(
-                    Number(moveRight) - Number(moveLeft),
-                    0,
-                    Number(moveBackward) - Number(moveForward)
-                ).normalize();
-
-                if (moveForward || moveBackward) controls.moveForward(-moveDir.z * 18.0 * delta);
-                if (moveLeft || moveRight) controls.moveRight(moveDir.x * 18.0 * delta);
-
-                controls.getObject().position.y += playerVelocity.y * delta;
-
-                // 平台移動與崩塌邏輯
-                obstacles.forEach(obs => {
-                    if (obs.userData && obs.userData.isMoving) {
-                        obs.userData.moveOffset += delta * 1.5;
-                        obs.position.x = obs.userData.basePos.x + Math.sin(obs.userData.moveOffset) * 4.0;
-                    }
-                    if (obs.userData && obs.userData.isCollapsing) {
-                        obs.userData.collapseTimer += delta;
-                        if (obs.userData.collapseTimer > 0.8) obs.position.y -= delta * 15.0;
-                    }
-                });
-
-                // 腳底碰撞檢測
-                const playerObj = controls.getObject();
-                const playerFeetY = playerObj.position.y - STAND_HEIGHT;
-                const prevFeetY = (playerObj.position.y - playerVelocity.y * delta) - STAND_HEIGHT;
-
-                const allPlatforms = [...obstacles, ...tempPlatforms.map(p => p.mesh)];
-                if (skyStonePlatform.visible) allPlatforms.push(skyStonePlatform);
-
-                for (let obs of allPlatforms) {
-                    const obsBox = new THREE.Box3().setFromObject(obs);
-                    if (playerObj.position.x >= obsBox.min.x - 0.3 && playerObj.position.x <= obsBox.max.x + 0.3 && 
-                        playerObj.position.z >= obsBox.min.z - 0.3 && playerObj.position.z <= obsBox.max.z + 0.3) {
-                        
-                        const platTop = obsBox.max.y;
-                        // 精確的落腳踩踏判定，避免下方向上跳時誤觸
-                        if (prevFeetY >= platTop - 0.2 && playerFeetY <= platTop && playerVelocity.y <= 0) {
-                            playerObj.position.y = platTop + STAND_HEIGHT; 
-                            playerVelocity.y = 0; 
-                            jumpsLeft = MAX_JUMPS; 
-                            updateHUD();
-                            if (obs.userData && !obs.userData.isPermanent) obs.userData.isCollapsing = true;
-                            break;
-                        }
-                    }
-                }
-
-                // 跌入岩漿海死亡
-                if (playerObj.position.y <= -3.0) handleDeath();
-
-                // 觸碰通關水晶
-                if (rewardCrystal && playerObj.position.distanceTo(rewardCrystal.position) < 3.0) { 
-                    score += 2000; 
-                    hudScore.textContent = score; 
-                    currentLevel++; 
-                    triggerAchievement(`勇闖塔層 LV.${currentLevel}`);
-                    buildTower(currentLevel); 
-                }
-
-                drawMinimap();
+            // 如果玩家站在移動平台上，跟著平台一起移動！
+            if (isGrounded && currentPlatform) {
+                player.position.x += currentPlatform.deltaX;
             }
+
+            // 轉向控制
+            if (velX !== 0 || velZ !== 0) {
+                player.rotation.y = Math.atan2(velX, velZ);
+            }
+
+            // 3. 跳躍與重力處理
+            if (keys.space && isGrounded) {
+                velY = jumpForce;
+                isGrounded = false;
+                currentPlatform = null;
+            }
+
+            player.position.y += velY;
+            velY += gravity;
+
+            // 4. 地面/平台碰撞檢測
+            isGrounded = false;
+            currentPlatform = null;
+
+            const playerX = player.position.x;
+            const playerY = player.position.y;
+            const playerZ = player.position.z;
+
+            for (let p of platforms) {
+                const pPos = p.mesh.position;
+                
+                // 檢查是否落在平台範圍內
+                const inX = Math.abs(playerX - pPos.x) <= p.width / 2 + 0.3;
+                const inZ = Math.abs(playerZ - pPos.z) <= p.depth / 2 + 0.3;
+                const onY = playerY <= pPos.y + 1.0 && playerY >= pPos.y + 0.3;
+
+                if (inX && inZ && onY && velY <= 0) {
+                    player.position.y = pPos.y + 1.0;
+                    velY = 0;
+                    isGrounded = true;
+                    currentPlatform = p;
+                    break;
+                }
+            }
+
+            // 5. 跌落判定（掉下去就死）
+            if (player.position.y < -5) {
+                alert(`遊戲結束！你一共前進了 ${Math.max(0, Math.floor(-player.position.z))} 米`);
+                resetGame();
+            }
+
+            // 6. 無限地圖動態生成與舊平台回收
+            if (player.position.z < nextZ + 100) {
+                spawnPlatform(nextZ);
+                nextZ -= platformSpacing;
+            }
+
+            // 清除身後太遠的平台，節省資源
+            for (let i = platforms.length - 1; i >= 0; i--) {
+                if (platforms[i].mesh.position.z > player.position.z + 20) {
+                    scene.remove(platforms[i].mesh);
+                    platforms[i].mesh.geometry.dispose();
+                    platforms[i].mesh.material.dispose();
+                    platforms.splice(i, 1);
+                }
+            }
+
+            // 7. 更新介面與攝影機跟隨
+            document.getElementById('progress').innerText = Math.max(0, Math.floor(-player.position.z));
+
+            camera.position.x = player.position.x;
+            camera.position.y = player.position.y + 4;
+            camera.position.z = player.position.z + 8;
+            camera.lookAt(player.position.x, player.position.y + 1, player.position.z - 2);
 
             renderer.render(scene, camera);
         }
 
-        // 初始化遊戲引擎
-        init();
+        // 重置遊戲
+        function resetGame() {
+            // 清理所有舊平台
+            platforms.forEach(p => scene.remove(p.mesh));
+            platforms.length = 0;
+
+            // 重設玩家
+            player.position.set(0, 1, 0);
+            velX = 0;
+            velY = 0;
+            velZ = 0;
+            isGrounded = true;
+            currentPlatform = null;
+
+            // 重新生成初始地圖
+            nextZ = 0;
+            for (let i = 0; i < 15; i++) {
+                spawnPlatform(nextZ);
+                nextZ -= platformSpacing;
+            }
+        }
+
+        // 視窗調整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
     </script>
 </body>
 </html>
