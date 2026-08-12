@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Parkour 跑酷</title>
+    <title>3D Parkour · WASD 移动</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #info {
@@ -17,8 +17,8 @@
             pointer-events: none;
             z-index: 10;
             backdrop-filter: blur(4px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.15);
+            user-select: none;
         }
         #score {
             position: absolute;
@@ -34,53 +34,24 @@
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,215,0,0.3);
             z-index: 10;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            user-select: none;
         }
-        #controls {
+        #controls-hint {
             position: absolute;
             bottom: 30px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            z-index: 20;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            background: rgba(0,0,0,0.5);
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 10;
             pointer-events: none;
-        }
-        #controls button {
-            pointer-events: auto;
-            padding: 16px 40px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 60px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
-            color: white;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border: 1px solid rgba(255,255,255,0.25);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            min-width: 140px;
-            letter-spacing: 2px;
-        }
-        #controls button:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.4);
-        }
-        #controls button:first-child {
-            background: rgba(0, 200, 255, 0.3);
-            border-color: rgba(0, 200, 255, 0.5);
-        }
-        #controls button:last-child {
-            background: rgba(255, 100, 100, 0.3);
-            border-color: rgba(255, 100, 100, 0.5);
-        }
-        @media (max-width: 600px) {
-            #info { font-size: 0.8rem; padding: 8px 16px; }
-            #score { font-size: 1.2rem; padding: 8px 16px; }
-            #controls button { padding: 12px 20px; font-size: 1.0rem; min-width: 100px; }
+            white-space: nowrap;
+            letter-spacing: 1px;
         }
         #restart-btn {
             position: absolute;
@@ -91,34 +62,35 @@
             background: rgba(255, 215, 0, 0.9);
             color: #1a1a2e;
             border: none;
-            padding: 14px 40px;
+            padding: 14px 44px;
             border-radius: 50px;
             font-size: 1.4rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
             display: none;
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,255,255,0.3);
-            letter-spacing: 1px;
             transition: 0.2s;
+            letter-spacing: 1px;
         }
         #restart-btn:hover {
             background: #ffed4a;
             transform: translateX(-50%) scale(1.05);
         }
+        @media (max-width: 600px) {
+            #info { font-size: 0.8rem; padding: 6px 14px; }
+            #score { font-size: 1.2rem; padding: 6px 16px; }
+            #controls-hint { font-size: 0.7rem; padding: 6px 14px; white-space: normal; }
+        }
     </style>
 </head>
 <body>
-    <div id="info">🏃 Parkour · 跳跃障碍</div>
+    <div id="info">🏃 Parkour · WASD 移动</div>
     <div id="score">🏆 <span id="scoreValue">0</span></div>
-    <div id="controls">
-        <button id="jumpBtn">⬆ 跳跃</button>
-        <button id="slideBtn">⬇ 滑铲</button>
-    </div>
+    <div id="controls-hint">W A S D 移动 · 空格跳跃 · Shift滑铲</div>
     <button id="restart-btn">🔄 重新开始</button>
 
-    <!-- 引入 Three.js 核心库和扩展 -->
     <script type="importmap">
         {
             "imports": {
@@ -131,70 +103,60 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-        // --- 初始化场景 ---
+        // --- 初始化 ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e); // 深蓝紫夜空
-        scene.fog = new THREE.Fog(0x1a1a2e, 20, 60); // 雾效增加景深感
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.Fog(0x1a1a2e, 25, 60);
 
-        // --- 相机 (第三人称跟随) ---
-        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 6, 12);
-        camera.lookAt(0, 0, 0);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 8, 14);
 
-        // --- 渲染器 WebGL ---
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // --- 辅助 CSS2 渲染器 (用于简单标签, 但这里没用到, 保留备用) ---
-        // 不过我们不需要额外标签，为了简洁，去掉CSS2DRenderer
-
         // --- 光照 ---
-        // 环境光
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
-        scene.add(ambientLight);
+        const ambient = new THREE.AmbientLight(0x404060, 0.6);
+        scene.add(ambient);
 
-        // 主光源 - 产生阴影
         const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-        dirLight.position.set(5, 15, 10);
+        dirLight.position.set(6, 18, 12);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 1024;
         dirLight.shadow.mapSize.height = 1024;
-        const d = 20;
+        const d = 22;
         dirLight.shadow.camera.left = -d;
         dirLight.shadow.camera.right = d;
         dirLight.shadow.camera.top = d;
         dirLight.shadow.camera.bottom = -d;
         dirLight.shadow.camera.near = 1;
-        dirLight.shadow.camera.far = 30;
+        dirLight.shadow.camera.far = 40;
         scene.add(dirLight);
 
-        // 补充侧光
-        const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
-        fillLight.position.set(-5, 0, 5);
-        scene.add(fillLight);
+        const fill = new THREE.DirectionalLight(0x8888ff, 0.4);
+        fill.position.set(-5, 2, 8);
+        scene.add(fill);
 
-        // 背景星光点缀 (装饰)
-        const starsGeometry = new THREE.BufferGeometry();
-        const starsCount = 800;
+        // 背景星光
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 1000;
         const starsPos = new Float32Array(starsCount * 3);
         for (let i = 0; i < starsCount * 3; i += 3) {
             starsPos[i] = (Math.random() - 0.5) * 200;
-            starsPos[i+1] = (Math.random() - 0.5) * 100 + 10; // 高处
+            starsPos[i+1] = (Math.random() - 0.5) * 80 + 15;
             starsPos[i+2] = (Math.random() - 0.5) * 200 - 50;
         }
-        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
-        const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.25, transparent: true });
-        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+        const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true });
+        const stars = new THREE.Points(starsGeo, starsMat);
         scene.add(stars);
 
-        // --- 地面 (轨道) ---
-        const groundWidth = 8;
-        const groundLength = 80;
+        // --- 地面 (无限跑道) ---
+        const groundWidth = 10;
+        const groundLength = 100;
         const groundGeo = new THREE.BoxGeometry(groundWidth, 0.5, groundLength);
         const groundMat = new THREE.MeshStandardMaterial({ 
             color: 0x2a2a4a, 
@@ -203,33 +165,43 @@
             emissive: new THREE.Color(0x111122)
         });
         const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.position.set(0, -0.25, -15);
+        ground.position.set(0, -0.25, -20);
         ground.receiveShadow = true;
         ground.castShadow = true;
         scene.add(ground);
 
-        // 跑道边缘光带 (装饰)
-        const edgeMat = new THREE.MeshStandardMaterial({ color: 0x4a6fa5, emissive: new THREE.Color(0x1a3a6a), emissiveIntensity: 0.5 });
-        for (let i = -2; i <= 2; i+=4) {
+        // 跑道边缘光带
+        const edgeMat = new THREE.MeshStandardMaterial({ color: 0x4a6fa5, emissive: new THREE.Color(0x1a3a6a), emissiveIntensity: 0.4 });
+        for (let i = -3; i <= 3; i+=6) {
             const edge = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, groundLength), edgeMat);
-            edge.position.set(i * 2.1, 0.2, -15);
+            edge.position.set(i * 2.1, 0.2, -20);
             scene.add(edge);
         }
 
-        // 中间虚线引导
+        // 中间虚线
         const dashMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: new THREE.Color(0x224488), emissiveIntensity: 0.3 });
-        for (let z = -5; z > -groundLength; z -= 3) {
-            const dash = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 1.2), dashMat);
+        for (let z = -5; z > -groundLength; z -= 3.5) {
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 1.5), dashMat);
             dash.position.set(0, 0.2, z);
             scene.add(dash);
         }
 
-        // --- 玩家 (一个小人/方块组合) ---
+        // 两侧护栏 (装饰+碰撞边界)
+        const fenceMat = new THREE.MeshStandardMaterial({ color: 0x5a7a9a, emissive: new THREE.Color(0x1a2a4a), emissiveIntensity: 0.2 });
+        for (let side = -1; side <= 1; side+=2) {
+            const fence = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, groundLength), fenceMat);
+            fence.position.set(side * 5.5, 0.4, -20);
+            fence.castShadow = true;
+            fence.receiveShadow = true;
+            scene.add(fence);
+        }
+
+        // --- 玩家 (更精致的小人) ---
         const playerGroup = new THREE.Group();
         
         // 身体
         const bodyGeo = new THREE.BoxGeometry(0.9, 1.0, 0.6);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: new THREE.Color(0x0a2a4a), emissiveIntensity: 0.3 });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: new THREE.Color(0x0a2a4a), emissiveIntensity: 0.2 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.5;
         body.castShadow = true;
@@ -245,7 +217,7 @@
         head.receiveShadow = true;
         playerGroup.add(head);
         
-        // 眼睛 (小亮点)
+        // 眼睛
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: new THREE.Color(0x88ccff), emissiveIntensity: 0.8 });
         const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
         const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
@@ -255,7 +227,7 @@
         eyeR.position.set(0.2, 1.3, 0.4);
         playerGroup.add(eyeR);
         
-        // 腿 (装饰)
+        // 腿
         const legMat = new THREE.MeshStandardMaterial({ color: 0x2a4a6a });
         const legGeo = new THREE.BoxGeometry(0.25, 0.5, 0.25);
         const legL = new THREE.Mesh(legGeo, legMat);
@@ -274,57 +246,51 @@
         const player = {
             group: playerGroup,
             velocity: new THREE.Vector3(0, 0, 0),
-            gravity: -18,
-            jumpPower: 8,
+            gravity: -22,
+            jumpPower: 9,
             isOnGround: false,
             isSliding: false,
-            normalHeight: 0.5,
-            slideHeight: -0.2,
-            targetY: 0.5,
+            moveSpeed: 5.0,
+            maxX: 4.5,
+            minX: -4.5,
         };
 
-        // --- 障碍物管理 ---
+        // --- 障碍物系统 ---
         let obstacles = [];
         let score = 0;
         let gameOver = false;
-        let gameSpeed = 8.0; // 基础速度
+        let gameSpeed = 7.5;
         let spawnTimer = 0;
-        const spawnInterval = 1.5; // 秒
+        const spawnInterval = 1.6;
         let distanceTraveled = 0;
 
-        // 障碍物模板
         function createObstacle(type, zPos) {
             const group = new THREE.Group();
-            let mat = new THREE.MeshStandardMaterial({ color: 0xff6b6b, emissive: new THREE.Color(0x661111), emissiveIntensity: 0.3 });
+            let mat1 = new THREE.MeshStandardMaterial({ color: 0xff6b6b, emissive: new THREE.Color(0x661111), emissiveIntensity: 0.3 });
             let mat2 = new THREE.MeshStandardMaterial({ color: 0xffa94d, emissive: new THREE.Color(0x553322), emissiveIntensity: 0.2 });
             
             if (type === 'crate') {
-                // 箱子 (跳跃)
-                const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), mat);
+                const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), mat1);
                 box.position.y = 0.6;
                 box.castShadow = true;
                 box.receiveShadow = true;
                 group.add(box);
-                // 边框装饰
                 const edge = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 1.3), mat2);
                 edge.position.y = 0.1;
                 group.add(edge);
                 group.userData = { type: 'jump', height: 1.2 };
             } else if (type === 'barrier') {
-                // 矮墙 (滑铲)
-                const wall = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 0.8), mat);
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 0.8), mat1);
                 wall.position.y = 0.35;
                 wall.castShadow = true;
                 wall.receiveShadow = true;
                 group.add(wall);
-                // 条纹
                 const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.1, 0.1), mat2);
                 stripe.position.set(0, 0.6, 0.4);
                 group.add(stripe);
                 group.userData = { type: 'slide', height: 0.7 };
             } else if (type === 'double') {
-                // 双障碍 (一个高一个矮)
-                const high = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.8), mat);
+                const high = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.8), mat1);
                 high.position.set(-1.0, 0.6, 0);
                 high.castShadow = true;
                 group.add(high);
@@ -334,25 +300,24 @@
                 group.add(low);
                 group.userData = { type: 'double' };
             }
-            
             group.position.z = zPos;
             return group;
         }
 
-        // --- 生成障碍物 ---
         function spawnObstacle() {
             if (gameOver) return;
             const types = ['crate', 'barrier', 'double'];
             const type = types[Math.floor(Math.random() * types.length)];
-            const zPos = -5 - Math.random() * 10; // 在远处生成
+            const zPos = -8 - Math.random() * 12;
             const obs = createObstacle(type, zPos);
+            // 随机横向偏移
+            obs.position.x = (Math.random() - 0.5) * 3;
             scene.add(obs);
             obstacles.push(obs);
         }
 
-        // --- 重置游戏 ---
+        // --- 重置 ---
         function resetGame() {
-            // 移除所有障碍物
             obstacles.forEach(obs => scene.remove(obs));
             obstacles = [];
             score = 0;
@@ -360,7 +325,6 @@
             gameOver = false;
             document.getElementById('restart-btn').style.display = 'none';
             
-            // 重置玩家位置和状态
             player.group.position.set(0, 0.5, 0);
             player.velocity.set(0, 0, 0);
             player.isOnGround = false;
@@ -368,22 +332,20 @@
             player.group.scale.y = 1;
             player.group.position.y = 0.5;
             
-            // 重置相机
-            camera.position.set(0, 6, 12);
+            camera.position.set(0, 8, 14);
             camera.lookAt(0, 0, -5);
             
             distanceTraveled = 0;
             spawnTimer = 0;
-            gameSpeed = 8.0;
+            gameSpeed = 7.5;
         }
 
-        // --- 跳跃和滑铲逻辑 (由按钮触发) ---
+        // --- 动作函数 ---
         function jump() {
             if (gameOver) return;
             if (player.isOnGround) {
                 player.velocity.y = player.jumpPower;
                 player.isOnGround = false;
-                // 跳跃动画效果 (身体拉伸)
                 player.group.scale.y = 0.85;
                 setTimeout(() => { player.group.scale.y = 1.0; }, 150);
             }
@@ -393,9 +355,8 @@
             if (gameOver) return;
             if (player.isOnGround && !player.isSliding) {
                 player.isSliding = true;
-                player.group.scale.y = 0.6; // 压扁
+                player.group.scale.y = 0.6;
                 player.group.position.y = 0.1;
-                // 滑铲持续一段时间后自动恢复
                 setTimeout(() => {
                     if (player.isSliding) {
                         player.isSliding = false;
@@ -406,23 +367,35 @@
             }
         }
 
-        // --- 绑定按钮 ---
-        document.getElementById('jumpBtn').addEventListener('click', jump);
-        document.getElementById('slideBtn').addEventListener('click', slide);
-        document.getElementById('restart-btn').addEventListener('click', resetGame);
-
-        // 键盘监听 (空格跳跃, Shift滑铲)
+        // --- 键盘控制 (WASD + 空格 + Shift) ---
+        const keys = { w: false, a: false, s: false, d: false };
         document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                keys[key] = true;
+                e.preventDefault();
+            }
             if (e.code === 'Space') {
                 e.preventDefault();
                 jump();
-            } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+            }
+            if (e.key === 'Shift') {
                 e.preventDefault();
                 slide();
             }
         });
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                keys[key] = false;
+                e.preventDefault();
+            }
+        });
 
-        // 窗口尺寸自适应
+        // 按钮 (移动端备用，但也可用)
+        document.getElementById('restart-btn').addEventListener('click', resetGame);
+
+        // 窗口自适应
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -435,12 +408,29 @@
         function animate() {
             const delta = Math.min(clock.getDelta(), 0.05);
             if (!gameOver) {
-                // 更新玩家物理
-                // 重力
+                // --- WASD 移动 (横向) ---
+                let moveX = 0;
+                if (keys.a) moveX -= 1;
+                if (keys.d) moveX += 1;
+                // 前后移动 (W/S) 影响速度，但不改变z轴位置，而是影响相机跟随和障碍物速度感
+                // 这里我们让W/S轻微影响速度，但主要用来增加交互感: W加速, S减速
+                if (keys.w) {
+                    gameSpeed = Math.min(12, gameSpeed + delta * 2);
+                }
+                if (keys.s) {
+                    gameSpeed = Math.max(4, gameSpeed - delta * 2);
+                }
+
+                // 横向移动
+                player.group.position.x += moveX * player.moveSpeed * delta;
+                // 边界限制
+                if (player.group.position.x > player.maxX) player.group.position.x = player.maxX;
+                if (player.group.position.x < player.minX) player.group.position.x = player.minX;
+
+                // --- 物理 (跳跃/重力) ---
                 player.velocity.y += player.gravity * delta;
                 player.group.position.y += player.velocity.y * delta;
 
-                // 地面碰撞
                 if (player.group.position.y <= 0.5) {
                     player.group.position.y = 0.5;
                     player.velocity.y = 0;
@@ -449,52 +439,47 @@
                     player.isOnGround = false;
                 }
 
-                // 滑铲状态下的高度调整
                 if (player.isSliding) {
                     player.group.position.y = 0.1;
                 } else {
                     if (player.group.position.y < 0.5) player.group.position.y = 0.5;
                 }
 
-                // 移动障碍物 (向玩家移动)
+                // --- 障碍物移动 ---
                 const speed = gameSpeed * delta;
                 obstacles.forEach(obs => {
                     obs.position.z += speed;
                 });
 
-                // 移除超出范围的障碍物
+                // 移除超出
                 obstacles = obstacles.filter(obs => {
-                    if (obs.position.z > 8) {
+                    if (obs.position.z > 10) {
                         scene.remove(obs);
                         return false;
                     }
                     return true;
                 });
 
-                // 碰撞检测 (简单)
+                // --- 碰撞检测 ---
                 const playerBox = new THREE.Box3().setFromObject(player.group);
-                // 稍微缩小玩家碰撞箱，更宽容
-                const playerCenter = playerBox.getCenter(new THREE.Vector3());
-                const playerSize = playerBox.getSize(new THREE.Vector3());
-                playerBox.min.set(playerCenter.x - 0.4, playerCenter.y - 0.4, playerCenter.z - 0.3);
-                playerBox.max.set(playerCenter.x + 0.4, playerCenter.y + 0.6, playerCenter.z + 0.3);
+                const pCenter = playerBox.getCenter(new THREE.Vector3());
+                const pSize = playerBox.getSize(new THREE.Vector3());
+                playerBox.min.set(pCenter.x - 0.4, pCenter.y - 0.4, pCenter.z - 0.3);
+                playerBox.max.set(pCenter.x + 0.4, pCenter.y + 0.6, pCenter.z + 0.3);
 
                 for (let obs of obstacles) {
                     const obsBox = new THREE.Box3().setFromObject(obs);
                     if (playerBox.intersectsBox(obsBox)) {
-                        // 游戏结束
                         gameOver = true;
                         document.getElementById('restart-btn').style.display = 'block';
                         break;
                     }
                 }
 
-                // 增加分数 (每帧增加，但通过距离)
+                // 分数
                 if (!gameOver) {
-                    score += delta * 5;
+                    score += delta * 6;
                     document.getElementById('scoreValue').textContent = Math.floor(score);
-                    // 速度逐渐增加
-                    gameSpeed = 8.0 + Math.floor(score / 50) * 0.8;
                 }
 
                 // 生成障碍物
@@ -504,20 +489,20 @@
                     spawnObstacle();
                 }
 
-                // 更新相机跟随 (第三人称)
+                // --- 相机跟随 (第三人称，随玩家横向移动) ---
                 const targetCamPos = new THREE.Vector3(
-                    0,
-                    6 + Math.sin(Date.now() * 0.001) * 0.3,
-                    12 + player.group.position.z * 0.2
+                    player.group.position.x * 0.5,
+                    7 + Math.sin(Date.now() * 0.001) * 0.3,
+                    14 + player.group.position.z * 0.15
                 );
-                camera.position.lerp(targetCamPos, 0.05);
-                camera.lookAt(0, 0.5, player.group.position.z - 2);
+                camera.position.lerp(targetCamPos, 0.06);
+                camera.lookAt(player.group.position.x * 0.3, 0.5, player.group.position.z - 3);
 
-                // 星星缓慢旋转
-                stars.rotation.y += 0.0001;
+                // 星星旋转
+                stars.rotation.y += 0.0002;
             } else {
-                // Game Over 时相机稍微晃动
-                camera.position.x = Math.sin(Date.now() * 0.002) * 0.5;
+                // Game Over 轻微晃动
+                camera.position.x += Math.sin(Date.now() * 0.003) * 0.005;
             }
 
             renderer.render(scene, camera);
@@ -526,12 +511,12 @@
 
         animate();
 
-        // 初始生成一些障碍物
-        setTimeout(() => { spawnObstacle(); }, 500);
+        // 初始障碍物
+        setTimeout(() => { spawnObstacle(); }, 400);
         setTimeout(() => { spawnObstacle(); }, 1200);
-        setTimeout(() => { spawnObstacle(); }, 2000);
+        setTimeout(() => { spawnObstacle(); }, 2100);
 
-        console.log('3D Parkour 游戏已启动！ 使用按钮或键盘：空格跳跃，Shift滑铲');
+        console.log('3D Parkour WASD 移动版已启动！ W加速 S减速 A/D左右移动 空格跳跃 Shift滑铲');
     </script>
 </body>
 </html>
