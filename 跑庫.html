@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人稱 · 平台跑酷 · 關卡與紀錄點</title>
+    <title>第一人稱 · 平台跑酷 · 滑鼠轉視角</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #ui {
@@ -11,7 +11,7 @@
             top: 20px;
             left: 20px;
             color: white;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             text-shadow: 0 0 20px rgba(0,0,0,0.9);
             pointer-events: none;
@@ -22,18 +22,19 @@
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,255,255,0.1);
             display: flex;
-            gap: 20px;
+            gap: 16px;
             align-items: center;
             flex-wrap: wrap;
+            user-select: none;
         }
-        #ui span { margin-right: 6px; }
+        #ui span { margin-right: 4px; }
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.4);
-            font-size: 30px;
+            color: rgba(255,255,255,0.35);
+            font-size: 28px;
             pointer-events: none;
             z-index: 10;
             text-shadow: 0 0 10px rgba(0,0,0,0.8);
@@ -98,13 +99,31 @@
         #level-complete h2 { font-size: 38px; color: #4caf50; margin-bottom: 6px; }
         #level-complete .next-hint { font-size: 18px; color: #aaa; margin-top: 16px; }
         #level-complete .next-hint kbd { background: #2a2a4a; padding: 4px 14px; border-radius: 6px; color: #88ddff; border: 1px solid #4a6a9a; }
+        #pointer-lock-warning {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,200,100,0.8);
+            background: rgba(0,0,0,0.6);
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,200,100,0.15);
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+            white-space: nowrap;
+        }
         @media (max-width: 600px) {
-            #ui { font-size: 14px; padding: 4px 12px; gap: 10px; }
+            #ui { font-size: 13px; padding: 4px 10px; gap: 8px; }
             #controls-hint { font-size: 10px; padding: 4px 12px; white-space: normal; }
             #gameover { padding: 24px 20px; width: 80%; }
             #gameover h2 { font-size: 28px; }
             #level-complete { padding: 24px 20px; width: 80%; }
             #level-complete h2 { font-size: 28px; }
+            #pointer-lock-warning { font-size: 11px; padding: 4px 12px; white-space: normal; bottom: 70px; }
         }
     </style>
 </head>
@@ -116,7 +135,8 @@
         <span>🔹 <span id="collectibles">0</span> / <span id="totalCollectibles">0</span></span>
     </div>
     <div id="crosshair">+</div>
-    <div id="controls-hint">W A S D 移動 · 空格跳躍 · 收集所有發光方塊過關</div>
+    <div id="controls-hint">W A S D 移動 · 空格跳躍 · 滑鼠拖曳轉視角</div>
+    <div id="pointer-lock-warning">🖱️ 點擊畫面鎖定滑鼠以旋轉視角</div>
     <div id="gameover">
         <h2>💥 掉落！</h2>
         <div class="final-score">得分: <span id="finalScore">0</span></div>
@@ -130,7 +150,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // ============================================================
-        //  場景 / 相機 / 渲染器 (第一人稱)
+        //  場景 / 相機 / 渲染器
         // ============================================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a1a);
@@ -194,7 +214,40 @@
             checkpointX: 0,
             checkpointZ: 0,
             checkpointY: playerHeight,
+            // 視角角度 (滑鼠控制)
+            yaw: 0,
+            pitch: 0,
         };
+
+        // ============================================================
+        //  滑鼠控制視角 (Pointer Lock)
+        // ============================================================
+        const pointerLockWarning = document.getElementById('pointer-lock-warning');
+        let isPointerLocked = false;
+
+        document.addEventListener('click', () => {
+            if (!isPointerLocked && !gameOver && !levelComplete) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === renderer.domElement;
+            pointerLockWarning.style.display = isPointerLocked ? 'none' : 'block';
+            if (!isPointerLocked) {
+                // 暫停視角更新
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isPointerLocked || gameOver || levelComplete || !gameActive) return;
+            // 靈敏度
+            const sensitivity = 0.002;
+            player.yaw -= e.movementX * sensitivity;
+            player.pitch -= e.movementY * sensitivity;
+            // 限制俯仰角度
+            player.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, player.pitch));
+        });
 
         // ============================================================
         //  關卡系統
@@ -230,7 +283,6 @@
             transparent: true, opacity: 0.7
         });
 
-        // ----- 工具函數 -----
         function createPlatform(x, z, w, d, colorType = 'normal') {
             const mat = colorType === 'glow' ? platMatGlow : platMat;
             const geo = new THREE.BoxGeometry(w, 0.3, d);
@@ -256,7 +308,6 @@
             mesh.position.set(x, y + 0.05, z);
             mesh.receiveShadow = true;
             scene.add(mesh);
-            // 光柱效果
             const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.15 });
             const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 8), pillarMat);
             pillar.position.set(x, y + 1, z);
@@ -264,9 +315,7 @@
             return mesh;
         }
 
-        // ----- 生成關卡 -----
         function generateLevel(level) {
-            // 清除舊關卡
             platformList.forEach(p => scene.remove(p));
             collectibleList.forEach(c => scene.remove(c));
             checkpointList.forEach(c => scene.remove(c));
@@ -280,25 +329,21 @@
             levelComplete = false;
             document.getElementById('level-complete').style.display = 'none';
 
-            const size = 5 + level * 2; // 關卡越大
+            const size = 5 + level * 2;
             const spacing = 3.5;
             const startZ = -2;
 
-            // 生成平台網格
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
                     const x = (i - (size-1)/2) * spacing;
                     const z = (j - (size-1)/2) * spacing + startZ;
-                    // 邊緣平台較少
                     const edgeFactor = Math.min(i, j, size-1-i, size-1-j);
                     if (edgeFactor === 0 && Math.random() < 0.3) continue;
                     if (edgeFactor === 1 && Math.random() < 0.15) continue;
-                    // 中心必定有平台
                     const isCenter = (i === Math.floor(size/2) && j === Math.floor(size/2));
                     if (isCenter) {
                         const plat = createPlatform(x, z, 2.5, 2.5, 'glow');
                         platformList.push(plat);
-                        // 起點紀錄點
                         const cp = createCheckpoint(x, 0.3, z);
                         checkpointList.push(cp);
                         player.checkpointX = x;
@@ -308,8 +353,6 @@
                     const isGlow = Math.random() < 0.15;
                     const plat = createPlatform(x, z, 2.0 + Math.random()*0.4, 2.0 + Math.random()*0.4, isGlow ? 'glow' : 'normal');
                     platformList.push(plat);
-                    
-                    // 收集物 (難度越高越多)
                     if (Math.random() < 0.3 + level * 0.03) {
                         const col = createCollectible(x, 0.3, z);
                         collectibleList.push(col);
@@ -318,11 +361,9 @@
                 }
             }
 
-            // 額外生成一些浮空平台 (增加難度)
             for (let i = 0; i < level * 2; i++) {
                 const x = (Math.random() - 0.5) * (size * spacing * 0.8);
                 const z = (Math.random() - 0.5) * (size * spacing * 0.8) + startZ;
-                // 確保不與現有平台重疊
                 let overlap = false;
                 for (let p of platformList) {
                     if (Math.abs(p.position.x - x) < 2 && Math.abs(p.position.z - z) < 2) { overlap = true; break; }
@@ -330,7 +371,6 @@
                 if (!overlap) {
                     const plat = createPlatform(x, z, 1.6, 1.6, 'glow');
                     platformList.push(plat);
-                    // 可能放收集物
                     if (Math.random() < 0.5) {
                         const col = createCollectible(x, 0.3, z);
                         collectibleList.push(col);
@@ -339,26 +379,25 @@
                 }
             }
 
-            // 終點紀錄點 (最後一個平台附近)
             let lastPlat = platformList[platformList.length - 1];
             if (lastPlat) {
                 const cp = createCheckpoint(lastPlat.position.x, 0.3, lastPlat.position.z);
                 checkpointList.push(cp);
             }
 
-            // 更新UI
             document.getElementById('level').innerText = level;
             document.getElementById('totalCollectibles').innerText = totalCollectibles;
             document.getElementById('collectibles').innerText = '0';
             document.getElementById('score').innerText = score;
 
-            // 重置玩家到起點
             player.posX = 0;
             player.posZ = startZ;
             player.body.position.set(0, player.height, startZ);
             player.velocityY = 0;
             player.isGrounded = false;
-            camera.position.set(0, player.height, startZ);
+            // 重置視角
+            player.yaw = 0;
+            player.pitch = 0;
         }
 
         // ============================================================
@@ -403,9 +442,7 @@
             for (let plat of platformList) {
                 const dx = Math.abs(posX - plat.position.x);
                 const dz = Math.abs(posZ - plat.position.z);
-                if (dx < halfSize && dz < halfSize) {
-                    return true;
-                }
+                if (dx < halfSize && dz < halfSize) return true;
             }
             return false;
         }
@@ -423,8 +460,6 @@
                     score += 10;
                     document.getElementById('collectibles').innerText = collectiblesCollected;
                     document.getElementById('score').innerText = score;
-                    
-                    // 檢查是否收集完畢
                     if (collectiblesCollected >= totalCollectibles && totalCollectibles > 0) {
                         levelComplete = true;
                         document.getElementById('level-complete').style.display = 'block';
@@ -443,7 +478,6 @@
                 if (Math.sqrt(dx*dx + dz*dz) < dist) {
                     player.checkpointX = cp.position.x;
                     player.checkpointZ = cp.position.z;
-                    // 視覺反饋：閃爍
                     cp.material.emissiveIntensity = 1.5;
                     setTimeout(() => { cp.material.emissiveIntensity = 0.6; }, 300);
                     return true;
@@ -472,7 +506,6 @@
             generateLevel(currentLevel);
         }
 
-        // 點擊事件
         document.getElementById('gameover').addEventListener('click', () => {
             if (gameOver) restartGame();
         });
@@ -487,7 +520,7 @@
             requestAnimationFrame(animate);
 
             if (gameActive && !gameOver && !levelComplete) {
-                // ---- 移動 ----
+                // ---- 移動 (相對於視角方向) ----
                 let moveX = 0, moveZ = 0;
                 if (keys.w) moveZ -= 1;
                 if (keys.s) moveZ += 1;
@@ -497,9 +530,15 @@
                 const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
                 if (len > 0) { moveX /= len; moveZ /= len; }
 
+                // 根據 yaw 旋轉移動方向
+                const sin = Math.sin(player.yaw);
+                const cos = Math.cos(player.yaw);
+                const worldMoveX = moveX * cos - moveZ * sin;
+                const worldMoveZ = moveX * sin + moveZ * cos;
+
                 const speed = player.moveSpeed;
-                const newX = player.posX + moveX * speed;
-                const newZ = player.posZ + moveZ * speed;
+                const newX = player.posX + worldMoveX * speed;
+                const newZ = player.posZ + worldMoveZ * speed;
 
                 if (checkPlatformCollision(newX, newZ)) {
                     player.posX = newX;
@@ -532,22 +571,19 @@
 
                 // ---- 掉落 ----
                 if (player.body.position.y < -5) {
-                    // 回到記錄點
                     player.posX = player.checkpointX;
                     player.posZ = player.checkpointZ;
                     player.body.position.set(player.checkpointX, player.height, player.checkpointZ);
                     player.velocityY = 0;
                     player.isGrounded = false;
-                    // 扣分
                     score = Math.max(0, score - 5);
                     document.getElementById('score').innerText = score;
                 }
 
-                // ---- 相機 ----
-                camera.position.x = player.posX;
-                camera.position.y = player.body.position.y + 0.2;
-                camera.position.z = player.posZ;
-                camera.lookAt(player.posX, player.body.position.y, player.posZ - 10);
+                // ---- 相機 (應用 yaw / pitch) ----
+                const euler = new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ');
+                camera.quaternion.setFromEuler(euler);
+                camera.position.set(player.posX, player.body.position.y + 0.2, player.posZ);
 
                 // ---- 收集物動畫 ----
                 collectibleList.forEach(col => {
@@ -573,7 +609,8 @@
         // ============================================================
         generateLevel(1);
         animate();
-        console.log('第一人稱平台跑酷 · 關卡與記錄點系統已啟動！');
+        pointerLockWarning.style.display = 'block';
+        console.log('第一人稱平台跑酷 · 滑鼠轉視角已啟動！點擊畫面鎖定滑鼠。');
     </script>
 </body>
 </html>
