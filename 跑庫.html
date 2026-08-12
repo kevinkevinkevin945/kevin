@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人稱槍戰 · 手榴彈 & 凌空石</title>
+    <title>第一人稱槍戰 · 手榴彈無限 · 武器庫</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a1a; }
         #ui {
@@ -12,13 +12,13 @@
             left: 50%;
             transform: translateX(-50%);
             color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 24px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
             border-radius: 16px;
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.1);
             display: flex;
-            gap: 14px;
+            gap: 10px;
             align-items: center;
             z-index: 10;
             font-size: 14px;
@@ -35,10 +35,17 @@
             transition: 0.2s;
             font-weight: bold;
             font-size: 13px;
+            color: #aaa;
         }
-        #ui .weapon.active { background: rgba(255,215,0,0.2); border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.15); }
-        #ui .weapon:hover { background: rgba(255,255,255,0.1); }
-        #ui .weapon kbd { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; margin-right: 4px; font-size: 11px; }
+        #ui .weapon.active {
+            background: rgba(255,215,0,0.2);
+            border-color: #ffd700;
+            color: #ffd700;
+            box-shadow: 0 0 20px rgba(255,215,0,0.15);
+        }
+        #ui .weapon:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        #ui .weapon kbd { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; margin-right: 4px; font-size: 11px; color: #888; }
+        #ui .weapon.active kbd { color: #ffd700; }
         #crosshair {
             position: absolute;
             top: 50%;
@@ -194,7 +201,7 @@
             white-space: nowrap;
         }
         @media (max-width: 700px) {
-            #ui { font-size: 11px; padding: 6px 12px; gap: 6px; bottom: 15px; }
+            #ui { font-size: 11px; padding: 6px 10px; gap: 5px; bottom: 15px; }
             #ui .weapon { padding: 3px 8px; font-size: 10px; }
             #info { font-size: 13px; padding: 4px 12px; }
             #ammo { font-size: 18px; padding: 4px 12px; bottom: 80px; right: 15px; }
@@ -222,13 +229,13 @@
     <div id="cooldown-indicator">⏳ 冷卻中...</div>
     <div id="pointer-lock-warning">🖱️ 點擊畫面鎖定滑鼠 · 左鍵射擊</div>
     <div id="ui">
-        <div class="weapon active" data-weapon="pistol"><kbd>1</kbd> 手槍</div>
+        <div class="weapon active" data-weapon="grenade_launcher"><kbd>1</kbd> 手榴彈</div>
         <div class="weapon" data-weapon="rifle"><kbd>2</kbd> 步槍</div>
-        <div class="weapon" data-weapon="shotgun"><kbd>3</kbd> 霰彈槍</div>
-        <div class="weapon" data-weapon="sniper"><kbd>4</kbd> 狙擊槍</div>
-        <div class="weapon" data-weapon="smg"><kbd>5</kbd> 衝鋒槍</div>
+        <div class="weapon" data-weapon="bomb"><kbd>3</kbd> 炸彈</div>
+        <div class="weapon" data-weapon="tank"><kbd>4</kbd> 坦克</div>
+        <div class="weapon" data-weapon="apc"><kbd>5</kbd> 裝甲車</div>
         <div class="weapon" data-weapon="rocket"><kbd>6</kbd> 火箭筒</div>
-        <div class="weapon" data-weapon="minigun"><kbd>7</kbd> 火神炮</div>
+        <div class="weapon" data-weapon="minigun"><kbd>7</kbd> 火神槍</div>
     </div>
     <div id="gameover">
         <h2>💀 陣亡</h2>
@@ -298,19 +305,19 @@
         scene.add(gridHelper);
 
         // ============================================================
-        //  武器系統
+        //  武器系統 (按照截圖重新設計)
         // ============================================================
         const weapons = {
-            pistol: { name: '手槍', damage: 25, fireRate: 200, ammo: 12, maxAmmo: 12, spread: 0.02, bulletSpeed: 80, auto: false, color: 0xffdd44 },
+            grenade_launcher: { name: '手榴彈', damage: 60, fireRate: 300, ammo: 8, maxAmmo: 8, spread: 0.04, bulletSpeed: 35, auto: false, color: 0xff8844, explosive: true, isGrenadeLauncher: true },
             rifle: { name: '步槍', damage: 35, fireRate: 100, ammo: 30, maxAmmo: 30, spread: 0.015, bulletSpeed: 100, auto: true, color: 0x44ddff },
-            shotgun: { name: '霰彈槍', damage: 12, fireRate: 400, ammo: 8, maxAmmo: 8, spread: 0.12, bulletSpeed: 70, auto: false, color: 0xff8844, pellets: 8 },
-            sniper: { name: '狙擊槍', damage: 100, fireRate: 600, ammo: 5, maxAmmo: 5, spread: 0.003, bulletSpeed: 150, auto: false, color: 0x44ff88 },
-            smg: { name: '衝鋒槍', damage: 18, fireRate: 60, ammo: 50, maxAmmo: 50, spread: 0.045, bulletSpeed: 75, auto: true, color: 0xff66aa },
-            rocket: { name: '火箭筒', damage: 120, fireRate: 800, ammo: 3, maxAmmo: 3, spread: 0.005, bulletSpeed: 40, auto: false, color: 0xff4400, explosive: true },
-            minigun: { name: '火神炮', damage: 15, fireRate: 30, ammo: 200, maxAmmo: 200, spread: 0.06, bulletSpeed: 90, auto: true, color: 0x88ff44 },
+            bomb: { name: '炸彈', damage: 80, fireRate: 500, ammo: 5, maxAmmo: 5, spread: 0.03, bulletSpeed: 30, auto: false, color: 0xff4400, explosive: true },
+            tank: { name: '坦克', damage: 120, fireRate: 700, ammo: 3, maxAmmo: 3, spread: 0.02, bulletSpeed: 50, auto: false, color: 0x44aa88, explosive: true },
+            apc: { name: '裝甲車', damage: 50, fireRate: 250, ammo: 15, maxAmmo: 15, spread: 0.03, bulletSpeed: 60, auto: false, color: 0x88aa44, explosive: true },
+            rocket: { name: '火箭筒', damage: 120, fireRate: 800, ammo: 4, maxAmmo: 4, spread: 0.005, bulletSpeed: 40, auto: false, color: 0xff4400, explosive: true },
+            minigun: { name: '火神槍', damage: 15, fireRate: 30, ammo: 200, maxAmmo: 200, spread: 0.06, bulletSpeed: 90, auto: true, color: 0x88ff44 },
         };
 
-        let currentWeapon = 'pistol';
+        let currentWeapon = 'rifle';
         let ammo = {};
         let kills = 0;
         let health = 100;
@@ -321,14 +328,14 @@
         let gameOver = false;
 
         // ============================================================
-        //  能力系統：手榴彈 & 凌空石
+        //  能力系統：手榴彈 (無限) & 凌空石
         // ============================================================
         let grenadeCooldown = 0;
-        const GRENADE_COOLDOWN = 2.0; // 秒
+        const GRENADE_COOLDOWN = 1.8;
         let warpCooldown = 0;
         const WARP_COOLDOWN = 3.0;
 
-        // 手榴彈：投擲後延遲爆炸
+        // 無限手榴彈 (按F)
         function throwGrenade() {
             if (gameOver || !gameActive) return;
             const now = Date.now() / 1000;
@@ -343,7 +350,6 @@
             const origin = camera.position.clone();
             origin.y += 0.3;
 
-            // 手榴彈模型
             const grenadeMat = new THREE.MeshStandardMaterial({
                 color: 0x44aa44,
                 emissive: 0x224422,
@@ -356,23 +362,23 @@
             grenade.castShadow = true;
             scene.add(grenade);
 
-            // 彈道
             const velocity = dir.clone().multiplyScalar(20);
-            velocity.y += 5; // 拋物線
+            velocity.y += 5;
 
             const grenadeData = {
                 mesh: grenade,
                 velocity: velocity,
-                life: 1.8, // 延遲爆炸
+                life: 1.8,
                 isGrenade: true,
+                isExplosive: true,
+                damage: 80,
             };
             projectiles.push(grenadeData);
 
-            // 視覺提示
             createMuzzleFlash(origin, dir, 0xff8800);
         }
 
-        // 凌空石：丟到哪傳送到哪
+        // 凌空石 (按Q)
         function throwWarpStone() {
             if (gameOver || !gameActive) return;
             const now = Date.now() / 1000;
@@ -387,7 +393,6 @@
             const origin = camera.position.clone();
             origin.y += 0.3;
 
-            // 凌空石模型 (發光紫色)
             const stoneMat = new THREE.MeshStandardMaterial({
                 color: 0xaa44ff,
                 emissive: 0x6622aa,
@@ -400,7 +405,6 @@
             stone.castShadow = true;
             scene.add(stone);
 
-            // 拖尾光效
             const trailMat = new THREE.MeshBasicMaterial({
                 color: 0xaa44ff,
                 transparent: true,
@@ -423,12 +427,9 @@
             createMuzzleFlash(origin, dir, 0xaa44ff);
         }
 
-        // 傳送玩家到指定位置
         function warpPlayer(position) {
-            // 檢查位置是否安全 (不要傳送到地底)
             if (position.y < 0.5) position.y = 0.5;
             camera.position.copy(position);
-            // 閃爍效果
             const flashMat = new THREE.MeshBasicMaterial({
                 color: 0xaa44ff,
                 transparent: true,
@@ -449,7 +450,7 @@
         }
 
         // ============================================================
-        //  投射物系統 (子彈、手榴彈、凌空石)
+        //  投射物系統
         // ============================================================
         const projectiles = [];
 
@@ -481,6 +482,7 @@
                 weapon: weaponKey,
                 isExplosive: weapon.explosive || false,
                 isEnemy: false,
+                isGrenade: false,
             };
             projectiles.push(bulletData);
             return bulletData;
@@ -766,7 +768,7 @@
             document.getElementById('kills').innerText = '0';
             document.getElementById('health-fill').style.width = '100%';
             Object.keys(weapons).forEach(key => { ammo[key] = weapons[key].maxAmmo; });
-            currentWeapon = 'pistol';
+            currentWeapon = 'rifle';
             updateWeaponUI();
             yaw = 0;
             pitch = 0;
@@ -789,7 +791,7 @@
             lastTime = now;
 
             if (gameActive && !gameOver) {
-                // ---- WASD 移動 ----
+                // WASD 移動
                 let moveX = 0,
                     moveZ = 0;
                 if (keys.w) moveZ -= 1;
@@ -808,5 +810,164 @@
                 camera.position.x += worldMoveX;
                 camera.position.z += worldMoveZ;
 
-                // ---- 相機旋轉 ----
-               
+                // 相機旋轉
+                const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+                camera.quaternion.setFromEuler(euler);
+
+                // 更新投射物
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    p.mesh.position.add(p.velocity.clone().multiplyScalar(delta));
+                    if (p.trail) {
+                        p.trail.position.copy(p.mesh.position);
+                        p.trail.position.y += 0.1;
+                    }
+                    p.life -= delta;
+
+                    let used = false;
+
+                    // 手榴彈爆炸
+                    if (p.isGrenade && p.life <= 0) {
+                        createExplosion(p.mesh.position, 4, p.damage || 80);
+                        scene.remove(p.mesh);
+                        used = true;
+                    }
+
+                    // 凌空石傳送
+                    if (p.isWarp && p.life <= 0) {
+                        warpPlayer(p.mesh.position);
+                        scene.remove(p.mesh);
+                        if (p.trail) scene.remove(p.trail);
+                        used = true;
+                    }
+
+                    // 與敵人碰撞
+                    if (!used && !p.isWarp) {
+                        for (let j = enemies.length - 1; j >= 0; j--) {
+                            const enemy = enemies[j];
+                            const dist = p.mesh.position.distanceTo(enemy.mesh.position);
+                            if (dist < 0.8) {
+                                enemy.health -= p.damage || 25;
+                                if (p.isExplosive) {
+                                    createExplosion(p.mesh.position, 3, p.damage || 60);
+                                }
+                                if (enemy.health <= 0) killEnemy(j);
+                                scene.remove(p.mesh);
+                                if (p.trail) scene.remove(p.trail);
+                                used = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!used && (p.mesh.position.y < 0 || p.life <= 0 || p.mesh.position.length() > 60)) {
+                        scene.remove(p.mesh);
+                        if (p.trail) scene.remove(p.trail);
+                        used = true;
+                    }
+
+                    if (used) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+
+                // 敵人 AI
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const enemy = enemies[i];
+                    const toPlayer = camera.position.clone().sub(enemy.mesh.position);
+                    const dist = toPlayer.length();
+
+                    if (dist < enemy.attackRange) {
+                        if (now - enemy.lastAttackTime > 1000) {
+                            enemy.lastAttackTime = now;
+                            const dir = toPlayer.clone().normalize();
+                            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+                            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), bulletMat);
+                            bullet.position.copy(enemy.mesh.position);
+                            bullet.position.y += 0.8;
+                            scene.add(bullet);
+                            const bData = {
+                                mesh: bullet,
+                                velocity: dir.clone().multiplyScalar(15),
+                                life: 2,
+                                isEnemy: true,
+                                isGrenade: false,
+                                isWarp: false,
+                            };
+                            projectiles.push(bData);
+                        }
+                    } else {
+                        const moveDir = toPlayer.clone().normalize();
+                        moveDir.y = 0;
+                        enemy.mesh.position.add(moveDir.clone().multiplyScalar(enemy.speed * delta));
+                        enemy.mesh.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+                    }
+
+                    if (dist < 0.8) {
+                        takeDamage(5);
+                        enemy.mesh.position.add(toPlayer.clone().normalize().multiplyScalar(-2));
+                    }
+                }
+
+                // 生成敵人
+                enemySpawnTimer += delta;
+                if (enemySpawnTimer > 2 && enemies.length < 12 + Math.floor(kills / 3)) {
+                    enemySpawnTimer = 0;
+                    spawnEnemy();
+                }
+
+                // 敵人子彈碰撞玩家
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    if (p.isEnemy) {
+                        const dist = p.mesh.position.distanceTo(camera.position);
+                        if (dist < 0.5) {
+                            takeDamage(8);
+                            scene.remove(p.mesh);
+                            projectiles.splice(i, 1);
+                            continue;
+                        }
+                        if (p.mesh.position.y < 0 || p.life <= 0) {
+                            scene.remove(p.mesh);
+                            projectiles.splice(i, 1);
+                        }
+                    }
+                }
+
+                // 自動射擊
+                if (isShooting && isPointerLocked && !gameOver) {
+                    const weapon = weapons[currentWeapon];
+                    if (weapon.auto) shoot();
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ============================================================
+        //  視窗縮放
+        // ============================================================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ============================================================
+        //  啟動
+        // ============================================================
+        Object.keys(weapons).forEach(key => {
+            ammo[key] = weapons[key].maxAmmo;
+        });
+        currentWeapon = 'rifle';
+        updateWeaponUI();
+        document.getElementById('health-fill').style.width = '100%';
+        document.getElementById('pointer-lock-warning').style.display = 'block';
+
+        for (let i = 0; i < 4; i++) setTimeout(spawnEnemy, i * 400);
+
+        animate();
+        console.log('第一人稱槍戰已啟動！1-7切換武器，F手榴彈(無限)，Q凌空石，左鍵射擊，空格換彈。');
+    </script>
+</body>
+</html>
