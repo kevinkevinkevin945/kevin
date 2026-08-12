@@ -154,7 +154,7 @@
         // ============================================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a1a);
-        scene.fog = new THREE.Fog(0x0a0a1a, 30, 60);
+        scene.fog = new THREE.Fog(0x0a0a1a, 35, 65);
 
         const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 80);
         camera.position.set(0, 1.2, 0);
@@ -179,10 +179,10 @@
         sunLight.shadow.mapSize.height = 1024;
         sunLight.shadow.camera.near = 0.5;
         sunLight.shadow.camera.far = 50;
-        sunLight.shadow.camera.left = -25;
-        sunLight.shadow.camera.right = 25;
-        sunLight.shadow.camera.top = 25;
-        sunLight.shadow.camera.bottom = -25;
+        sunLight.shadow.camera.left = -30;
+        sunLight.shadow.camera.right = 30;
+        sunLight.shadow.camera.top = 30;
+        sunLight.shadow.camera.bottom = -30;
         scene.add(sunLight);
 
         const fill = new THREE.DirectionalLight(0x8888ff, 0.3);
@@ -214,7 +214,6 @@
             checkpointX: 0,
             checkpointZ: 0,
             checkpointY: playerHeight,
-            // 視角角度 (滑鼠控制)
             yaw: 0,
             pitch: 0,
         };
@@ -234,18 +233,13 @@
         document.addEventListener('pointerlockchange', () => {
             isPointerLocked = document.pointerLockElement === renderer.domElement;
             pointerLockWarning.style.display = isPointerLocked ? 'none' : 'block';
-            if (!isPointerLocked) {
-                // 暫停視角更新
-            }
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isPointerLocked || gameOver || levelComplete || !gameActive) return;
-            // 靈敏度
             const sensitivity = 0.002;
             player.yaw -= e.movementX * sensitivity;
             player.pitch -= e.movementY * sensitivity;
-            // 限制俯仰角度
             player.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, player.pitch));
         });
 
@@ -263,9 +257,7 @@
         const platformList = [];
         const collectibleList = [];
         const checkpointList = [];
-        const decorationList = [];
 
-        // 平台材質
         const platMat = new THREE.MeshStandardMaterial({ 
             color: 0x2a2a5a, roughness: 0.7, metalness: 0.2,
             emissive: new THREE.Color(0x0a0a2a), emissiveIntensity: 0.3
@@ -319,11 +311,9 @@
             platformList.forEach(p => scene.remove(p));
             collectibleList.forEach(c => scene.remove(c));
             checkpointList.forEach(c => scene.remove(c));
-            decorationList.forEach(d => scene.remove(d));
             platformList.length = 0;
             collectibleList.length = 0;
             checkpointList.length = 0;
-            decorationList.length = 0;
             collectiblesCollected = 0;
             totalCollectibles = 0;
             levelComplete = false;
@@ -342,7 +332,7 @@
                     if (edgeFactor === 1 && Math.random() < 0.15) continue;
                     const isCenter = (i === Math.floor(size/2) && j === Math.floor(size/2));
                     if (isCenter) {
-                        const plat = createPlatform(x, z, 2.5, 2.5, 'glow');
+                        const plat = createPlatform(x, z, 2.8, 2.8, 'glow');
                         platformList.push(plat);
                         const cp = createCheckpoint(x, 0.3, z);
                         checkpointList.push(cp);
@@ -351,7 +341,7 @@
                         continue;
                     }
                     const isGlow = Math.random() < 0.15;
-                    const plat = createPlatform(x, z, 2.0 + Math.random()*0.4, 2.0 + Math.random()*0.4, isGlow ? 'glow' : 'normal');
+                    const plat = createPlatform(x, z, 2.2 + Math.random()*0.4, 2.2 + Math.random()*0.4, isGlow ? 'glow' : 'normal');
                     platformList.push(plat);
                     if (Math.random() < 0.3 + level * 0.03) {
                         const col = createCollectible(x, 0.3, z);
@@ -366,10 +356,10 @@
                 const z = (Math.random() - 0.5) * (size * spacing * 0.8) + startZ;
                 let overlap = false;
                 for (let p of platformList) {
-                    if (Math.abs(p.position.x - x) < 2 && Math.abs(p.position.z - z) < 2) { overlap = true; break; }
+                    if (Math.abs(p.position.x - x) < 2.5 && Math.abs(p.position.z - z) < 2.5) { overlap = true; break; }
                 }
                 if (!overlap) {
-                    const plat = createPlatform(x, z, 1.6, 1.6, 'glow');
+                    const plat = createPlatform(x, z, 1.8, 1.8, 'glow');
                     platformList.push(plat);
                     if (Math.random() < 0.5) {
                         const col = createCollectible(x, 0.3, z);
@@ -395,7 +385,6 @@
             player.body.position.set(0, player.height, startZ);
             player.velocityY = 0;
             player.isGrounded = false;
-            // 重置視角
             player.yaw = 0;
             player.pitch = 0;
         }
@@ -435,20 +424,26 @@
         });
 
         // ============================================================
-        //  碰撞檢測
+        //  碰撞檢測 (擴大碰撞範圍，消除空氣牆)
         // ============================================================
         function checkPlatformCollision(posX, posZ) {
-            const halfSize = 0.9;
+            // 擴大碰撞範圍到平台邊緣，讓玩家可以走到平台邊界
+            const halfSize = 1.1; // 從 0.9 擴大到 1.1
             for (let plat of platformList) {
                 const dx = Math.abs(posX - plat.position.x);
                 const dz = Math.abs(posZ - plat.position.z);
-                if (dx < halfSize && dz < halfSize) return true;
+                // 平台尺寸動態獲取
+                const platHalfX = plat.geometry.parameters.width / 2;
+                const platHalfZ = plat.geometry.parameters.depth / 2;
+                if (dx < platHalfX - 0.1 && dz < platHalfZ - 0.1) {
+                    return true;
+                }
             }
             return false;
         }
 
         function checkCollectibleCollision(posX, posZ) {
-            const dist = 0.5;
+            const dist = 0.6;
             for (let i = collectibleList.length - 1; i >= 0; i--) {
                 const col = collectibleList[i];
                 const dx = posX - col.position.x;
@@ -471,7 +466,7 @@
         }
 
         function checkCheckpointCollision(posX, posZ) {
-            const dist = 0.8;
+            const dist = 0.9;
             for (let cp of checkpointList) {
                 const dx = posX - cp.position.x;
                 const dz = posZ - cp.position.z;
@@ -520,7 +515,7 @@
             requestAnimationFrame(animate);
 
             if (gameActive && !gameOver && !levelComplete) {
-                // ---- 移動 (相對於視角方向) ----
+                // ---- 移動 ----
                 let moveX = 0, moveZ = 0;
                 if (keys.w) moveZ -= 1;
                 if (keys.s) moveZ += 1;
@@ -530,7 +525,6 @@
                 const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
                 if (len > 0) { moveX /= len; moveZ /= len; }
 
-                // 根據 yaw 旋轉移動方向
                 const sin = Math.sin(player.yaw);
                 const cos = Math.cos(player.yaw);
                 const worldMoveX = moveX * cos - moveZ * sin;
@@ -540,12 +534,17 @@
                 const newX = player.posX + worldMoveX * speed;
                 const newZ = player.posZ + worldMoveZ * speed;
 
+                // 放寬移動限制，允許在平台邊緣移動
                 if (checkPlatformCollision(newX, newZ)) {
                     player.posX = newX;
                     player.posZ = newZ;
                 } else {
-                    if (checkPlatformCollision(newX, player.posZ)) player.posX = newX;
-                    else if (checkPlatformCollision(player.posX, newZ)) player.posZ = newZ;
+                    // 嘗試單軸移動
+                    if (checkPlatformCollision(newX, player.posZ)) {
+                        player.posX = newX;
+                    } else if (checkPlatformCollision(player.posX, newZ)) {
+                        player.posZ = newZ;
+                    }
                 }
 
                 // ---- 跳躍 ----
@@ -570,7 +569,7 @@
                 checkCheckpointCollision(player.posX, player.posZ);
 
                 // ---- 掉落 ----
-                if (player.body.position.y < -5) {
+                if (player.body.position.y < -8) {
                     player.posX = player.checkpointX;
                     player.posZ = player.checkpointZ;
                     player.body.position.set(player.checkpointX, player.height, player.checkpointZ);
@@ -580,7 +579,7 @@
                     document.getElementById('score').innerText = score;
                 }
 
-                // ---- 相機 (應用 yaw / pitch) ----
+                // ---- 相機 ----
                 const euler = new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ');
                 camera.quaternion.setFromEuler(euler);
                 camera.position.set(player.posX, player.body.position.y + 0.2, player.posZ);
@@ -610,7 +609,7 @@
         generateLevel(1);
         animate();
         pointerLockWarning.style.display = 'block';
-        console.log('第一人稱平台跑酷 · 滑鼠轉視角已啟動！點擊畫面鎖定滑鼠。');
+        console.log('第一人稱平台跑酷已啟動！點擊畫面鎖定滑鼠旋轉視角。');
     </script>
 </body>
 </html>
