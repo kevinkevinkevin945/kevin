@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 極速第一人稱跑酷 - 無限手榴彈 (修復卡鍵版)</title>
+    <title>3D 極速第一人稱跑酷 - 無限手榴彈 (修復穿地與卡鍵版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #050509; }
         #ui {
@@ -93,13 +93,13 @@
         instructions.addEventListener('click', () => { controls.lock(); });
         controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
         
-        // 🛠️ 核心修復 1：當解鎖滑鼠 (按 Esc / 跳出遊戲) 時，清空所有按鍵與爆破位移
+        // 🛠️ 修復 1：解鎖滑鼠（按 Esc / 跳出遊戲）時，清空移動狀態防止卡鍵暴衝
         controls.addEventListener('unlock', () => { 
             instructions.style.display = 'flex'; 
             resetMoveState();
         });
 
-        // 🛠️ 核心修復 2：當視窗失去焦點 (Alt+Tab 或點擊視窗外) 時，強制重置移動狀態
+        // 🛠️ 修復 2：視窗失去焦點 (Alt+Tab 或點擊外部) 時，強制重置移動狀態
         window.addEventListener('blur', () => {
             resetMoveState();
         });
@@ -257,12 +257,12 @@
         }
 
         // ==========================================
-        // --- 4. 角色控制與物理 (雙重修復) ---
+        // --- 4. 角色控制與物理 ---
         // ==========================================
         const moveState = { forward: false, backward: false, left: false, right: false, jump: false };
         
         window.addEventListener('keydown', (e) => {
-            // 🛠️ 同時判斷 e.code 與 e.key，防止中文輸入法欄攔截
+            // 同時判斷 e.code 與 e.key，避開中文輸入法與大小寫影響
             if (e.code === 'KeyW' || e.key === 'w' || e.key === 'W') moveState.forward = true;
             if (e.code === 'KeyS' || e.key === 's' || e.key === 'S') moveState.backward = true;
             if (e.code === 'KeyA' || e.key === 'a' || e.key === 'A') moveState.left = true;
@@ -333,19 +333,27 @@
                 camera.position.y += velY;
                 velY += gravity;
 
-                // 地面碰撞
+                // 🛠️ 連續軌跡碰撞檢測（修復高空落下的穿地 Bug）
                 isGrounded = false;
                 currentPlatform = null;
-                const pX = camera.position.x, pY = camera.position.y - 1.8, pZ = camera.position.z;
+
+                const prevFeetY = camera.position.y - velY - 1.8; 
+                const currFeetY = camera.position.y - 1.8;
+                const pX = camera.position.x;
+                const pZ = camera.position.z;
 
                 for (let p of activePlatforms) {
                     const pPos = p.group.position, d = p.data;
+                    const surfaceY = pPos.y + 0.5; // 平台頂部表面的 Y 座標
+
                     const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.5;
                     const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.5;
-                    const onY = pY <= pPos.y + 0.4 && pY >= pPos.y - 1.0;
 
-                    if (inX && inZ && onY && velY <= 0) {
-                        camera.position.y = pPos.y + 1.8;
+                    // 只要上一幀在平台上方，且這一幀移動到平台表面以下，就代表踩到了平台
+                    const crossedSurface = prevFeetY >= surfaceY - 0.2 && currFeetY <= surfaceY + 0.4;
+
+                    if (inX && inZ && crossedSurface && velY <= 0) {
+                        camera.position.y = surfaceY + 1.8; // 強制固定在平台高度
                         velY = 0;
                         isGrounded = true;
                         currentPlatform = p;
