@@ -3,971 +3,406 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>第一人稱槍戰 · 手榴彈無限 · 武器庫</title>
+    <title>3D 極速第一人稱跑酷 - 無限手榴彈</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a1a; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #050509; }
         #ui {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 16px;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            z-index: 10;
-            font-size: 14px;
-            user-select: none;
-            flex-wrap: wrap;
-            justify-content: center;
+            position: absolute; top: 30px; left: 30px; color: #fff;
+            background: rgba(10, 10, 20, 0.7); padding: 15px 30px;
+            border-radius: 12px; border: 1px solid rgba(0, 255, 136, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); pointer-events: none;
+            display: flex; gap: 30px; align-items: center;
         }
-        #ui .weapon {
-            padding: 5px 14px;
+        #dist { font-size: 32px; font-weight: 800; color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+        #grenade-info {
+            font-size: 22px; font-weight: 700; color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            background: rgba(0,255,136,0.1);
+            padding: 4px 16px;
             border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            cursor: pointer;
-            transition: 0.2s;
-            font-weight: bold;
-            font-size: 13px;
-            color: #aaa;
+            border: 1px solid rgba(0,255,136,0.3);
         }
-        #ui .weapon.active {
-            background: rgba(255,215,0,0.2);
-            border-color: #ffd700;
-            color: #ffd700;
-            box-shadow: 0 0 20px rgba(255,215,0,0.15);
-        }
-        #ui .weapon:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        #ui .weapon kbd { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; margin-right: 4px; font-size: 11px; color: #888; }
-        #ui .weapon.active kbd { color: #ffd700; }
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.4);
-            font-size: 28px;
-            pointer-events: none;
-            z-index: 10;
-            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            position: absolute; top: 50%; left: 50%;
+            width: 8px; height: 8px; background: rgba(0, 255, 136, 0.9);
+            border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; box-shadow: 0 0 10px #00ff88;
         }
-        #crosshair::before { content: '+'; font-size: 30px; }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            text-shadow: 0 0 20px rgba(0,0,0,0.9);
-            pointer-events: none;
-            z-index: 10;
-            background: rgba(0,0,0,0.5);
-            padding: 6px 16px;
-            border-radius: 30px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
-            user-select: none;
+        #instructions {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 10, 0.88); color: white; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 99;
         }
-        #info span { margin-right: 6px; }
-        #ammo {
-            position: absolute;
-            bottom: 100px;
-            right: 30px;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 0 0 20px rgba(0,0,0,0.9);
-            pointer-events: none;
-            z-index: 10;
-            background: rgba(0,0,0,0.5);
-            padding: 6px 18px;
-            border-radius: 12px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
-            font-family: 'Courier New', monospace;
-        }
-        #grenade-indicator {
-            position: absolute;
-            bottom: 100px;
-            left: 30px;
-            color: #ff8844;
-            font-size: 20px;
-            font-weight: bold;
-            text-shadow: 0 0 20px rgba(0,0,0,0.9);
-            pointer-events: none;
-            z-index: 10;
-            background: rgba(0,0,0,0.5);
-            padding: 6px 18px;
-            border-radius: 12px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,136,68,0.3);
-        }
-        #health-bar {
-            position: absolute;
-            bottom: 100px;
-            left: 130px;
-            width: 150px;
-            height: 12px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-            z-index: 10;
-            backdrop-filter: blur(4px);
-        }
-        #health-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff4444, #ff8800, #44ff44); border-radius: 10px; transition: width 0.2s; }
-        #health-label {
-            position: absolute;
-            bottom: 116px;
-            left: 130px;
-            color: rgba(255,255,255,0.5);
-            font-size: 11px;
-            z-index: 10;
-            pointer-events: none;
-            font-weight: bold;
-        }
-        #cooldown-indicator {
-            position: absolute;
-            bottom: 140px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.6);
-            font-size: 14px;
-            background: rgba(0,0,0,0.5);
-            padding: 4px 16px;
+        #instructions h1 { font-size: 40px; margin-bottom: 10px; color: #00ff88; text-shadow: 0 0 15px #00ff88; }
+        #instructions p { font-size: 18px; color: #ccc; margin: 6px 0; }
+        .highlight { color: #00ff88; font-weight: bold; }
+        #instructions .grenade-badge {
+            display: inline-block;
+            background: rgba(0,255,136,0.15);
+            padding: 2px 14px;
             border-radius: 20px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.05);
-            z-index: 10;
-            pointer-events: none;
-            display: none;
-        }
-        #gameover {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            text-align: center;
-            background: rgba(0,0,0,0.88);
-            padding: 40px 60px;
-            border-radius: 24px;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,100,100,0.3);
-            z-index: 30;
-            display: none;
-            pointer-events: auto;
-            cursor: pointer;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-        }
-        #gameover h2 { font-size: 38px; color: #ff6b6b; margin-bottom: 6px; }
-        #gameover .final-score { font-size: 24px; color: #ffd700; margin: 12px 0; }
-        #gameover .restart-hint { font-size: 16px; color: #aaa; margin-top: 16px; }
-        #pointer-lock-warning {
-            position: absolute;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,200,100,0.8);
-            background: rgba(0,0,0,0.6);
-            padding: 6px 18px;
-            border-radius: 20px;
-            font-size: 14px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,200,100,0.15);
-            z-index: 10;
-            pointer-events: none;
-            display: none;
-        }
-        #ability-hint {
-            position: absolute;
-            bottom: 160px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.4);
-            font-size: 13px;
-            background: rgba(0,0,0,0.4);
-            padding: 4px 16px;
-            border-radius: 20px;
-            z-index: 10;
-            pointer-events: none;
-            white-space: nowrap;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            font-weight: bold;
         }
         @media (max-width: 700px) {
-            #ui { font-size: 11px; padding: 6px 10px; gap: 5px; bottom: 15px; }
-            #ui .weapon { padding: 3px 8px; font-size: 10px; }
-            #info { font-size: 13px; padding: 4px 12px; }
-            #ammo { font-size: 18px; padding: 4px 12px; bottom: 80px; right: 15px; }
-            #grenade-indicator { font-size: 16px; padding: 4px 12px; bottom: 80px; left: 15px; }
-            #health-bar { width: 100px; height: 10px; bottom: 80px; left: 100px; }
-            #health-label { font-size: 10px; bottom: 94px; left: 100px; }
-            #crosshair { font-size: 22px; }
-            #crosshair::before { font-size: 24px; }
-            #gameover { padding: 24px 20px; width: 80%; }
-            #gameover h2 { font-size: 28px; }
-            #ability-hint { font-size: 11px; bottom: 140px; }
-            #cooldown-indicator { font-size: 12px; bottom: 120px; }
+            #ui { padding: 10px 16px; gap: 15px; flex-wrap: wrap; top: 15px; left: 15px; }
+            #dist { font-size: 24px; }
+            #grenade-info { font-size: 18px; padding: 2px 12px; }
+            #instructions h1 { font-size: 26px; }
+            #instructions p { font-size: 14px; }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
 
-    <div id="info">🎯 擊殺: <span id="kills">0</span></div>
-    <div id="crosshair"></div>
-    <div id="health-label">❤️ 生命</div>
-    <div id="health-bar"><div id="health-fill"></div></div>
-    <div id="grenade-indicator">💣 手榴彈: ∞</div>
-    <div id="ammo">🔫 <span id="ammo-count">30</span> / <span id="ammo-max">30</span></div>
-    <div id="ability-hint">[F] 手榴彈 · [Q] 凌空石 (傳送)</div>
-    <div id="cooldown-indicator">⏳ 冷卻中...</div>
-    <div id="pointer-lock-warning">🖱️ 點擊畫面鎖定滑鼠 · 左鍵射擊</div>
     <div id="ui">
-        <div class="weapon active" data-weapon="grenade_launcher"><kbd>1</kbd> 手榴彈</div>
-        <div class="weapon" data-weapon="rifle"><kbd>2</kbd> 步槍</div>
-        <div class="weapon" data-weapon="bomb"><kbd>3</kbd> 炸彈</div>
-        <div class="weapon" data-weapon="tank"><kbd>4</kbd> 坦克</div>
-        <div class="weapon" data-weapon="apc"><kbd>5</kbd> 裝甲車</div>
-        <div class="weapon" data-weapon="rocket"><kbd>6</kbd> 火箭筒</div>
-        <div class="weapon" data-weapon="minigun"><kbd>7</kbd> 火神槍</div>
+        <div>🏃 距離 <div id="dist">0</div> M</div>
+        <div id="grenade-info">💣 手榴彈: ∞</div>
     </div>
-    <div id="gameover">
-        <h2>💀 陣亡</h2>
-        <div class="final-score">擊殺數: <span id="finalKills">0</span></div>
-        <div class="restart-hint">點擊 或 按 <kbd>R</kbd> 重新開始</div>
+    <div id="crosshair"></div>
+
+    <div id="instructions">
+        <h1>🏃 極速跑酷 · 無限手榴彈</h1>
+        <p>點擊畫面鎖定滑鼠並開始遊戲</p>
+        <p><b>[WASD]</b> 極速移動 ｜ <b>[F]</b> 發射<span class="highlight">綠球手榴彈</span> ｜ <b>[空白鍵]</b> 跳躍</p>
+        <p>💡 <b>往腳下發射手榴彈，爆炸衝擊波會把您<span class="highlight">炸飛</span>！</b></p>
+        <p style="margin-top:12px; font-size:14px; color:#888;">手榴彈 <span class="grenade-badge">∞ 無限</span> · 冷卻 0.5 秒</p>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // ============================================================
-        //  場景 / 相機 / 渲染器
-        // ============================================================
+        // ==========================================
+        // --- 1. 場景與控制器設定 ---
+        // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a1a);
-        scene.fog = new THREE.Fog(0x0a0a1a, 40, 80);
+        scene.fog = new THREE.Fog(0x050509, 30, 250);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.5, 0);
-
+        const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
-        // ============================================================
-        //  燈光
-        // ============================================================
-        const ambient = new THREE.AmbientLight(0x40406b, 0.5);
-        scene.add(ambient);
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
 
-        const sunLight = new THREE.DirectionalLight(0xffeedd, 1.0);
-        sunLight.position.set(10, 25, 15);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 1024;
-        sunLight.shadow.mapSize.height = 1024;
-        sunLight.shadow.camera.near = 0.5;
-        sunLight.shadow.camera.far = 60;
-        sunLight.shadow.camera.left = -30;
-        sunLight.shadow.camera.right = 30;
-        sunLight.shadow.camera.top = 30;
-        sunLight.shadow.camera.bottom = -30;
-        scene.add(sunLight);
+        instructions.addEventListener('click', () => { controls.lock(); });
+        controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
+        controls.addEventListener('unlock', () => { instructions.style.display = 'flex'; });
 
-        const fill = new THREE.DirectionalLight(0x8888ff, 0.2);
-        fill.position.set(-8, 5, 10);
-        scene.add(fill);
+        // 光照
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 50, 10);
+        scene.add(dirLight);
 
-        // ============================================================
-        //  地面
-        // ============================================================
-        const groundGeo = new THREE.PlaneGeometry(60, 60);
-        const groundMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a2e,
-            roughness: 0.9,
-            metalness: 0.1,
-        });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -0.01;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        // 手臂
+        const handGroup = new THREE.Group();
+        camera.add(handGroup);
+        scene.add(camera);
 
-        const gridHelper = new THREE.GridHelper(60, 30, 0x333366, 0x222244);
-        gridHelper.position.y = 0;
-        scene.add(gridHelper);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+        const handMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x00ff88, emissiveIntensity: 0.8 });
 
-        // ============================================================
-        //  武器系統 (按照截圖重新設計)
-        // ============================================================
-        const weapons = {
-            grenade_launcher: { name: '手榴彈', damage: 60, fireRate: 300, ammo: 8, maxAmmo: 8, spread: 0.04, bulletSpeed: 35, auto: false, color: 0xff8844, explosive: true, isGrenadeLauncher: true },
-            rifle: { name: '步槍', damage: 35, fireRate: 100, ammo: 30, maxAmmo: 30, spread: 0.015, bulletSpeed: 100, auto: true, color: 0x44ddff },
-            bomb: { name: '炸彈', damage: 80, fireRate: 500, ammo: 5, maxAmmo: 5, spread: 0.03, bulletSpeed: 30, auto: false, color: 0xff4400, explosive: true },
-            tank: { name: '坦克', damage: 120, fireRate: 700, ammo: 3, maxAmmo: 3, spread: 0.02, bulletSpeed: 50, auto: false, color: 0x44aa88, explosive: true },
-            apc: { name: '裝甲車', damage: 50, fireRate: 250, ammo: 15, maxAmmo: 15, spread: 0.03, bulletSpeed: 60, auto: false, color: 0x88aa44, explosive: true },
-            rocket: { name: '火箭筒', damage: 120, fireRate: 800, ammo: 4, maxAmmo: 4, spread: 0.005, bulletSpeed: 40, auto: false, color: 0xff4400, explosive: true },
-            minigun: { name: '火神槍', damage: 15, fireRate: 30, ammo: 200, maxAmmo: 200, spread: 0.06, bulletSpeed: 90, auto: true, color: 0x88ff44 },
-        };
+        const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        lArm.position.set(-0.35, -0.25, -0.5);
+        handGroup.add(lArm);
+        const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        rArm.position.set(0.35, -0.25, -0.5);
+        handGroup.add(rArm);
 
-        let currentWeapon = 'rifle';
-        let ammo = {};
-        let kills = 0;
-        let health = 100;
-        let maxHealth = 100;
-        let isShooting = false;
-        let lastFireTime = 0;
-        let gameActive = true;
-        let gameOver = false;
+        camera.position.set(0, 1.8, 0);
 
-        // ============================================================
-        //  能力系統：手榴彈 (無限) & 凌空石
-        // ============================================================
+        // ==========================================
+        // --- 2. 平台與物件池 ---
+        // ==========================================
+        const platformPool = [];
+        const activePlatforms = [];
+        let nextZ = 0;
+        const spacing = 40; 
+        const poolSize = 15;
+
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.6 });
+
+        function createPlatform() {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 20), baseMat);
+            base.position.y = -0.5;
+            group.add(base);
+
+            const edges = new THREE.EdgesGeometry(base.geometry);
+            const line = new THREE.LineSegments(edges, edgeMat);
+            base.add(line);
+
+            return { group, base, data: { width: 10, depth: 20, isMoving: false, moveSpeed: 0.05, moveOffset: 0, deltaX: 0 } };
+        }
+
+        for (let i = 0; i < poolSize; i++) {
+            const p = createPlatform();
+            scene.add(p.group);
+            p.group.visible = false;
+            platformPool.push(p);
+        }
+
+        function spawnPlatform() {
+            if (platformPool.length === 0) return;
+            const p = platformPool.shift();
+            p.group.visible = true;
+            p.group.position.set(0, 0, nextZ);
+
+            const isStart = nextZ === 0;
+            const isMoving = !isStart && Math.random() > 0.3;
+            const newW = isStart ? 12 : (8 + Math.random() * 6);
+            const newD = isStart ? 25 : (15 + Math.random() * 15);
+
+            p.base.geometry.dispose();
+            p.base.geometry = new THREE.BoxGeometry(newW, 1, newD);
+            p.base.children[0].geometry.dispose();
+            p.base.children[0].geometry = new THREE.EdgesGeometry(p.base.geometry);
+
+            p.data.isMoving = isMoving;
+            p.data.width = newW;
+            p.data.depth = newD;
+            p.data.moveOffset = Math.random() * Math.PI * 2;
+
+            activePlatforms.push(p);
+            nextZ -= spacing;
+        }
+
+        for (let i = 0; i < poolSize - 1; i++) spawnPlatform();
+
+        // ==========================================
+        // --- 3. 綠色手榴彈（無限）與爆炸波 ---
+        // ==========================================
+        const grenades = [];
+        const explosions = [];
         let grenadeCooldown = 0;
-        const GRENADE_COOLDOWN = 1.8;
-        let warpCooldown = 0;
-        const WARP_COOLDOWN = 3.0;
+        const GRENADE_COOLDOWN = 0.5; // 秒
 
-        // 無限手榴彈 (按F)
+        const grenadeGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const grenadeMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00ff00, 
+            emissive: 0x00ff88, 
+            emissiveIntensity: 0.9,
+            roughness: 0.2
+        });
+
         function throwGrenade() {
-            if (gameOver || !gameActive) return;
             const now = Date.now() / 1000;
-            if (now - grenadeCooldown < GRENADE_COOLDOWN) {
-                showCooldown(GRENADE_COOLDOWN - (now - grenadeCooldown));
-                return;
-            }
+            if (now - grenadeCooldown < GRENADE_COOLDOWN) return;
             grenadeCooldown = now;
 
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyQuaternion(camera.quaternion);
-            const origin = camera.position.clone();
-            origin.y += 0.3;
+            const grenade = new THREE.Mesh(grenadeGeo, grenadeMat);
+            grenade.position.copy(camera.position);
 
-            const grenadeMat = new THREE.MeshStandardMaterial({
-                color: 0x44aa44,
-                emissive: 0x224422,
-                emissiveIntensity: 0.3,
-                roughness: 0.5,
-                metalness: 0.3,
-            });
-            const grenade = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), grenadeMat);
-            grenade.position.copy(origin);
-            grenade.castShadow = true;
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const velocity = dir.clone().multiplyScalar(3.0);
+
             scene.add(grenade);
-
-            const velocity = dir.clone().multiplyScalar(20);
-            velocity.y += 5;
-
-            const grenadeData = {
-                mesh: grenade,
-                velocity: velocity,
-                life: 1.8,
-                isGrenade: true,
-                isExplosive: true,
-                damage: 80,
-            };
-            projectiles.push(grenadeData);
-
-            createMuzzleFlash(origin, dir, 0xff8800);
+            grenades.push({ mesh: grenade, vel: velocity, life: 50 });
         }
 
-        // 凌空石 (按Q)
-        function throwWarpStone() {
-            if (gameOver || !gameActive) return;
-            const now = Date.now() / 1000;
-            if (now - warpCooldown < WARP_COOLDOWN) {
-                showCooldown(WARP_COOLDOWN - (now - warpCooldown));
-                return;
-            }
-            warpCooldown = now;
+        function createExplosion(pos) {
+            // 爆炸視覺
+            const expGroup = new THREE.Group();
+            expGroup.position.copy(pos);
 
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyQuaternion(camera.quaternion);
-            const origin = camera.position.clone();
-            origin.y += 0.3;
+            const expGeo = new THREE.SphereGeometry(1, 16, 16);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.9 });
+            const expMesh = new THREE.Mesh(expGeo, expMat);
+            expGroup.add(expMesh);
 
-            const stoneMat = new THREE.MeshStandardMaterial({
-                color: 0xaa44ff,
-                emissive: 0x6622aa,
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 0.9,
-            });
-            const stone = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), stoneMat);
-            stone.position.copy(origin);
-            stone.castShadow = true;
-            scene.add(stone);
+            scene.add(expGroup);
+            explosions.push({ group: expGroup, mesh: expMesh, scale: 1, maxScale: 10, opacity: 1.0 });
 
-            const trailMat = new THREE.MeshBasicMaterial({
-                color: 0xaa44ff,
-                transparent: true,
-                opacity: 0.3,
-            });
-            const trail = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), trailMat);
-            trail.position.copy(origin);
-            scene.add(trail);
+            // 炸飛玩家
+            const playerPos = camera.position.clone();
+            const distToPlayer = pos.distanceTo(playerPos);
+            const blastRadius = 12.0;
 
-            const velocity = dir.clone().multiplyScalar(35);
-            const stoneData = {
-                mesh: stone,
-                trail: trail,
-                velocity: velocity,
-                life: 1.5,
-                isWarp: true,
-            };
-            projectiles.push(stoneData);
+            if (distToPlayer < blastRadius) {
+                const knockbackDir = new THREE.Vector3().subVectors(playerPos, pos).normalize();
+                const force = (1.0 - distToPlayer / blastRadius) * 2.2;
 
-            createMuzzleFlash(origin, dir, 0xaa44ff);
-        }
-
-        function warpPlayer(position) {
-            if (position.y < 0.5) position.y = 0.5;
-            camera.position.copy(position);
-            const flashMat = new THREE.MeshBasicMaterial({
-                color: 0xaa44ff,
-                transparent: true,
-                opacity: 0.3,
-            });
-            const flash = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 12), flashMat);
-            flash.position.copy(position);
-            scene.add(flash);
-            setTimeout(() => scene.remove(flash), 300);
-        }
-
-        function showCooldown(time) {
-            const el = document.getElementById('cooldown-indicator');
-            el.style.display = 'block';
-            el.innerText = `⏳ 冷卻中 ${time.toFixed(1)}s`;
-            clearTimeout(el._timeout);
-            el._timeout = setTimeout(() => { el.style.display = 'none'; }, time * 1000);
-        }
-
-        // ============================================================
-        //  投射物系統
-        // ============================================================
-        const projectiles = [];
-
-        function createBullet(origin, direction, weaponKey) {
-            const weapon = weapons[weaponKey];
-            const spread = weapon.spread;
-            const dir = direction.clone();
-            dir.x += (Math.random() - 0.5) * spread;
-            dir.y += (Math.random() - 0.5) * spread;
-            dir.z += (Math.random() - 0.5) * spread;
-            dir.normalize();
-
-            const color = weapon.color || 0xffdd44;
-            const bulletMat = new THREE.MeshStandardMaterial({
-                color: color,
-                emissive: color,
-                emissiveIntensity: 0.6,
-            });
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), bulletMat);
-            bullet.position.copy(origin);
-            bullet.castShadow = true;
-            scene.add(bullet);
-
-            const bulletData = {
-                mesh: bullet,
-                velocity: dir.clone().multiplyScalar(weapon.bulletSpeed || 80),
-                damage: weapon.damage || 25,
-                life: 3.0,
-                weapon: weaponKey,
-                isExplosive: weapon.explosive || false,
-                isEnemy: false,
-                isGrenade: false,
-            };
-            projectiles.push(bulletData);
-            return bulletData;
-        }
-
-        function createMuzzleFlash(origin, dir, color = 0xffff88) {
-            const flashMat = new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.8,
-            });
-            const flash = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), flashMat);
-            flash.position.copy(origin);
-            flash.position.add(dir.clone().multiplyScalar(-0.3));
-            scene.add(flash);
-            setTimeout(() => scene.remove(flash), 50);
-        }
-
-        function shoot() {
-            if (gameOver || !gameActive) return;
-            const now = Date.now();
-            const weapon = weapons[currentWeapon];
-            if (now - lastFireTime < weapon.fireRate) return;
-            if (ammo[currentWeapon] <= 0) return;
-
-            lastFireTime = now;
-            ammo[currentWeapon]--;
-            updateAmmoUI();
-
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyQuaternion(camera.quaternion);
-            const origin = camera.position.clone();
-            origin.y += 0.1;
-
-            const pellets = weapon.pellets || 1;
-            for (let i = 0; i < pellets; i++) {
-                createBullet(origin, dir, currentWeapon);
-            }
-            createMuzzleFlash(origin, dir);
-            pitch += 0.005 * (weapon.damage / 25);
-        }
-
-        // ============================================================
-        //  敵人生成
-        // ============================================================
-        const enemies = [];
-
-        function spawnEnemy() {
-            if (gameOver || !gameActive) return;
-            const radius = 20 + Math.random() * 15;
-            const angle = Math.random() * Math.PI * 2;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-
-            const enemyMat = new THREE.MeshStandardMaterial({
-                color: 0xff4444,
-                emissive: new THREE.Color(0x661111),
-                emissiveIntensity: 0.3,
-                roughness: 0.5,
-            });
-            const enemy = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 0.6), enemyMat);
-            enemy.position.set(x, 0.6, z);
-            enemy.castShadow = true;
-            enemy.receiveShadow = true;
-            scene.add(enemy);
-
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), eyeMat);
-            eye.position.set(0, 0.2, 0.35);
-            enemy.add(eye);
-            const eye2 = eye.clone();
-            eye2.position.x = -0.2;
-            enemy.add(eye2);
-
-            const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-            const gun = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), gunMat);
-            gun.position.set(0, 0, 0.4);
-            enemy.add(gun);
-
-            const enemyData = {
-                mesh: enemy,
-                health: 30 + Math.random() * 20,
-                maxHealth: 50,
-                speed: 1.5 + Math.random() * 1.5,
-                attackRange: 8,
-                damage: 10,
-                lastAttackTime: 0,
-            };
-            enemies.push(enemyData);
-        }
-
-        function killEnemy(index) {
-            const enemy = enemies[index];
-            if (!enemy) return;
-            scene.remove(enemy.mesh);
-            enemies.splice(index, 1);
-            kills++;
-            document.getElementById('kills').innerText = kills;
-            if (Math.random() < 0.3) {
-                const keys = Object.keys(weapons);
-                const wKey = keys[Math.floor(Math.random() * keys.length)];
-                ammo[wKey] = Math.min(ammo[wKey] + 5, weapons[wKey].maxAmmo);
-                updateAmmoUI();
+                blastVelocity.x += knockbackDir.x * force * 1.5;
+                blastVelocity.z += knockbackDir.z * force * 1.5;
+                velY += Math.max(0.4, knockbackDir.y * force * 1.8);
+                isGrounded = false;
             }
         }
 
-        function takeDamage(dmg) {
-            health -= dmg;
-            document.getElementById('health-fill').style.width = (health / maxHealth * 100) + '%';
-            if (health <= 0) {
-                health = 0;
-                gameOver = true;
-                gameActive = false;
-                document.getElementById('finalKills').innerText = kills;
-                document.getElementById('gameover').style.display = 'block';
-                if (isPointerLocked) document.exitPointerLock();
-            }
-        }
-
-        function createExplosion(position, radius = 3, damage = 60) {
-            const expMat = new THREE.MeshBasicMaterial({
-                color: 0xff4400,
-                transparent: true,
-                opacity: 0.6,
-            });
-            const exp = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), expMat);
-            exp.position.copy(position);
-            scene.add(exp);
-
-            enemies.forEach((enemy, index) => {
-                const dist = position.distanceTo(enemy.mesh.position);
-                if (dist < radius) {
-                    const dmg = damage * (1 - dist / radius);
-                    enemy.health -= dmg;
-                    if (enemy.health <= 0) killEnemy(index);
-                }
-            });
-
-            let scale = 0.5;
-            const expandInterval = setInterval(() => {
-                scale += 0.3;
-                exp.scale.set(scale, scale, scale);
-                exp.material.opacity -= 0.03;
-                if (exp.material.opacity <= 0) {
-                    clearInterval(expandInterval);
-                    scene.remove(exp);
-                }
-            }, 30);
-        }
-
-        // ============================================================
-        //  UI 更新
-        // ============================================================
-        function updateAmmoUI() {
-            const weapon = weapons[currentWeapon];
-            document.getElementById('ammo-count').innerText = ammo[currentWeapon] || 0;
-            document.getElementById('ammo-max').innerText = weapon.maxAmmo;
-        }
-
-        function updateWeaponUI() {
-            document.querySelectorAll('.weapon').forEach(el => {
-                el.classList.toggle('active', el.dataset.weapon === currentWeapon);
-            });
-            updateAmmoUI();
-        }
-
-        // ============================================================
-        //  滑鼠 & 鍵盤控制
-        // ============================================================
-        let isPointerLocked = false;
-        let yaw = 0;
-        let pitch = 0;
-        const keys = { w: false, a: false, s: false, d: false };
-
-        document.addEventListener('click', () => {
-            if (!isPointerLocked && !gameOver) {
-                renderer.domElement.requestPointerLock();
-            }
+        // ==========================================
+        // --- 4. 角色控制與物理 ---
+        // ==========================================
+        const moveState = { forward: false, backward: false, left: false, right: false, jump: false };
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') moveState.forward = true;
+            if (e.code === 'KeyS') moveState.backward = true;
+            if (e.code === 'KeyA') moveState.left = true;
+            if (e.code === 'KeyD') moveState.right = true;
+            if (e.code === 'Space') { e.preventDefault(); moveState.jump = true; }
+            if (e.code === 'KeyF' && controls.isLocked) throwGrenade();
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') moveState.forward = false;
+            if (e.code === 'KeyS') moveState.backward = false;
+            if (e.code === 'KeyA') moveState.left = false;
+            if (e.code === 'KeyD') moveState.right = false;
+            if (e.code === 'Space') { e.preventDefault(); moveState.jump = false; }
         });
 
-        document.addEventListener('pointerlockchange', () => {
-            isPointerLocked = document.pointerLockElement === renderer.domElement;
-            document.getElementById('pointer-lock-warning').style.display = isPointerLocked ? 'none' : 'block';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isPointerLocked || gameOver) return;
-            const sensitivity = 0.002;
-            yaw -= e.movementX * sensitivity;
-            pitch -= e.movementY * sensitivity;
-            pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-        });
-
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
-                keys[key] = true;
-                e.preventDefault();
-            }
-            const num = parseInt(e.key);
-            if (num >= 1 && num <= 7) {
-                const keysList = Object.keys(weapons);
-                if (keysList[num - 1]) {
-                    currentWeapon = keysList[num - 1];
-                    updateWeaponUI();
-                }
-            }
-            if (e.code === 'Space') {
-                e.preventDefault();
-                const weapon = weapons[currentWeapon];
-                ammo[currentWeapon] = weapon.maxAmmo;
-                updateAmmoUI();
-            }
-            if (key === 'f') {
-                e.preventDefault();
-                throwGrenade();
-            }
-            if (key === 'q') {
-                e.preventDefault();
-                throwWarpStone();
-            }
-            if (key === 'r' && gameOver) {
-                restartGame();
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
-                keys[key] = false;
-                e.preventDefault();
-            }
-        });
-
-        // 射擊
-        document.addEventListener('mousedown', (e) => {
-            if (e.button === 0) {
-                isShooting = true;
-                if (isPointerLocked) {
-                    const weapon = weapons[currentWeapon];
-                    if (!weapon.auto) shoot();
-                }
-            }
-        });
-
-        document.addEventListener('mouseup', (e) => {
-            if (e.button === 0) isShooting = false;
-        });
-
-        // ============================================================
-        //  武器 UI 點擊
-        // ============================================================
-        document.querySelectorAll('.weapon').forEach(el => {
-            el.addEventListener('click', () => {
-                const key = el.dataset.weapon;
-                if (weapons[key]) {
-                    currentWeapon = key;
-                    updateWeaponUI();
-                }
-            });
-        });
-
-        // ============================================================
-        //  遊戲控制
-        // ============================================================
-        document.getElementById('gameover').addEventListener('click', () => {
-            if (gameOver) restartGame();
-        });
-
-        function restartGame() {
-            enemies.forEach(e => scene.remove(e.mesh));
-            enemies.length = 0;
-            projectiles.forEach(p => {
-                scene.remove(p.mesh);
-                if (p.trail) scene.remove(p.trail);
-            });
-            projectiles.length = 0;
-            health = maxHealth;
-            kills = 0;
-            gameOver = false;
-            gameActive = true;
-            document.getElementById('gameover').style.display = 'none';
-            document.getElementById('kills').innerText = '0';
-            document.getElementById('health-fill').style.width = '100%';
-            Object.keys(weapons).forEach(key => { ammo[key] = weapons[key].maxAmmo; });
-            currentWeapon = 'rifle';
-            updateWeaponUI();
-            yaw = 0;
-            pitch = 0;
-            camera.position.set(0, 1.5, 0);
-            grenadeCooldown = 0;
-            warpCooldown = 0;
-            for (let i = 0; i < 5; i++) setTimeout(spawnEnemy, i * 300);
-        }
-
-        // ============================================================
-        //  遊戲主循環
-        // ============================================================
-        let enemySpawnTimer = 0;
-        let lastTime = Date.now();
+        let velY = 0;
+        let blastVelocity = new THREE.Vector3(0, 0, 0);
+        const playerSpeed = 1.3;
+        const gravity = -0.04;
+        const jumpForce = 0.85;
+        let isGrounded = false, currentPlatform = null;
+        let time = 0;
 
         function animate() {
             requestAnimationFrame(animate);
-            const now = Date.now();
-            const delta = Math.min((now - lastTime) / 1000, 0.05);
-            lastTime = now;
+            time += 0.05;
 
-            if (gameActive && !gameOver) {
-                // WASD 移動
-                let moveX = 0,
-                    moveZ = 0;
-                if (keys.w) moveZ -= 1;
-                if (keys.s) moveZ += 1;
-                if (keys.a) moveX -= 1;
-                if (keys.d) moveX += 1;
-                const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
-                if (len > 0) { moveX /= len;
-                    moveZ /= len; }
-
-                const sin = Math.sin(yaw);
-                const cos = Math.cos(yaw);
-                const speed = 4.0;
-                const worldMoveX = (moveX * cos - moveZ * sin) * speed * delta;
-                const worldMoveZ = (moveX * sin + moveZ * cos) * speed * delta;
-                camera.position.x += worldMoveX;
-                camera.position.z += worldMoveZ;
-
-                // 相機旋轉
-                const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
-                camera.quaternion.setFromEuler(euler);
-
-                // 更新投射物
-                for (let i = projectiles.length - 1; i >= 0; i--) {
-                    const p = projectiles[i];
-                    p.mesh.position.add(p.velocity.clone().multiplyScalar(delta));
-                    if (p.trail) {
-                        p.trail.position.copy(p.mesh.position);
-                        p.trail.position.y += 0.1;
-                    }
-                    p.life -= delta;
-
-                    let used = false;
-
-                    // 手榴彈爆炸
-                    if (p.isGrenade && p.life <= 0) {
-                        createExplosion(p.mesh.position, 4, p.damage || 80);
-                        scene.remove(p.mesh);
-                        used = true;
-                    }
-
-                    // 凌空石傳送
-                    if (p.isWarp && p.life <= 0) {
-                        warpPlayer(p.mesh.position);
-                        scene.remove(p.mesh);
-                        if (p.trail) scene.remove(p.trail);
-                        used = true;
-                    }
-
-                    // 與敵人碰撞
-                    if (!used && !p.isWarp) {
-                        for (let j = enemies.length - 1; j >= 0; j--) {
-                            const enemy = enemies[j];
-                            const dist = p.mesh.position.distanceTo(enemy.mesh.position);
-                            if (dist < 0.8) {
-                                enemy.health -= p.damage || 25;
-                                if (p.isExplosive) {
-                                    createExplosion(p.mesh.position, 3, p.damage || 60);
-                                }
-                                if (enemy.health <= 0) killEnemy(j);
-                                scene.remove(p.mesh);
-                                if (p.trail) scene.remove(p.trail);
-                                used = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!used && (p.mesh.position.y < 0 || p.life <= 0 || p.mesh.position.length() > 60)) {
-                        scene.remove(p.mesh);
-                        if (p.trail) scene.remove(p.trail);
-                        used = true;
-                    }
-
-                    if (used) {
-                        projectiles.splice(i, 1);
-                    }
-                }
-
-                // 敵人 AI
-                for (let i = enemies.length - 1; i >= 0; i--) {
-                    const enemy = enemies[i];
-                    const toPlayer = camera.position.clone().sub(enemy.mesh.position);
-                    const dist = toPlayer.length();
-
-                    if (dist < enemy.attackRange) {
-                        if (now - enemy.lastAttackTime > 1000) {
-                            enemy.lastAttackTime = now;
-                            const dir = toPlayer.clone().normalize();
-                            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-                            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), bulletMat);
-                            bullet.position.copy(enemy.mesh.position);
-                            bullet.position.y += 0.8;
-                            scene.add(bullet);
-                            const bData = {
-                                mesh: bullet,
-                                velocity: dir.clone().multiplyScalar(15),
-                                life: 2,
-                                isEnemy: true,
-                                isGrenade: false,
-                                isWarp: false,
-                            };
-                            projectiles.push(bData);
-                        }
+            if (controls.isLocked) {
+                // 移動平台
+                activePlatforms.forEach(p => {
+                    if (p.data.isMoving) {
+                        const oldX = p.group.position.x;
+                        p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * 8;
+                        p.data.deltaX = p.group.position.x - oldX;
                     } else {
-                        const moveDir = toPlayer.clone().normalize();
-                        moveDir.y = 0;
-                        enemy.mesh.position.add(moveDir.clone().multiplyScalar(enemy.speed * delta));
-                        enemy.mesh.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+                        p.data.deltaX = 0;
                     }
+                });
 
-                    if (dist < 0.8) {
-                        takeDamage(5);
-                        enemy.mesh.position.add(toPlayer.clone().normalize().multiplyScalar(-2));
+                // WASD 移動
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                cameraDirection.y = 0;
+                cameraDirection.normalize();
+
+                const sideVector = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
+
+                if (moveState.forward) camera.position.addScaledVector(cameraDirection, playerSpeed);
+                if (moveState.backward) camera.position.addScaledVector(cameraDirection, -playerSpeed);
+                if (moveState.left) camera.position.addScaledVector(sideVector, playerSpeed);
+                if (moveState.right) camera.position.addScaledVector(sideVector, -playerSpeed);
+
+                camera.position.add(blastVelocity);
+                blastVelocity.multiplyScalar(0.92);
+
+                if (isGrounded && currentPlatform) {
+                    camera.position.x += currentPlatform.data.deltaX;
+                }
+
+                // 跳躍與重力
+                if (moveState.jump && isGrounded) {
+                    velY = jumpForce;
+                    isGrounded = false;
+                    currentPlatform = null;
+                }
+
+                camera.position.y += velY;
+                velY += gravity;
+
+                // 地面碰撞
+                isGrounded = false;
+                currentPlatform = null;
+                const pX = camera.position.x, pY = camera.position.y - 1.8, pZ = camera.position.z;
+
+                for (let p of activePlatforms) {
+                    const pPos = p.group.position, d = p.data;
+                    const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.5;
+                    const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.5;
+                    const onY = pY <= pPos.y + 0.4 && pY >= pPos.y - 1.0;
+
+                    if (inX && inZ && onY && velY <= 0) {
+                        camera.position.y = pPos.y + 1.8;
+                        velY = 0;
+                        isGrounded = true;
+                        currentPlatform = p;
+                        blastVelocity.set(0, 0, 0);
+                        break;
                     }
                 }
 
-                // 生成敵人
-                enemySpawnTimer += delta;
-                if (enemySpawnTimer > 2 && enemies.length < 12 + Math.floor(kills / 3)) {
-                    enemySpawnTimer = 0;
-                    spawnEnemy();
-                }
+                // 手榴彈飛行
+                for (let i = grenades.length - 1; i >= 0; i--) {
+                    const g = grenades[i];
+                    g.mesh.position.add(g.vel);
+                    g.life--;
 
-                // 敵人子彈碰撞玩家
-                for (let i = projectiles.length - 1; i >= 0; i--) {
-                    const p = projectiles[i];
-                    if (p.isEnemy) {
-                        const dist = p.mesh.position.distanceTo(camera.position);
-                        if (dist < 0.5) {
-                            takeDamage(8);
-                            scene.remove(p.mesh);
-                            projectiles.splice(i, 1);
-                            continue;
+                    let hit = false;
+                    for (let p of activePlatforms) {
+                        const pPos = p.group.position, d = p.data;
+                        if (Math.abs(g.mesh.position.x - pPos.x) <= d.width / 2 &&
+                            Math.abs(g.mesh.position.z - pPos.z) <= d.depth / 2 &&
+                            Math.abs(g.mesh.position.y - pPos.y) <= 1.2) {
+                            hit = true;
+                            break;
                         }
-                        if (p.mesh.position.y < 0 || p.life <= 0) {
-                            scene.remove(p.mesh);
-                            projectiles.splice(i, 1);
-                        }
+                    }
+
+                    if (hit || g.life <= 0) {
+                        createExplosion(g.mesh.position);
+                        scene.remove(g.mesh);
+                        g.mesh.geometry.dispose();
+                        g.mesh.material.dispose();
+                        grenades.splice(i, 1);
                     }
                 }
 
-                // 自動射擊
-                if (isShooting && isPointerLocked && !gameOver) {
-                    const weapon = weapons[currentWeapon];
-                    if (weapon.auto) shoot();
+                // 爆炸動畫
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    const exp = explosions[i];
+                    exp.scale += 0.9;
+                    exp.group.scale.set(exp.scale, exp.scale, exp.scale);
+                    exp.opacity -= 0.08;
+                    exp.mesh.material.opacity = exp.opacity;
+
+                    if (exp.opacity <= 0) {
+                        scene.remove(exp.group);
+                        exp.mesh.geometry.dispose();
+                        exp.mesh.material.dispose();
+                        explosions.splice(i, 1);
+                    }
                 }
+
+                // 跌落死亡
+                if (camera.position.y < -20) {
+                    controls.unlock();
+                    alert(`GAME OVER！距離: ${Math.max(0, Math.floor(-camera.position.z))} M`);
+                    location.reload();
+                }
+
+                // 無限平台生成
+                if (activePlatforms.length > 0 && camera.position.z < activePlatforms[0].group.position.z - spacing * 2) {
+                    const oldP = activePlatforms.shift();
+                    oldP.group.visible = false;
+                    platformPool.push(oldP);
+                    spawnPlatform();
+                }
+
+                document.getElementById('dist').innerText = Math.max(0, Math.floor(-camera.position.z));
             }
 
             renderer.render(scene, camera);
         }
 
-        // ============================================================
-        //  視窗縮放
-        // ============================================================
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // ============================================================
-        //  啟動
-        // ============================================================
-        Object.keys(weapons).forEach(key => {
-            ammo[key] = weapons[key].maxAmmo;
-        });
-        currentWeapon = 'rifle';
-        updateWeaponUI();
-        document.getElementById('health-fill').style.width = '100%';
-        document.getElementById('pointer-lock-warning').style.display = 'block';
-
-        for (let i = 0; i < 4; i++) setTimeout(spawnEnemy, i * 400);
-
         animate();
-        console.log('第一人稱槍戰已啟動！1-7切換武器，F手榴彈(無限)，Q凌空石，左鍵射擊，空格換彈。');
+        console.log('🔥 無限手榴彈跑酷已啟動！按 F 發射，往腳下炸飛自己！');
     </script>
 </body>
 </html>
