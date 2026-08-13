@@ -6,7 +6,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{overflow:hidden;font-family:Arial}
-#gameCanvas{display:block;width:100vw;height:100vh}
 #ui{position:fixed;top:12px;left:12px;color:#fff;background:rgba(0,0,0,0.5);padding:10px;border-radius:6px;z-index:10}
 #tip{position:fixed;bottom:20px;width:100%;text-align:center;color:#fff;font-size:18px;z-index:10}
 </style>
@@ -16,7 +15,7 @@ body{overflow:hidden;font-family:Arial}
 <div>關卡：<span id="levelText">1</span></div>
 <div>狀態：<span id="status">點擊畫面開始遊戲</span></div>
 </div>
-<div id="tip">WASD移動｜空白鍵跳躍｜滑鼠轉視角｜藍色=檢查點｜綠色=終點</div>
+<div id="tip">WASD移動｜空白鍵跳躍｜滑鼠轉視角｜藍色=檢查點｜綠色=終點｜ESC解除滑鼠</div>
 
 <script type="importmap">
 {
@@ -39,11 +38,15 @@ let lastCheckPoint=new THREE.Vector3(0,2,0);
 let platforms=[];
 let checkPoints=[];
 let goal=null;
+// 地面射線偵測
+const groundRay=new THREE.Raycaster();
 
 // 重力、移動參數
 const GRAVITY=-22;
 const JUMP_FORCE=8;
 const SPEED=7;
+const PLAYER_HEIGHT=1.8;
+const GROUND_CHECK_DIST=1.2;
 
 // 按鍵狀態
 const keys={w:false,a:false,s:false,d:false,space:false};
@@ -177,34 +180,33 @@ function onWindowResize(){
   renderer.setSize(window.innerWidth,window.innerHeight);
 }
 
-// 碰撞偵測：判斷是否站在平台上
-function checkGround(){
+// ✅【修復】向下射線檢測地面，解決穿地
+function checkGroundRay(){
+  // 從玩家腳下上方往下射線
+  const origin=camera.position.clone();
+  origin.y -= PLAYER_HEIGHT - 0.05;
+  const downDir=new THREE.Vector3(0,-1,0);
+  groundRay.set(origin,downDir);
+  const intersect=groundRay.intersectObjects(platforms);
   isOnGround=false;
-  const camPos=camera.position.clone();
-  for(let plat of platforms){
-    const bbox=new THREE.Box3().setFromObject(plat);
-    const feetPos=camPos.clone();
-    feetPos.y-=1.7;
-    if(bbox.containsPoint(feetPos)){
-      isOnGround=true;
-      camPos.y=plat.position.y+1.7;
-      camera.position.y=camPos.y;
-      return true;
-    }
+  if(intersect.length>0 && intersect[0].distance <= GROUND_CHECK_DIST){
+    isOnGround=true;
+    // 吸附到平台表面，避免卡進地板
+    camera.position.y = intersect[0].point.y + PLAYER_HEIGHT;
+    playerVelocity.y=0;
   }
-  return false;
 }
 
 // 檢查是否碰到檢查點
 function hitCheckPoint(){
-  const cpRange=2.2;
+  const cpRange=2.5;
   for(let cp of checkPoints){
     if(camera.position.distanceTo(cp.pos)<cpRange){
       lastCheckPoint.copy(cp.pos);
     }
   }
   // 碰到終點
-  if(camera.position.distanceTo(goal.position)<4){
+  if(camera.position.distanceTo(goal.position)<4.5){
     levelIndex+=1;
     buildLevel(levelIndex);
   }
@@ -215,7 +217,6 @@ function animate(){
   const delta=0.016;
 
   if(controls.isLocked){
-    // 移動方向
     playerVelocity.y+=GRAVITY*delta;
 
     const dir=new THREE.Vector3();
@@ -234,21 +235,22 @@ function animate(){
 
     if(move.length()>0)move.normalize().multiplyScalar(SPEED);
 
-    // 跳躍
+    // 跳躍，只有站在地面才能跳
     if(keys.space&&isOnGround){
       playerVelocity.y=JUMP_FORCE;
     }
 
-    // 移動相機
+    // XZ水平移動
     camera.position.x+=move.x*delta*60;
     camera.position.z+=move.z*delta*60;
+    // Y垂直移動（重力）
     camera.position.y+=playerVelocity.y*delta;
 
-    checkGround();
+    checkGroundRay();
     hitCheckPoint();
 
     // 跌落重生
-    if(camera.position.y<-15){
+    if(camera.position.y<-20){
       respawnPlayer();
     }
   }
