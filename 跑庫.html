@@ -39,11 +39,10 @@ let platforms=[];
 let checkPoints=[];
 let goal=null;
 
-const GRAVITY = -25;
-const JUMP_FORCE = 9;
+const GRAVITY = -22;
+const JUMP_FORCE = 8.5;
 const SPEED = 6.5;
 const PLAYER_HEIGHT = 1.8;
-const FEET_OFFSET = 0.2;
 
 const keys={w:false,a:false,s:false,d:false,space:false};
 
@@ -77,7 +76,15 @@ function init(){
       case'KeyA':keys.a=true;break;
       case'KeyS':keys.s=true;break;
       case'KeyD':keys.d=true;break;
-      case'Space':keys.space=true;e.preventDefault();break;
+      case'Space':
+        keys.space=true;
+        e.preventDefault();
+        // 直接測試跳躍條件
+        if(controls.isLocked && isOnGround){
+          playerVelocity.y = JUMP_FORCE;
+          isOnGround = false;
+        }
+        break;
     }
   });
   document.addEventListener('keyup',e=>{
@@ -160,22 +167,24 @@ function onWindowResize(){
   renderer.setSize(window.innerWidth,window.innerHeight);
 }
 
-// 從玩家頭部向下射線，偵測地面
+// 重寫地面檢測：射線找平台，比Y座標，不靠distance判斷
 function checkGround(){
   const ray=new THREE.Raycaster();
   const origin = camera.position.clone();
-  const down=new THREE.Vector3(0,-1,0);
-  ray.set(origin, down);
+  origin.y -= 0.02;
+  ray.set(origin, new THREE.Vector3(0,-1,0));
   const hits = ray.intersectObjects(platforms);
-  isOnGround=false;
+  isOnGround = false;
   if(hits.length>0){
-    const hit = hits[0];
-    // 頭到地面的距離小於玩家身高 → 在平台上方
-    if(hit.distance <= PLAYER_HEIGHT + FEET_OFFSET){
-      isOnGround=true;
-      // 吸附到平台頂
-      camera.position.y = hit.point.y + PLAYER_HEIGHT;
-      playerVelocity.y=0;
+    const hitPointY = hits[0].point.y;
+    // 腳的Y位置
+    const feetY = camera.position.y - PLAYER_HEIGHT;
+    // 如果腳非常接近平台頂部，代表站在地上
+    if(Math.abs(feetY - hitPointY) < 0.35){
+      isOnGround = true;
+      playerVelocity.y = 0;
+      // 吸附到地面，防止卡進去
+      camera.position.y = hitPointY + PLAYER_HEIGHT;
     }
   }
 }
@@ -197,7 +206,6 @@ function animate(){
   const delta = 0.016;
 
   if(controls.isLocked){
-    // 計算移動方向
     const dir=new THREE.Vector3();
     camera.getWorldDirection(dir);
     dir.y=0;
@@ -213,25 +221,18 @@ function animate(){
     if(keys.d)move.add(right);
     if(move.length()>0) move.normalize().multiplyScalar(SPEED);
 
-    // 只有站在地上才能跳
-    if(keys.space && isOnGround){
-      playerVelocity.y = JUMP_FORCE;
-    }
-
-    // 施加重力
+    // 重力
     playerVelocity.y += GRAVITY * delta;
 
-    // 水平移動 X Z
+    // 水平移動
     camera.position.x += move.x * delta * 60;
     camera.position.z += move.z * delta * 60;
-    // 垂直移動 Y
+    // 垂直移動
     camera.position.y += playerVelocity.y * delta;
 
-    // ✅ 做完移動後才做地面偵測、吸附
     checkGround();
     hitCheckPoint();
 
-    // 墜落重生
     if(camera.position.y < -20){
       respawnPlayer();
     }
