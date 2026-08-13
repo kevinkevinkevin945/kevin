@@ -1,253 +1,437 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<title>3D Parkour 跑酷遊戲</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;font-family:Arial}
-#gameCanvas{display:block;width:100vw;height:100vh}
-#ui{position:fixed;top:12px;left:12px;color:#fff;background:rgba(0,0,0,0.5);padding:10px;border-radius:6px;z-index:10}
-#tip{position:fixed;bottom:20px;width:100%;text-align:center;color:#fff;font-size:18px;z-index:10}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 極速第一人稱跑酷 - 無限手榴彈 (修復穿地與卡鍵版)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #050509; }
+        #ui {
+            position: absolute; top: 30px; left: 30px; color: #fff;
+            background: rgba(10, 10, 20, 0.7); padding: 15px 30px;
+            border-radius: 12px; border: 1px solid rgba(0, 255, 136, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); pointer-events: none;
+            display: flex; gap: 30px; align-items: center;
+        }
+        #dist { font-size: 32px; font-weight: 800; color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+        #grenade-info {
+            font-size: 22px; font-weight: 700; color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            background: rgba(0,255,136,0.1);
+            padding: 4px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,255,136,0.3);
+        }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 8px; height: 8px; background: rgba(0, 255, 136, 0.9);
+            border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; box-shadow: 0 0 10px #00ff88;
+        }
+        #instructions {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 10, 0.88); color: white; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 99;
+        }
+        #instructions h1 { font-size: 40px; margin-bottom: 10px; color: #00ff88; text-shadow: 0 0 15px #00ff88; }
+        #instructions p { font-size: 18px; color: #ccc; margin: 6px 0; }
+        .highlight { color: #00ff88; font-weight: bold; }
+        #instructions .grenade-badge {
+            display: inline-block;
+            background: rgba(0,255,136,0.15);
+            padding: 2px 14px;
+            border-radius: 20px;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        @media (max-width: 700px) {
+            #ui { padding: 10px 16px; gap: 15px; flex-wrap: wrap; top: 15px; left: 15px; }
+            #dist { font-size: 24px; }
+            #grenade-info { font-size: 18px; padding: 2px 12px; }
+            #instructions h1 { font-size: 26px; }
+            #instructions p { font-size: 14px; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
-<div id="ui">
-<div>關卡：<span id="levelText">1</span></div>
-<div>狀態：<span id="status">點擊畫面開始遊戲</span></div>
-</div>
-<div id="tip">WASD移動｜空白鍵跳躍｜滑鼠轉視角｜藍色=檢查點｜綠色=終點</div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+    <div id="ui">
+        <div>🏃 距離 <div id="dist">0</div> M</div>
+        <div id="grenade-info">💣 手榴彈: ∞</div>
+    </div>
+    <div id="crosshair"></div>
 
-<script>
-let scene,camera,renderer,controls;
-let playerVelocity=new THREE.Vector3();
-let isOnGround=false;
-let levelIndex=1;
-let lastCheckPoint=new THREE.Vector3(0,2,0);
-let platforms=[];
-let checkPoints=[];
-let goal=null;
+    <div id="instructions">
+        <h1>🏃 極速跑酷 · 無限手榴彈</h1>
+        <p>點擊畫面鎖定滑鼠並開始遊戲</p>
+        <p><b>[WASD]</b> 極速移動 ｜ <b>[F]</b> 發射<span class="highlight">綠球手榴彈</span> ｜ <b>[空白鍵]</b> 跳躍</p>
+        <p>💡 <b>往腳下發射手榴彈，爆炸衝擊波會把您<span class="highlight">炸飛</span>！</b></p>
+        <p style="margin-top:12px; font-size:14px; color:#888;">手榴彈 <span class="grenade-badge">∞ 無限</span> · 冷卻 0.5 秒</p>
+    </div>
 
-// 重力、移動參數
-const GRAVITY=-22;
-const JUMP_FORCE=8;
-const SPEED=7;
+    <script>
+        // ==========================================
+        // --- 1. 場景與控制器設定 ---
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x050509, 30, 250);
 
-// 按鍵狀態
-const keys={w:false,a:false,s:false,d:false,space:false};
+        const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-// 初始化場景
-function init(){
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x87ceeb);
-  scene.fog=new THREE.Fog(0x87ceeb,30,120);
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
 
-  camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
-  camera.position.set(0,2,0);
+        instructions.addEventListener('click', () => { controls.lock(); });
+        controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
+        
+        // 🛠️ 修復 1：解鎖滑鼠（按 Esc / 跳出遊戲）時，清空移動狀態防止卡鍵暴衝
+        controls.addEventListener('unlock', () => { 
+            instructions.style.display = 'flex'; 
+            resetMoveState();
+        });
 
-  renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth,window.innerHeight);
-  renderer.shadowMap.enabled=true;
-  document.body.appendChild(renderer.domElement);
+        // 🛠️ 修復 2：視窗失去焦點 (Alt+Tab 或點擊外部) 時，強制重置移動狀態
+        window.addEventListener('blur', () => {
+            resetMoveState();
+        });
 
-  // 光源
-  const dirLight=new THREE.DirectionalLight(0xffffff,1.2);
-  dirLight.position.set(20,40,20);
-  dirLight.castShadow=true;
-  scene.add(dirLight);
-  scene.add(new THREE.AmbientLight(0xffffff,0.4));
+        function resetMoveState() {
+            moveState.forward = false;
+            moveState.backward = false;
+            moveState.left = false;
+            moveState.right = false;
+            moveState.jump = false;
+            blastVelocity.set(0, 0, 0);
+        }
 
-  // 滑鼠鎖定控制
-  controls=new THREE.PointerLockControls(camera,document.body);
-  document.body.addEventListener('click',()=>{
-    controls.lock();
-  });
-  controls.addEventListener('lock',()=>{
-    document.getElementById("status").innerText="遊戲中";
-  });
-  controls.addEventListener('unlock',()=>{
-    document.getElementById("status").innerText="已暫停，點擊畫面繼續";
-  });
+        // 光照
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(20, 50, 10);
+        scene.add(dirLight);
 
-  // 鍵盤監聽
-  document.addEventListener('keydown',e=>{
-    switch(e.code){
-      case'KeyW':keys.w=true;break;
-      case'KeyA':keys.a=true;break;
-      case'KeyS':keys.s=true;break;
-      case'KeyD':keys.d=true;break;
-      case'Space':keys.space=true;e.preventDefault();break;
-    }
-  });
-  document.addEventListener('keyup',e=>{
-    switch(e.code){
-      case'KeyW':keys.w=false;break;
-      case'KeyA':keys.a=false;break;
-      case'KeyS':keys.s=false;break;
-      case'KeyD':keys.d=false;break;
-      case'Space':keys.space=false;break;
-    }
-  });
+        // 手臂
+        const handGroup = new THREE.Group();
+        camera.add(handGroup);
+        scene.add(camera);
 
-  buildLevel(1);
-  window.addEventListener('resize',onWindowResize);
-  animate();
-}
+        const armMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+        const handMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x00ff88, emissiveIntensity: 0.8 });
 
-// 建立關卡
-function buildLevel(lv){
-  // 清除舊物件
-  platforms.forEach(p=>scene.remove(p));
-  checkPoints.forEach(p=>scene.remove(p));
-  if(goal)scene.remove(goal);
-  platforms=[];
-  checkPoints=[];
+        const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        lArm.position.set(-0.35, -0.25, -0.5);
+        handGroup.add(lArm);
+        const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), armMat);
+        rArm.position.set(0.35, -0.25, -0.5);
+        handGroup.add(rArm);
 
-  document.getElementById("levelText").innerText=lv;
+        camera.position.set(0, 1.8, 0);
 
-  const geoPlat=new THREE.BoxGeometry(6,1,6);
-  const matNormal=new THREE.MeshLambertMaterial({color:0x888888});
-  const matCheck=new THREE.MeshLambertMaterial({color:0x3388ff});
-  const matGoal=new THREE.MeshLambertMaterial({color:0x33dd55});
+        // ==========================================
+        // --- 2. 平台與物件池 ---
+        // ==========================================
+        const platformPool = [];
+        const activePlatforms = [];
+        let nextZ = 0;
+        const spacing = 40; 
+        const poolSize = 15;
 
-  // 起點平台
-  const start=new THREE.Mesh(geoPlat,matNormal);
-  start.position.set(0,0,0);
-  start.receiveShadow=true;
-  start.castShadow=true;
-  scene.add(start);
-  platforms.push(start);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.6 });
 
-  // 依照關卡生成平台
-  let px=0,py=0,pz=0;
-  const count=8+lv*4;
-  for(let i=0;i<count;i++){
-    px+=(Math.random()-0.5)*5;
-    py+=0.4+Math.random()*1.2;
-    pz-=7+Math.random()*3;
-    const plat=new THREE.Mesh(geoPlat,matNormal);
-    plat.position.set(px,py,pz);
-    plat.castShadow=true;
-    plat.receiveShadow=true;
-    scene.add(plat);
-    platforms.push(plat);
+        function createPlatform() {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 20), baseMat);
+            base.position.y = -0.5;
+            group.add(base);
 
-    // 每3個平台放檢查點
-    if((i+1)%3===0){
-      const cp=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),matCheck);
-      cp.position.set(px,py+2,pz);
-      scene.add(cp);
-      checkPoints.push({mesh:cp,pos:new THREE.Vector3(px,py+2,pz)});
-    }
-  }
+            const edges = new THREE.EdgesGeometry(base.geometry);
+            const line = new THREE.LineSegments(edges, edgeMat);
+            base.add(line);
 
-  // 終點
-  goal=new THREE.Mesh(geoPlat,matGoal);
-  goal.position.set(px,py,pz-8);
-  goal.castShadow=true;
-  goal.receiveShadow=true;
-  scene.add(goal);
-  platforms.push(goal);
+            return { group, base, data: { width: 10, depth: 20, isMoving: false, moveSpeed: 0.05, moveOffset: 0, deltaX: 0 } };
+        }
 
-  // 玩家回到起點檢查點
-  lastCheckPoint.set(0,2,0);
-  respawnPlayer();
-}
+        for (let i = 0; i < poolSize; i++) {
+            const p = createPlatform();
+            scene.add(p.group);
+            p.group.visible = false;
+            platformPool.push(p);
+        }
 
-function respawnPlayer(){
-  camera.position.copy(lastCheckPoint);
-  playerVelocity.set(0,0,0);
-}
+        function spawnPlatform() {
+            if (platformPool.length === 0) return;
+            const p = platformPool.shift();
+            p.group.visible = true;
+            p.group.position.set(0, 0, nextZ);
 
-function onWindowResize(){
-  camera.aspect=window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-}
+            const isStart = nextZ === 0;
+            const isMoving = !isStart && Math.random() > 0.3;
+            const newW = isStart ? 12 : (8 + Math.random() * 6);
+            const newD = isStart ? 25 : (15 + Math.random() * 15);
 
-// 碰撞偵測：判斷是否站在平台上
-function checkGround(){
-  isOnGround=false;
-  const camPos=camera.position.clone();
-  for(let plat of platforms){
-    const bbox=new THREE.Box3().setFromObject(plat);
-    const feetPos=camPos.clone();
-    feetPos.y-=1.7;
-    if(bbox.containsPoint(feetPos)){
-      isOnGround=true;
-      camPos.y=plat.position.y+1.7;
-      camera.position.y=camPos.y;
-      return true;
-    }
-  }
-  return false;
-}
+            p.base.geometry.dispose();
+            p.base.geometry = new THREE.BoxGeometry(newW, 1, newD);
+            p.base.children[0].geometry.dispose();
+            p.base.children[0].geometry = new THREE.EdgesGeometry(p.base.geometry);
 
-// 檢查是否碰到檢查點
-function hitCheckPoint(){
-  const cpRange=2.2;
-  for(let cp of checkPoints){
-    if(camera.position.distanceTo(cp.pos)<cpRange){
-      lastCheckPoint.copy(cp.pos);
-    }
-  }
-  // 碰到終點
-  if(camera.position.distanceTo(goal.position)<4){
-    levelIndex+=1;
-    buildLevel(levelIndex);
-  }
-}
+            p.data.isMoving = isMoving;
+            p.data.width = newW;
+            p.data.depth = newD;
+            p.data.moveOffset = Math.random() * Math.PI * 2;
 
-function animate(){
-  requestAnimationFrame(animate);
-  const delta=0.016;
+            activePlatforms.push(p);
+            nextZ -= spacing;
+        }
 
-  if(controls.isLocked){
-    // 移動方向
-    playerVelocity.y+=GRAVITY*delta;
+        for (let i = 0; i < poolSize - 1; i++) spawnPlatform();
 
-    const dir=new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    dir.y=0;
-    dir.normalize();
+        // ==========================================
+        // --- 3. 綠色手榴彈（無限）與爆炸波 ---
+        // ==========================================
+        const grenades = [];
+        const explosions = [];
+        let grenadeCooldown = 0;
+        const GRENADE_COOLDOWN = 0.5; // 秒
 
-    const right=new THREE.Vector3();
-    right.crossVectors(dir,camera.up).normalize();
+        const grenadeGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const grenadeMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00ff00, 
+            emissive: 0x00ff88, 
+            emissiveIntensity: 0.9,
+            roughness: 0.2
+        });
 
-    let move=new THREE.Vector3();
-    if(keys.w)move.add(dir);
-    if(keys.s)move.sub(dir);
-    if(keys.a)move.sub(right);
-    if(keys.d)move.add(right);
+        function throwGrenade() {
+            const now = Date.now() / 1000;
+            if (now - grenadeCooldown < GRENADE_COOLDOWN) return;
+            grenadeCooldown = now;
 
-    if(move.length()>0)move.normalize().multiplyScalar(SPEED);
+            const grenade = new THREE.Mesh(grenadeGeo, grenadeMat);
+            grenade.position.copy(camera.position);
 
-    // 跳躍
-    if(keys.space&&isOnGround){
-      playerVelocity.y=JUMP_FORCE;
-    }
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const velocity = dir.clone().multiplyScalar(3.0);
 
-    // 移動相機
-    camera.position.x+=move.x*delta*60;
-    camera.position.z+=move.z*delta*60;
-    camera.position.y+=playerVelocity.y*delta;
+            scene.add(grenade);
+            grenades.push({ mesh: grenade, vel: velocity, life: 50 });
+        }
 
-    checkGround();
-    hitCheckPoint();
+        function createExplosion(pos) {
+            // 爆炸視覺
+            const expGroup = new THREE.Group();
+            expGroup.position.copy(pos);
 
-    // 跌落重生
-    if(camera.position.y<-15){
-      respawnPlayer();
-    }
-  }
+            const expGeo = new THREE.SphereGeometry(1, 16, 16);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.9 });
+            const expMesh = new THREE.Mesh(expGeo, expMat);
+            expGroup.add(expMesh);
 
-  renderer.render(scene,camera);
-}
+            scene.add(expGroup);
+            explosions.push({ group: expGroup, mesh: expMesh, scale: 1, maxScale: 10, opacity: 1.0 });
 
-init();
-</script>
+            // 炸飛玩家
+            const playerPos = camera.position.clone();
+            const distToPlayer = pos.distanceTo(playerPos);
+            const blastRadius = 12.0;
+
+            if (distToPlayer < blastRadius) {
+                const knockbackDir = new THREE.Vector3().subVectors(playerPos, pos).normalize();
+                const force = (1.0 - distToPlayer / blastRadius) * 2.2;
+
+                blastVelocity.x += knockbackDir.x * force * 1.5;
+                blastVelocity.z += knockbackDir.z * force * 1.5;
+                velY += Math.max(0.4, knockbackDir.y * force * 1.8);
+                isGrounded = false;
+            }
+        }
+
+        // ==========================================
+        // --- 4. 角色控制與物理 ---
+        // ==========================================
+        const moveState = { forward: false, backward: false, left: false, right: false, jump: false };
+        
+        window.addEventListener('keydown', (e) => {
+            // 同時判斷 e.code 與 e.key，避開中文輸入法與大小寫影響
+            if (e.code === 'KeyW' || e.key === 'w' || e.key === 'W') moveState.forward = true;
+            if (e.code === 'KeyS' || e.key === 's' || e.key === 'S') moveState.backward = true;
+            if (e.code === 'KeyA' || e.key === 'a' || e.key === 'A') moveState.left = true;
+            if (e.code === 'KeyD' || e.key === 'd' || e.key === 'D') moveState.right = true;
+            if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); moveState.jump = true; }
+            if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && controls.isLocked) throwGrenade();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.key === 'w' || e.key === 'W') moveState.forward = false;
+            if (e.code === 'KeyS' || e.key === 's' || e.key === 'S') moveState.backward = false;
+            if (e.code === 'KeyA' || e.key === 'a' || e.key === 'A') moveState.left = false;
+            if (e.code === 'KeyD' || e.key === 'd' || e.key === 'D') moveState.right = false;
+            if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); moveState.jump = false; }
+        });
+
+        let velY = 0;
+        let blastVelocity = new THREE.Vector3(0, 0, 0);
+        const playerSpeed = 1.3;
+        const gravity = -0.04;
+        const jumpForce = 0.85;
+        let isGrounded = false, currentPlatform = null;
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+
+            if (controls.isLocked) {
+                // 移動平台
+                activePlatforms.forEach(p => {
+                    if (p.data.isMoving) {
+                        const oldX = p.group.position.x;
+                        p.group.position.x = Math.sin(time * p.data.moveSpeed * 5 + p.data.moveOffset) * 8;
+                        p.data.deltaX = p.group.position.x - oldX;
+                    } else {
+                        p.data.deltaX = 0;
+                    }
+                });
+
+                // WASD 移動
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                cameraDirection.y = 0;
+                cameraDirection.normalize();
+
+                const sideVector = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
+
+                if (moveState.forward) camera.position.addScaledVector(cameraDirection, playerSpeed);
+                if (moveState.backward) camera.position.addScaledVector(cameraDirection, -playerSpeed);
+                if (moveState.left) camera.position.addScaledVector(sideVector, playerSpeed);
+                if (moveState.right) camera.position.addScaledVector(sideVector, -playerSpeed);
+
+                camera.position.add(blastVelocity);
+                blastVelocity.multiplyScalar(0.92);
+
+                if (isGrounded && currentPlatform) {
+                    camera.position.x += currentPlatform.data.deltaX;
+                }
+
+                // 跳躍與重力
+                if (moveState.jump && isGrounded) {
+                    velY = jumpForce;
+                    isGrounded = false;
+                    currentPlatform = null;
+                }
+
+                camera.position.y += velY;
+                velY += gravity;
+
+                // 🛠️ 連續軌跡碰撞檢測（修復高空落下的穿地 Bug）
+                isGrounded = false;
+                currentPlatform = null;
+
+                const prevFeetY = camera.position.y - velY - 1.8; 
+                const currFeetY = camera.position.y - 1.8;
+                const pX = camera.position.x;
+                const pZ = camera.position.z;
+
+                for (let p of activePlatforms) {
+                    const pPos = p.group.position, d = p.data;
+                    const surfaceY = pPos.y + 0.5; // 平台頂部表面的 Y 座標
+
+                    const inX = Math.abs(pX - pPos.x) <= d.width / 2 + 0.5;
+                    const inZ = Math.abs(pZ - pPos.z) <= d.depth / 2 + 0.5;
+
+                    // 只要上一幀在平台上方，且這一幀移動到平台表面以下，就代表踩到了平台
+                    const crossedSurface = prevFeetY >= surfaceY - 0.2 && currFeetY <= surfaceY + 0.4;
+
+                    if (inX && inZ && crossedSurface && velY <= 0) {
+                        camera.position.y = surfaceY + 1.8; // 強制固定在平台高度
+                        velY = 0;
+                        isGrounded = true;
+                        currentPlatform = p;
+                        blastVelocity.set(0, 0, 0);
+                        break;
+                    }
+                }
+
+                // 手榴彈飛行
+                for (let i = grenades.length - 1; i >= 0; i--) {
+                    const g = grenades[i];
+                    g.mesh.position.add(g.vel);
+                    g.life--;
+
+                    let hit = false;
+                    for (let p of activePlatforms) {
+                        const pPos = p.group.position, d = p.data;
+                        if (Math.abs(g.mesh.position.x - pPos.x) <= d.width / 2 &&
+                            Math.abs(g.mesh.position.z - pPos.z) <= d.depth / 2 &&
+                            Math.abs(g.mesh.position.y - pPos.y) <= 1.2) {
+                            hit = true;
+                            break;
+                        }
+                    }
+
+                    if (hit || g.life <= 0) {
+                        createExplosion(g.mesh.position);
+                        scene.remove(g.mesh);
+                        g.mesh.geometry.dispose();
+                        g.mesh.material.dispose();
+                        grenades.splice(i, 1);
+                    }
+                }
+
+                // 爆炸動畫
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    const exp = explosions[i];
+                    exp.scale += 0.9;
+                    exp.group.scale.set(exp.scale, exp.scale, exp.scale);
+                    exp.opacity -= 0.08;
+                    exp.mesh.material.opacity = exp.opacity;
+
+                    if (exp.opacity <= 0) {
+                        scene.remove(exp.group);
+                        exp.mesh.geometry.dispose();
+                        exp.mesh.material.dispose();
+                        explosions.splice(i, 1);
+                    }
+                }
+
+                // 跌落死亡
+                if (camera.position.y < -20) {
+                    controls.unlock();
+                    alert(`GAME OVER！距離: ${Math.max(0, Math.floor(-camera.position.z))} M`);
+                    location.reload();
+                }
+
+                // 無限平台生成
+                if (activePlatforms.length > 0 && camera.position.z < activePlatforms[0].group.position.z - spacing * 2) {
+                    const oldP = activePlatforms.shift();
+                    oldP.group.visible = false;
+                    platformPool.push(oldP);
+                    spawnPlatform();
+                }
+
+                document.getElementById('dist').innerText = Math.max(0, Math.floor(-camera.position.z));
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
