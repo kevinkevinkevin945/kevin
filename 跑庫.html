@@ -38,20 +38,15 @@ let lastCheckPoint=new THREE.Vector3(0,2,0);
 let platforms=[];
 let checkPoints=[];
 let goal=null;
-// 地面射線偵測
-const groundRay=new THREE.Raycaster();
 
-// 重力、移動參數
-const GRAVITY=-22;
-const JUMP_FORCE=8;
-const SPEED=7;
-const PLAYER_HEIGHT=1.8;
-const GROUND_CHECK_DIST=1.2;
+const GRAVITY = -25;
+const JUMP_FORCE = 9;
+const SPEED = 6.5;
+const PLAYER_HEIGHT = 1.8;
+const FEET_OFFSET = 0.2;
 
-// 按鍵狀態
 const keys={w:false,a:false,s:false,d:false,space:false};
 
-// 初始化場景
 function init(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x87ceeb);
@@ -65,26 +60,17 @@ function init(){
   renderer.shadowMap.enabled=true;
   document.body.appendChild(renderer.domElement);
 
-  // 光源
   const dirLight=new THREE.DirectionalLight(0xffffff,1.2);
   dirLight.position.set(20,40,20);
   dirLight.castShadow=true;
   scene.add(dirLight);
   scene.add(new THREE.AmbientLight(0xffffff,0.4));
 
-  // 滑鼠鎖定控制
   controls=new PointerLockControls(camera,document.body);
-  document.body.addEventListener('click',()=>{
-    controls.lock();
-  });
-  controls.addEventListener('lock',()=>{
-    document.getElementById("status").innerText="遊戲中";
-  });
-  controls.addEventListener('unlock',()=>{
-    document.getElementById("status").innerText="已暫停，點擊畫面繼續";
-  });
+  document.body.addEventListener('click',()=>controls.lock());
+  controls.addEventListener('lock',()=>document.getElementById("status").innerText="遊戲中");
+  controls.addEventListener('unlock',()=>document.getElementById("status").innerText="已暫停，點擊畫面繼續");
 
-  // 鍵盤監聽
   document.addEventListener('keydown',e=>{
     switch(e.code){
       case'KeyW':keys.w=true;break;
@@ -109,11 +95,9 @@ function init(){
   animate();
 }
 
-// 建立關卡
 function buildLevel(lv){
-  // 清除舊物件
   platforms.forEach(p=>scene.remove(p));
-  checkPoints.forEach(p=>scene.remove(p));
+  checkPoints.forEach(cp=>scene.remove(cp.mesh));
   if(goal)scene.remove(goal);
   platforms=[];
   checkPoints=[];
@@ -125,7 +109,6 @@ function buildLevel(lv){
   const matCheck=new THREE.MeshLambertMaterial({color:0x3388ff});
   const matGoal=new THREE.MeshLambertMaterial({color:0x33dd55});
 
-  // 起點平台
   const start=new THREE.Mesh(geoPlat,matNormal);
   start.position.set(0,0,0);
   start.receiveShadow=true;
@@ -133,13 +116,12 @@ function buildLevel(lv){
   scene.add(start);
   platforms.push(start);
 
-  // 依照關卡生成平台
   let px=0,py=0,pz=0;
   const count=8+lv*4;
   for(let i=0;i<count;i++){
-    px+=(Math.random()-0.5)*5;
-    py+=0.4+Math.random()*1.2;
-    pz-=7+Math.random()*3;
+    px+=(Math.random()-0.5)*4;
+    py+=0.35+Math.random()*1.0;
+    pz-=6.5+Math.random()*2.5;
     const plat=new THREE.Mesh(geoPlat,matNormal);
     plat.position.set(px,py,pz);
     plat.castShadow=true;
@@ -147,24 +129,21 @@ function buildLevel(lv){
     scene.add(plat);
     platforms.push(plat);
 
-    // 每3個平台放檢查點
     if((i+1)%3===0){
-      const cp=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),matCheck);
-      cp.position.set(px,py+2,pz);
-      scene.add(cp);
-      checkPoints.push({mesh:cp,pos:new THREE.Vector3(px,py+2,pz)});
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),matCheck);
+      mesh.position.set(px,py+2,pz);
+      scene.add(mesh);
+      checkPoints.push({mesh,pos:new THREE.Vector3(px,py+2,pz)});
     }
   }
 
-  // 終點
   goal=new THREE.Mesh(geoPlat,matGoal);
-  goal.position.set(px,py,pz-8);
+  goal.position.set(px,py,pz-7);
   goal.castShadow=true;
   goal.receiveShadow=true;
   scene.add(goal);
   platforms.push(goal);
 
-  // 玩家回到起點檢查點
   lastCheckPoint.set(0,2,0);
   respawnPlayer();
 }
@@ -172,6 +151,7 @@ function buildLevel(lv){
 function respawnPlayer(){
   camera.position.copy(lastCheckPoint);
   playerVelocity.set(0,0,0);
+  isOnGround=false;
 }
 
 function onWindowResize(){
@@ -180,32 +160,32 @@ function onWindowResize(){
   renderer.setSize(window.innerWidth,window.innerHeight);
 }
 
-// ✅【修復】向下射線檢測地面，解決穿地
-function checkGroundRay(){
-  // 從玩家腳下上方往下射線
-  const origin=camera.position.clone();
-  origin.y -= PLAYER_HEIGHT - 0.05;
-  const downDir=new THREE.Vector3(0,-1,0);
-  groundRay.set(origin,downDir);
-  const intersect=groundRay.intersectObjects(platforms);
+// 從玩家頭部向下射線，偵測地面
+function checkGround(){
+  const ray=new THREE.Raycaster();
+  const origin = camera.position.clone();
+  const down=new THREE.Vector3(0,-1,0);
+  ray.set(origin, down);
+  const hits = ray.intersectObjects(platforms);
   isOnGround=false;
-  if(intersect.length>0 && intersect[0].distance <= GROUND_CHECK_DIST){
-    isOnGround=true;
-    // 吸附到平台表面，避免卡進地板
-    camera.position.y = intersect[0].point.y + PLAYER_HEIGHT;
-    playerVelocity.y=0;
+  if(hits.length>0){
+    const hit = hits[0];
+    // 頭到地面的距離小於玩家身高 → 在平台上方
+    if(hit.distance <= PLAYER_HEIGHT + FEET_OFFSET){
+      isOnGround=true;
+      // 吸附到平台頂
+      camera.position.y = hit.point.y + PLAYER_HEIGHT;
+      playerVelocity.y=0;
+    }
   }
 }
 
-// 檢查是否碰到檢查點
 function hitCheckPoint(){
-  const cpRange=2.5;
   for(let cp of checkPoints){
-    if(camera.position.distanceTo(cp.pos)<cpRange){
+    if(camera.position.distanceTo(cp.pos)<2.5){
       lastCheckPoint.copy(cp.pos);
     }
   }
-  // 碰到終點
   if(camera.position.distanceTo(goal.position)<4.5){
     levelIndex+=1;
     buildLevel(levelIndex);
@@ -214,11 +194,10 @@ function hitCheckPoint(){
 
 function animate(){
   requestAnimationFrame(animate);
-  const delta=0.016;
+  const delta = 0.016;
 
   if(controls.isLocked){
-    playerVelocity.y+=GRAVITY*delta;
-
+    // 計算移動方向
     const dir=new THREE.Vector3();
     camera.getWorldDirection(dir);
     dir.y=0;
@@ -232,29 +211,31 @@ function animate(){
     if(keys.s)move.sub(dir);
     if(keys.a)move.sub(right);
     if(keys.d)move.add(right);
+    if(move.length()>0) move.normalize().multiplyScalar(SPEED);
 
-    if(move.length()>0)move.normalize().multiplyScalar(SPEED);
-
-    // 跳躍，只有站在地面才能跳
-    if(keys.space&&isOnGround){
-      playerVelocity.y=JUMP_FORCE;
+    // 只有站在地上才能跳
+    if(keys.space && isOnGround){
+      playerVelocity.y = JUMP_FORCE;
     }
 
-    // XZ水平移動
-    camera.position.x+=move.x*delta*60;
-    camera.position.z+=move.z*delta*60;
-    // Y垂直移動（重力）
-    camera.position.y+=playerVelocity.y*delta;
+    // 施加重力
+    playerVelocity.y += GRAVITY * delta;
 
-    checkGroundRay();
+    // 水平移動 X Z
+    camera.position.x += move.x * delta * 60;
+    camera.position.z += move.z * delta * 60;
+    // 垂直移動 Y
+    camera.position.y += playerVelocity.y * delta;
+
+    // ✅ 做完移動後才做地面偵測、吸附
+    checkGround();
     hitCheckPoint();
 
-    // 跌落重生
-    if(camera.position.y<-20){
+    // 墜落重生
+    if(camera.position.y < -20){
       respawnPlayer();
     }
   }
-
   renderer.render(scene,camera);
 }
 
