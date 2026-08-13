@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>3D Parkour</title>
 
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+  }
+}
+</script>
+
 <style>
 * {
     box-sizing: border-box;
@@ -26,26 +34,28 @@ canvas {
 #menu {
     position: fixed;
     inset: 0;
-    z-index: 10;
+    z-index: 100;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: white;
     background:
-        radial-gradient(circle at center, rgba(30,60,100,.55), rgba(0,0,0,.95));
+        radial-gradient(circle at center,
+        rgba(30,60,100,.55),
+        rgba(0,0,0,.96));
     text-align: center;
 }
 
 #menu h1 {
     font-size: 60px;
-    margin: 0 0 10px;
+    margin: 0 0 15px;
     letter-spacing: 5px;
 }
 
 #menu p {
     font-size: 18px;
-    opacity: .85;
+    opacity: .9;
 }
 
 #startBtn {
@@ -67,7 +77,7 @@ canvas {
     position: fixed;
     left: 20px;
     top: 20px;
-    z-index: 5;
+    z-index: 20;
     color: white;
     font-size: 18px;
     line-height: 1.7;
@@ -77,7 +87,7 @@ canvas {
 
 #crosshair {
     position: fixed;
-    z-index: 4;
+    z-index: 20;
     left: 50%;
     top: 50%;
     width: 12px;
@@ -98,19 +108,17 @@ canvas {
     width: 12px;
     height: 2px;
     top: 5px;
-    left: 0;
 }
 
 #crosshair::after {
     width: 2px;
     height: 12px;
     left: 5px;
-    top: 0;
 }
 
 #message {
     position: fixed;
-    z-index: 6;
+    z-index: 30;
     top: 45%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -120,16 +128,28 @@ canvas {
     text-shadow: 3px 3px 6px #000;
     pointer-events: none;
     opacity: 0;
-    transition: opacity .2s;
+}
+
+#pause {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: rgba(0,0,0,.45);
+    font-size: 30px;
+    text-align: center;
 }
 
 #help {
     position: fixed;
     right: 20px;
     bottom: 20px;
-    z-index: 5;
+    z-index: 20;
     color: white;
-    opacity: .75;
+    opacity: .8;
     font-size: 14px;
     text-align: right;
     text-shadow: 2px 2px 3px #000;
@@ -141,63 +161,112 @@ canvas {
 <body>
 
 <div id="menu">
+
     <h1>3D PARKOUR</h1>
-    <p>第一人稱 · 平台跑酷 · Checkpoint · 多關卡</p>
-    <p>WASD 移動　SPACE 跳躍　滑鼠控制視角</p>
-    <button id="startBtn">開始遊戲</button>
+
+    <p>第一人稱 · 平台跑酷 · Checkpoint · 3 關卡</p>
+
+    <p>
+        WASD 移動　
+        SPACE 跳躍　
+        滑鼠控制視角
+    </p>
+
+    <button id="startBtn">
+        開始遊戲
+    </button>
+
 </div>
 
 <div id="hud">
-    <div>關卡：<span id="levelText">1</span> / 3</div>
-    <div>時間：<span id="timeText">0.00</span>s</div>
-    <div>Checkpoint：<span id="checkpointText">起點</span></div>
+
+    <div>
+        關卡：
+        <span id="levelText">1</span> / 3
+    </div>
+
+    <div>
+        時間：
+        <span id="timeText">0.00</span>s
+    </div>
+
+    <div>
+        Checkpoint：
+        <span id="checkpointText">起點</span>
+    </div>
+
 </div>
 
 <div id="crosshair"></div>
+
 <div id="message"></div>
 
+<div id="pause">
+    <div>
+        遊戲暫停
+        <br>
+        <small>點一下畫面繼續</small>
+    </div>
+</div>
+
 <div id="help">
+
     WASD：移動<br>
     SPACE：跳躍<br>
     R：回到 Checkpoint<br>
-    ESC：解除滑鼠鎖定
+    ESC：暫停
+
 </div>
+
 
 <script type="module">
 
-import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import * as THREE from "three";
 
-import { PointerLockControls } from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/PointerLockControls.js";
+import {
+    PointerLockControls
+} from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/PointerLockControls.js";
 
 
-/* =========================================================
-   基本設定
-========================================================= */
+/* =========================
+   場景
+========================= */
 
 const scene = new THREE.Scene();
 
-scene.background = new THREE.Color(0x87ceeb);
+scene.background =
+    new THREE.Color(0x87ceeb);
 
-scene.fog = new THREE.Fog(
-    0x87ceeb,
-    40,
-    180
-);
-
-
-const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    500
-);
+scene.fog =
+    new THREE.Fog(
+        0x87ceeb,
+        40,
+        180
+    );
 
 
-const renderer = new THREE.WebGLRenderer({
-    antialias: true
-});
+/* =========================
+   相機
+========================= */
+
+const camera =
+    new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth /
+        window.innerHeight,
+        0.1,
+        500
+    );
+
+
+/* =========================
+   Renderer
+========================= */
+
+const renderer =
+    new THREE.WebGLRenderer({
+        antialias: true
+    });
 
 renderer.setSize(
     window.innerWidth,
@@ -205,173 +274,365 @@ renderer.setSize(
 );
 
 renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio, 2)
+    Math.min(
+        window.devicePixelRatio,
+        2
+    )
 );
 
 renderer.shadowMap.enabled = true;
 
-document.body.appendChild(renderer.domElement);
-
-
-/* =========================================================
-   光源
-========================================================= */
-
-const ambient = new THREE.HemisphereLight(
-    0xffffff,
-    0x446677,
-    1.5
+document.body.appendChild(
+    renderer.domElement
 );
+
+
+/* =========================
+   光源
+========================= */
+
+const ambient =
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x446677,
+        1.5
+    );
 
 scene.add(ambient);
 
 
-const sun = new THREE.DirectionalLight(
-    0xffffff,
-    2
+const sun =
+    new THREE.DirectionalLight(
+        0xffffff,
+        2
+    );
+
+sun.position.set(
+    30,
+    50,
+    20
 );
 
-sun.position.set(30, 50, 20);
-
 sun.castShadow = true;
-
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
 
 scene.add(sun);
 
 
-/* =========================================================
-   第一人稱控制
-========================================================= */
+/* =========================
+   第一人稱
+========================= */
 
-const controls = new PointerLockControls(
-    camera,
-    document.body
+const controls =
+    new PointerLockControls(
+        camera,
+        document.body
+    );
+
+scene.add(
+    controls.object
 );
 
-scene.add(controls.getObject());
 
+/* =========================
+   遊戲設定
+========================= */
 
-/* =========================================================
-   遊戲變數
-========================================================= */
+const PLAYER_HEIGHT = 1.7;
 
-const keys = {};
+const GRAVITY = 24;
 
-let velocity = new THREE.Vector3();
+const MOVE_SPEED = 9;
+
+const JUMP_POWER = 9;
+
+let velocityY = 0;
 
 let canJump = false;
 
-let playerHeight = 1.7;
-
-let gravity = 24;
-
-let moveSpeed = 9;
-
-let jumpPower = 9;
+let playing = false;
 
 let currentLevel = 0;
 
 let startTime = 0;
 
-let levelTime = 0;
+let checkpoint =
+    new THREE.Vector3();
 
-let playing = false;
-
-let checkpoint = new THREE.Vector3();
-
-let checkpointName = "起點";
+let checkpointName =
+    "起點";
 
 let platforms = [];
 
 let checkpoints = [];
 
-let goal = null;
-
-let hazards = [];
-
 let levelObjects = [];
 
+let goal = null;
 
-/* =========================================================
+
+/* =========================
    UI
-========================================================= */
+========================= */
 
-const menu = document.getElementById("menu");
-const startBtn = document.getElementById("startBtn");
+const menu =
+    document.getElementById(
+        "menu"
+    );
 
-const levelText = document.getElementById("levelText");
-const timeText = document.getElementById("timeText");
-const checkpointText = document.getElementById("checkpointText");
+const startBtn =
+    document.getElementById(
+        "startBtn"
+    );
 
-const message = document.getElementById("message");
+const pause =
+    document.getElementById(
+        "pause"
+    );
+
+const message =
+    document.getElementById(
+        "message"
+    );
+
+const levelText =
+    document.getElementById(
+        "levelText"
+    );
+
+const timeText =
+    document.getElementById(
+        "timeText"
+    );
+
+const checkpointText =
+    document.getElementById(
+        "checkpointText"
+    );
 
 
-/* =========================================================
-   WASD
-========================================================= */
+/* =========================
+   按鍵
+========================= */
 
-document.addEventListener("keydown", e => {
+const keys = {};
 
-    keys[e.code] = true;
+document.addEventListener(
+    "keydown",
+    function(e) {
 
-    if (e.code === "Space" && canJump && playing) {
+        keys[e.code] = true;
 
-        velocity.y = jumpPower;
+        if (
+            e.code === "Space" &&
+            canJump &&
+            playing &&
+            controls.isLocked
+        ) {
 
-        canJump = false;
+            velocityY =
+                JUMP_POWER;
+
+            canJump = false;
+
+            e.preventDefault();
+        }
+
+
+        if (
+            e.code === "KeyR" &&
+            playing
+        ) {
+
+            respawn();
+
+            showMessage(
+                "↩ 回到 Checkpoint"
+            );
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    function(e) {
+
+        keys[e.code] = false;
+
+    }
+);
+
+
+/* =========================
+   關卡
+========================= */
+
+const levels = [
+
+    {
+
+        start: [
+            0,
+            3,
+            0
+        ],
+
+        platforms: [
+
+            [0,0,0,10,1,10,"start"],
+
+            [0,1,-8,5,1,5,"normal"],
+
+            [4,3,-15,5,1,5,"normal"],
+
+            [-2,5,-22,5,1,5,"normal"],
+
+            [5,7,-29,5,1,5,"checkpoint"],
+
+            [0,9,-38,5,1,5,"normal"],
+
+            [-5,11,-46,5,1,5,"goal"]
+
+        ],
+
+        checkpoints: [
+
+            [
+                5,
+                8,
+                -29,
+                "Checkpoint 1"
+            ]
+
+        ],
+
+        goal: [
+            -5,
+            11,
+            -46
+        ]
+
+    },
+
+
+    {
+
+        start: [
+            0,
+            4,
+            0
+        ],
+
+        platforms: [
+
+            [0,0,0,8,1,8,"start"],
+
+            [-5,2,-8,4,1,4,"normal"],
+
+            [4,4,-14,4,1,4,"normal"],
+
+            [-4,6,-20,4,1,4,"checkpoint"],
+
+            [5,8,-27,4,1,4,"normal"],
+
+            [-5,10,-34,4,1,4,"normal"],
+
+            [4,12,-41,4,1,4,"checkpoint"],
+
+            [0,14,-49,5,1,5,"goal"]
+
+        ],
+
+        checkpoints: [
+
+            [
+                -4,
+                7,
+                -20,
+                "Checkpoint 1"
+            ],
+
+            [
+                4,
+                13,
+                -41,
+                "Checkpoint 2"
+            ]
+
+        ],
+
+        goal: [
+            0,
+            14,
+            -49
+        ]
+
+    },
+
+
+    {
+
+        start: [
+            0,
+            5,
+            0
+        ],
+
+        platforms: [
+
+            [0,0,0,8,1,8,"start"],
+
+            [0,2,-8,3,1,3,"normal"],
+
+            [6,4,-14,3,1,3,"normal"],
+
+            [-6,6,-20,3,1,3,"checkpoint"],
+
+            [5,8,-27,3,1,3,"moving"],
+
+            [-5,10,-34,3,1,3,"normal"],
+
+            [6,12,-41,3,1,3,"checkpoint"],
+
+            [-6,14,-48,3,1,3,"moving"],
+
+            [0,17,-57,5,1,5,"goal"]
+
+        ],
+
+        checkpoints: [
+
+            [
+                -6,
+                7,
+                -20,
+                "Checkpoint 1"
+            ],
+
+            [
+                6,
+                13,
+                -41,
+                "Checkpoint 2"
+            ]
+
+        ],
+
+        goal: [
+            0,
+            17,
+            -57
+        ]
+
     }
 
-    if (e.code === "KeyR" && playing) {
-
-        respawn();
-    }
-});
+];
 
 
-document.addEventListener("keyup", e => {
-
-    keys[e.code] = false;
-
-});
-
-
-/* =========================================================
-   開始遊戲
-========================================================= */
-
-startBtn.addEventListener("click", () => {
-
-    menu.style.display = "none";
-
-    controls.lock();
-
-    startGame();
-
-});
-
-
-controls.addEventListener("lock", () => {
-
-    if (!playing) {
-
-        playing = true;
-
-        startTime = performance.now();
-    }
-
-});
-
-
-controls.addEventListener("unlock", () => {
-
-});
-
-
-/* =========================================================
-   平台建立
-========================================================= */
+/* =========================
+   建立平台
+========================= */
 
 function createPlatform(
     x,
@@ -380,41 +641,60 @@ function createPlatform(
     width,
     height,
     depth,
-    type = "normal"
+    type
 ) {
 
-    let color = 0x4b6584;
+    let color =
+        0x4b6584;
 
-    if (type === "start")
-        color = 0x2ecc71;
+    if (
+        type === "start"
+    ) {
 
-    if (type === "checkpoint")
-        color = 0xf1c40f;
+        color =
+            0x2ecc71;
+    }
 
-    if (type === "goal")
-        color = 0xe74c3c;
+    if (
+        type === "checkpoint"
+    ) {
 
-    if (type === "moving")
-        color = 0x9b59b6;
+        color =
+            0xf1c40f;
+    }
 
-    const geometry =
-        new THREE.BoxGeometry(
-            width,
-            height,
-            depth
-        );
+    if (
+        type === "goal"
+    ) {
 
-    const material =
-        new THREE.MeshStandardMaterial({
-            color,
-            roughness: .75
-        });
+        color =
+            0xe74c3c;
+    }
+
+    if (
+        type === "moving"
+    ) {
+
+        color =
+            0x9b59b6;
+    }
+
 
     const mesh =
         new THREE.Mesh(
-            geometry,
-            material
+
+            new THREE.BoxGeometry(
+                width,
+                height,
+                depth
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color: color
+            })
+
         );
+
 
     mesh.position.set(
         x,
@@ -423,32 +703,46 @@ function createPlatform(
     );
 
     mesh.castShadow = true;
+
     mesh.receiveShadow = true;
 
     scene.add(mesh);
 
-    const obj = {
-        mesh,
-        width,
-        height,
-        depth,
-        type,
+
+    const platform = {
+
+        mesh: mesh,
+
+        width: width,
+
+        height: height,
+
+        depth: depth,
+
+        type: type,
+
         startX: x,
-        startY: y,
-        startZ: z,
-        moving: type === "moving"
+
+        moving:
+            type === "moving"
+
     };
 
-    platforms.push(obj);
-    levelObjects.push(mesh);
 
-    return obj;
+    platforms.push(
+        platform
+    );
+
+    levelObjects.push(
+        mesh
+    );
+
 }
 
 
-/* =========================================================
+/* =========================
    Checkpoint
-========================================================= */
+========================= */
 
 function createCheckpoint(
     x,
@@ -457,7 +751,9 @@ function createCheckpoint(
     name
 ) {
 
-    const group = new THREE.Group();
+    const group =
+        new THREE.Group();
+
 
     group.position.set(
         x,
@@ -466,47 +762,47 @@ function createCheckpoint(
     );
 
 
-    const poleGeometry =
-        new THREE.CylinderGeometry(
-            .08,
-            .08,
-            3,
-            12
-        );
-
-    const poleMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0xffffff
-        });
-
     const pole =
         new THREE.Mesh(
-            poleGeometry,
-            poleMaterial
+
+            new THREE.CylinderGeometry(
+                .08,
+                .08,
+                3,
+                12
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff
+            })
+
         );
+
 
     pole.position.y = 1.5;
 
     group.add(pole);
 
 
-    const flagGeometry =
-        new THREE.PlaneGeometry(
-            1.3,
-            .8
-        );
-
-    const flagMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0xffd32a,
-            side: THREE.DoubleSide
-        });
-
     const flag =
         new THREE.Mesh(
-            flagGeometry,
-            flagMaterial
+
+            new THREE.PlaneGeometry(
+                1.3,
+                .8
+            ),
+
+            new THREE.MeshStandardMaterial({
+
+                color: 0xffd32a,
+
+                side:
+                    THREE.DoubleSide
+
+            })
+
         );
+
 
     flag.position.set(
         .65,
@@ -514,47 +810,63 @@ function createCheckpoint(
         0
     );
 
+
     group.add(flag);
 
     scene.add(group);
 
+
     checkpoints.push({
-        x,
-        y,
-        z,
-        name,
-        group
+
+        x: x,
+
+        y: y,
+
+        z: z,
+
+        name: name
+
     });
 
-    levelObjects.push(group);
+
+    levelObjects.push(
+        group
+    );
+
 }
 
 
-/* =========================================================
+/* =========================
    終點
-========================================================= */
+========================= */
 
-function createGoal(x, y, z) {
-
-    const geometry =
-        new THREE.TorusGeometry(
-            1.4,
-            .18,
-            12,
-            40
-        );
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0xff3333,
-            emissive: 0x550000
-        });
+function createGoal(
+    x,
+    y,
+    z
+) {
 
     goal =
         new THREE.Mesh(
-            geometry,
-            material
+
+            new THREE.TorusGeometry(
+                1.4,
+                .18,
+                12,
+                40
+            ),
+
+            new THREE.MeshStandardMaterial({
+
+                color: 0xff3333,
+
+                emissive:
+                    0x550000
+
+            })
+
         );
+
 
     goal.position.set(
         x,
@@ -562,301 +874,173 @@ function createGoal(x, y, z) {
         z
     );
 
-    goal.rotation.x =
-        Math.PI / 2;
 
     scene.add(goal);
 
-    levelObjects.push(goal);
-}
-
-
-/* =========================================================
-   危險區
-========================================================= */
-
-function createHazard(
-    x,
-    y,
-    z,
-    width,
-    depth
-) {
-
-    const geometry =
-        new THREE.BoxGeometry(
-            width,
-            .2,
-            depth
-        );
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0xff1744,
-            emissive: 0x330000
-        });
-
-    const mesh =
-        new THREE.Mesh(
-            geometry,
-            material
-        );
-
-    mesh.position.set(
-        x,
-        y,
-        z
+    levelObjects.push(
+        goal
     );
 
-    scene.add(mesh);
-
-    hazards.push(mesh);
-
-    levelObjects.push(mesh);
 }
 
 
-/* =========================================================
-   地圖資料
-========================================================= */
-
-const levels = [
-
-    /* =========================
-       LEVEL 1
-    ========================= */
-
-    {
-        start: [0, 3, 0],
-
-        platforms: [
-
-            [0, 0, 0, 10, 1, 10, "start"],
-
-            [0, 1, -8, 5, 1, 5, "normal"],
-
-            [4, 3, -15, 5, 1, 5, "normal"],
-
-            [-2, 5, -22, 5, 1, 5, "normal"],
-
-            [5, 7, -29, 5, 1, 5, "checkpoint"],
-
-            [0, 9, -38, 5, 1, 5, "normal"],
-
-            [-5, 11, -46, 5, 1, 5, "goal"]
-
-        ],
-
-        checkpoints: [
-            [5, 8, -29, "Checkpoint 1"]
-        ],
-
-        goal: [-5, 11, -46]
-    },
-
-
-    /* =========================
-       LEVEL 2
-    ========================= */
-
-    {
-        start: [0, 4, 0],
-
-        platforms: [
-
-            [0, 0, 0, 8, 1, 8, "start"],
-
-            [-5, 2, -8, 4, 1, 4, "normal"],
-
-            [4, 4, -14, 4, 1, 4, "normal"],
-
-            [-4, 6, -20, 4, 1, 4, "checkpoint"],
-
-            [5, 8, -27, 4, 1, 4, "normal"],
-
-            [-5, 10, -34, 4, 1, 4, "normal"],
-
-            [4, 12, -41, 4, 1, 4, "checkpoint"],
-
-            [0, 14, -49, 5, 1, 5, "goal"]
-
-        ],
-
-        checkpoints: [
-
-            [-4, 7, -20, "Checkpoint 1"],
-
-            [4, 13, -41, "Checkpoint 2"]
-
-        ],
-
-        goal: [0, 14, -49]
-    },
-
-
-    /* =========================
-       LEVEL 3
-    ========================= */
-
-    {
-        start: [0, 5, 0],
-
-        platforms: [
-
-            [0, 0, 0, 8, 1, 8, "start"],
-
-            [0, 2, -8, 3, 1, 3, "normal"],
-
-            [6, 4, -14, 3, 1, 3, "normal"],
-
-            [-6, 6, -20, 3, 1, 3, "checkpoint"],
-
-            [5, 8, -27, 3, 1, 3, "moving"],
-
-            [-5, 10, -34, 3, 1, 3, "normal"],
-
-            [6, 12, -41, 3, 1, 3, "checkpoint"],
-
-            [-6, 14, -48, 3, 1, 3, "moving"],
-
-            [0, 17, -57, 5, 1, 5, "goal"]
-
-        ],
-
-        checkpoints: [
-
-            [-6, 7, -20, "Checkpoint 1"],
-
-            [6, 13, -41, "Checkpoint 2"]
-
-        ],
-
-        goal: [0, 17, -57]
-    }
-
-];
-
-
-/* =========================================================
+/* =========================
    清除關卡
-========================================================= */
+========================= */
 
 function clearLevel() {
 
-    for (const obj of levelObjects) {
+    for (
+        const obj of levelObjects
+    ) {
 
         scene.remove(obj);
+
     }
 
     platforms = [];
+
     checkpoints = [];
-    hazards = [];
+
     levelObjects = [];
+
     goal = null;
+
 }
 
 
-/* =========================================================
-   建立關卡
-========================================================= */
+/* =========================
+   載入關卡
+========================= */
 
-function loadLevel(index) {
+function loadLevel(
+    index
+) {
 
     clearLevel();
 
-    const data = levels[index];
 
-    currentLevel = index;
+    const data =
+        levels[index];
+
+
+    currentLevel =
+        index;
+
 
     levelText.textContent =
         index + 1;
 
 
-    /* 平台 */
+    for (
+        const p of data.platforms
+    ) {
 
-    for (const p of data.platforms) {
+        createPlatform(
+            ...p
+        );
 
-        createPlatform(...p);
     }
 
 
-    /* Checkpoint */
+    for (
+        const cp of data.checkpoints
+    ) {
 
-    for (const cp of data.checkpoints) {
+        createCheckpoint(
+            ...cp
+        );
 
-        createCheckpoint(...cp);
     }
 
 
-    /* 終點 */
-
-    createGoal(...data.goal);
-
-
-    /* 出發位置 */
-
-    checkpoint.set(
-        data.start[0],
-        data.start[1],
-        data.start[2]
+    createGoal(
+        ...data.goal
     );
 
-    checkpointName = "起點";
+
+    checkpoint.set(
+        ...data.start
+    );
+
+
+    checkpointName =
+        "起點";
+
 
     checkpointText.textContent =
         checkpointName;
 
 
-    controls.getObject().position.set(
-        data.start[0],
-        data.start[1],
-        data.start[2]
-    );
-
-
-    velocity.set(0, 0, 0);
-
-    startTime = performance.now();
-}
-
-
-/* =========================================================
-   開始遊戲
-========================================================= */
-
-function startGame() {
-
-    loadLevel(0);
-
-}
-
-
-/* =========================================================
-   Respawn
-========================================================= */
-
-function respawn() {
-
-    controls.getObject().position.copy(
+    controls.object.position.copy(
         checkpoint
     );
 
-    velocity.set(
-        0,
-        0,
-        0
-    );
+
+    velocityY = 0;
+
+    canJump = false;
+
+    startTime =
+        performance.now();
+
 }
 
 
-/* =========================================================
-   碰撞檢查
-========================================================= */
+/* =========================
+   Respawn
+========================= */
 
-function checkPlatformCollision() {
+function respawn() {
+
+    controls.object.position.copy(
+        checkpoint
+    );
+
+    velocityY = 0;
+
+    canJump = false;
+
+}
+
+
+/* =========================
+   訊息
+========================= */
+
+function showMessage(
+    text
+) {
+
+    message.textContent =
+        text;
+
+    message.style.opacity =
+        1;
+
+
+    setTimeout(
+        function() {
+
+            message.style.opacity =
+                0;
+
+        },
+        1200
+    );
+
+}
+
+
+/* =========================
+   平台碰撞
+========================= */
+
+function checkCollision() {
 
     const player =
-        controls.getObject();
+        controls.object;
+
 
     const px =
         player.position.x;
@@ -867,87 +1051,115 @@ function checkPlatformCollision() {
     const pz =
         player.position.z;
 
-    const radius = .35;
 
-    let standing = false;
+    const radius =
+        .35;
 
 
-    for (const p of platforms) {
+    let standing =
+        false;
 
-        const m = p.mesh;
+
+    for (
+        const p of platforms
+    ) {
 
         const top =
-            m.position.y +
+            p.mesh.position.y +
             p.height / 2;
-
-        const left =
-            m.position.x -
-            p.width / 2;
-
-        const right =
-            m.position.x +
-            p.width / 2;
-
-        const front =
-            m.position.z -
-            p.depth / 2;
-
-        const back =
-            m.position.z +
-            p.depth / 2;
 
 
         const insideX =
-            px > left - radius &&
-            px < right + radius;
+
+            px >
+            p.mesh.position.x -
+            p.width / 2 -
+            radius
+
+            &&
+
+            px <
+            p.mesh.position.x +
+            p.width / 2 +
+            radius;
+
 
         const insideZ =
-            pz > front - radius &&
-            pz < back + radius;
+
+            pz >
+            p.mesh.position.z -
+            p.depth / 2 -
+            radius
+
+            &&
+
+            pz <
+            p.mesh.position.z +
+            p.depth / 2 +
+            radius;
 
 
         if (
+
             insideX &&
+
             insideZ &&
+
             py >= top &&
+
             py <= top + 1.2 &&
-            velocity.y <= 0
+
+            velocityY <= 0
+
         ) {
 
             player.position.y =
-                top + playerHeight;
+                top + PLAYER_HEIGHT;
 
-            velocity.y = 0;
+            velocityY = 0;
 
             standing = true;
+
         }
+
     }
 
-    canJump = standing;
+
+    canJump =
+        standing;
+
 }
 
 
-/* =========================================================
-   Checkpoint 碰撞
-========================================================= */
+/* =========================
+   Checkpoint
+========================= */
 
 function checkCheckpoints() {
 
     const player =
-        controls.getObject();
+        controls.object;
 
-    for (const cp of checkpoints) {
+
+    for (
+        const cp of checkpoints
+    ) {
 
         const distance =
             player.position.distanceTo(
+
                 new THREE.Vector3(
                     cp.x,
                     cp.y,
                     cp.z
                 )
+
             );
 
-        if (distance < 2.5) {
+
+        if (
+            distance < 2.5
+        ) {
 
             checkpoint.set(
                 cp.x,
@@ -955,173 +1167,234 @@ function checkCheckpoints() {
                 cp.z
             );
 
+
             checkpointName =
                 cp.name;
 
+
             checkpointText.textContent =
                 checkpointName;
+
         }
+
     }
+
 }
 
 
-/* =========================================================
-   終點
-========================================================= */
+/* =========================
+   終點判斷
+========================= */
 
 function checkGoal() {
 
     if (!goal) return;
 
-    const player =
-        controls.getObject();
 
     const distance =
-        player.position.distanceTo(
+        controls.object.position.distanceTo(
             goal.position
         );
 
-    if (distance < 2.5) {
+
+    if (
+        distance < 2.5
+    ) {
 
         nextLevel();
+
     }
+
 }
 
 
-/* =========================================================
+/* =========================
    下一關
-========================================================= */
+========================= */
 
 function nextLevel() {
 
-    if (currentLevel >= levels.length - 1) {
+    if (
+        currentLevel >=
+        levels.length - 1
+    ) {
 
         playing = false;
+
+        controls.unlock();
 
         showMessage(
             "🏆 全部關卡完成！"
         );
 
-        setTimeout(() => {
 
-            loadLevel(0);
+        setTimeout(
+            function() {
 
-            playing = true;
+                loadLevel(0);
 
-        }, 2500);
+                menu.style.display =
+                    "flex";
+
+                startBtn.textContent =
+                    "重新開始";
+
+            },
+            1800
+        );
+
 
         return;
+
     }
 
 
     playing = false;
 
+    controls.unlock();
+
+
     showMessage(
-        `✔ 第 ${currentLevel + 1} 關完成！`
+        "✔ 第 " +
+        (currentLevel + 1) +
+        " 關完成！"
     );
 
 
-    setTimeout(() => {
+    setTimeout(
+        function() {
 
-        loadLevel(
-            currentLevel + 1
-        );
+            loadLevel(
+                currentLevel + 1
+            );
 
-        playing = true;
+            playing = true;
 
-    }, 1500);
+            controls.lock();
+
+        },
+        1200
+    );
+
 }
 
 
-/* =========================================================
-   顯示訊息
-========================================================= */
+/* =========================
+   玩家移動
+========================= */
 
-function showMessage(text) {
+function updateMovement(
+    delta
+) {
 
-    message.textContent = text;
+    if (
+        !playing ||
+        !controls.isLocked
+    ) {
 
-    message.style.opacity = 1;
+        return;
 
-    setTimeout(() => {
-
-        message.style.opacity = 0;
-
-    }, 1200);
-}
-
-
-/* =========================================================
-   移動
-========================================================= */
-
-function updateMovement(delta) {
-
-    if (!playing) return;
+    }
 
 
-    const player =
-        controls.getObject();
+    let x = 0;
+
+    let z = 0;
 
 
-    let forward = 0;
-    let right = 0;
+    if (
+        keys["KeyA"]
+    ) {
+
+        x -= 1;
+
+    }
 
 
-    if (keys["KeyW"])
-        forward += 1;
+    if (
+        keys["KeyD"]
+    ) {
 
-    if (keys["KeyS"])
-        forward -= 1;
+        x += 1;
 
-    if (keys["KeyD"])
-        right += 1;
-
-    if (keys["KeyA"])
-        right -= 1;
+    }
 
 
-    const direction =
-        new THREE.Vector3(
-            right,
-            0,
-            -forward
-        );
+    if (
+        keys["KeyW"]
+    ) {
+
+        z += 1;
+
+    }
 
 
-    if (direction.lengthSq() > 0) {
+    if (
+        keys["KeyS"]
+    ) {
 
-        direction.normalize();
+        z -= 1;
 
-        const speed =
-            moveSpeed * delta;
+    }
+
+
+    if (
+        x !== 0 ||
+        z !== 0
+    ) {
+
+        const length =
+            Math.hypot(
+                x,
+                z
+            );
+
+
+        x /= length;
+
+        z /= length;
+
 
         controls.moveRight(
-            direction.x * speed
+            x *
+            MOVE_SPEED *
+            delta
         );
 
+
         controls.moveForward(
-            direction.z * speed
+            z *
+            MOVE_SPEED *
+            delta
         );
+
     }
 
 
     /* 重力 */
 
-    velocity.y -=
-        gravity * delta;
-
-    player.position.y +=
-        velocity.y * delta;
+    velocityY -=
+        GRAVITY *
+        delta;
 
 
-    checkPlatformCollision();
+    controls.object.position.y +=
+        velocityY *
+        delta;
 
 
-    /* 掉出地圖 */
+    checkCollision();
+
+    checkCheckpoints();
+
+    checkGoal();
+
+
+    /* 掉下去 */
 
     if (
-        player.position.y < -30
+        controls.object.position.y <
+        -30
     ) {
 
         respawn();
@@ -1129,60 +1402,145 @@ function updateMovement(delta) {
         showMessage(
             "↩ 回到 Checkpoint"
         );
+
     }
 
-
-    checkCheckpoints();
-
-    checkGoal();
 }
 
 
-/* =========================================================
+/* =========================
    移動平台
-========================================================= */
+========================= */
 
-function updateMovingPlatforms(time) {
+function updateMovingPlatforms(
+    time
+) {
 
-    for (const p of platforms) {
+    for (
+        const p of platforms
+    ) {
 
-        if (!p.moving) continue;
+        if (
+            !p.moving
+        ) {
+
+            continue;
+
+        }
+
 
         p.mesh.position.x =
+
             p.startX +
-            Math.sin(time * .0015) * 4;
+
+            Math.sin(
+                time * .0015
+            ) * 4;
 
     }
+
 }
 
 
-/* =========================================================
-   UI 更新
-========================================================= */
+/* =========================
+   開始按鈕
+========================= */
 
-function updateUI() {
+startBtn.addEventListener(
+    "click",
+    function(e) {
 
-    if (!playing) return;
+        e.preventDefault();
 
-    levelTime =
-        (performance.now() - startTime) /
-        1000;
-
-    timeText.textContent =
-        levelTime.toFixed(2);
-}
+        e.stopPropagation();
 
 
-/* =========================================================
+        menu.style.display =
+            "none";
+
+
+        pause.style.display =
+            "none";
+
+
+        if (!playing) {
+
+            loadLevel(0);
+
+            playing = true;
+
+        }
+
+
+        controls.lock();
+
+    }
+);
+
+
+/* =========================
+   滑鼠鎖定
+========================= */
+
+controls.addEventListener(
+    "lock",
+    function() {
+
+        pause.style.display =
+            "none";
+
+    }
+);
+
+
+controls.addEventListener(
+    "unlock",
+    function() {
+
+        if (playing) {
+
+            pause.style.display =
+                "flex";
+
+        }
+
+    }
+);
+
+
+/* 點畫面繼續 */
+
+document.addEventListener(
+    "click",
+    function() {
+
+        if (
+            playing &&
+            !controls.isLocked
+        ) {
+
+            controls.lock();
+
+        }
+
+    }
+);
+
+
+/* =========================
    動畫
-========================================================= */
+========================= */
 
 const clock =
     new THREE.Clock();
 
+
 function animate() {
 
-    requestAnimationFrame(animate);
+    requestAnimationFrame(
+        animate
+    );
+
 
     const delta =
         Math.min(
@@ -1190,24 +1548,44 @@ function animate() {
             .05
         );
 
-    const time =
-        performance.now();
+
+    updateMovement(
+        delta
+    );
 
 
-    updateMovement(delta);
-
-    updateMovingPlatforms(time);
-
-    updateUI();
+    updateMovingPlatforms(
+        performance.now()
+    );
 
 
-    if (goal) {
+    if (
+        playing
+    ) {
+
+        const time =
+            (
+                performance.now() -
+                startTime
+            ) / 1000;
+
+
+        timeText.textContent =
+            time.toFixed(2);
+
+    }
+
+
+    if (
+        goal
+    ) {
 
         goal.rotation.z +=
             delta * 2;
 
         goal.rotation.y +=
             delta;
+
     }
 
 
@@ -1215,31 +1593,42 @@ function animate() {
         scene,
         camera
     );
+
 }
 
-animate();
 
-
-/* =========================================================
+/* =========================
    視窗大小
-========================================================= */
+========================= */
 
 window.addEventListener(
     "resize",
-    () => {
+    function() {
 
         camera.aspect =
             window.innerWidth /
             window.innerHeight;
 
+
         camera.updateProjectionMatrix();
+
 
         renderer.setSize(
             window.innerWidth,
             window.innerHeight
         );
+
     }
 );
+
+
+/* =========================
+   啟動
+========================= */
+
+loadLevel(0);
+
+animate();
 
 </script>
 
