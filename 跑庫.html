@@ -1446,37 +1446,12 @@ function updateMovingPlatforms(
    開始按鈕
 ========================= */
 
-startBtn.addEventListener(
-    "click",
-    function(e) {
-
-        e.preventDefault();
-
-        e.stopPropagation();
-
-
-        menu.style.display =
-            "none";
-
-
-        pause.style.display =
-            "none";
-
-
-        if (!playing) {
-
-            loadLevel(0);
-
-            playing = true;
-
-        }
-
-
-        controls.lock();
-
-    }
-);
-
+// 進入網頁後直接開始
+window.addEventListener("load", () => {
+    loadLevel(0);
+    playing = true;
+    menu.style.display = "none";
+});
 
 /* =========================
    滑鼠鎖定
