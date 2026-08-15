@@ -24,6 +24,8 @@ body.aiming #cross{opacity:.35}
 #cross:before{width:24px;height:2px;top:11px}#cross:after{width:2px;height:24px;left:11px}
 #hit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;opacity:0}
 #message{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:28px;font-weight:800;opacity:0;text-align:center}
+#climbHint{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);font-size:12px;letter-spacing:2px;color:#45eaff;opacity:0}
+body.nearClimb #climbHint{opacity:.95}
 #tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;opacity:.62;white-space:nowrap}
 #damage{position:fixed;inset:0;background:radial-gradient(transparent 35%,rgba(255,0,0,.32));opacity:0;pointer-events:none;z-index:30}
 #intro{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:25;color:#fff;text-align:center;pointer-events:none}
@@ -42,8 +44,8 @@ body.aiming #cross{opacity:.35}
 <div id="weaponList"></div>
 <div id="adsText">ADS</div>
 <div id="ammo"><span id="ammoNow">18</span> / 18</div>
-<div id="cross"></div><div id="hit">✦</div><div id="message"></div>
-<div id="tip">WASD 移動　SHIFT 衝刺　SPACE 跳躍　左鍵射擊　右鍵開鏡　1-8 換槍　R 裝填　F 掃描　ESC 解鎖</div>
+<div id="cross"></div><div id="hit">✦</div><div id="message"></div><div id="climbHint">E：攀爬</div>
+<div id="tip">WASD 移動　SHIFT 衝刺　SPACE 跳躍　E 攀爬　左鍵射擊　右鍵開鏡　1-8 換槍　R 裝填　F 掃描　ESC 解鎖</div>
 </div>
 <div id="damage"></div>
 <div id="intro"><h1>NEON CITY</h1><p>URBAN ARENA // 5 WAVES</p><p>點一下畫面鎖定滑鼠並開始</p></div>
@@ -120,6 +122,7 @@ function car(x,z,color=0x263447,rot=0){
  const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.55,.55,1.7),glassMat);cabin.position.set(0,.88,-.15);g.add(cabin);
  const light=new THREE.Mesh(new THREE.BoxGeometry(1.2,.08,.08),neonBlue);light.position.set(0,.5,-2.13);g.add(light);
  g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+  obstacles.push({mesh:g,w:2.1,h:1.4,d:4.2});
 }
 function billboard(x,y,z,w,h,color){
  addBox(x,y,z,w,h,.25,new THREE.MeshStandardMaterial({color:0x080b12,metalness:.6}),false);
@@ -216,6 +219,53 @@ function switchWeapon(i){
 
 buildWeaponModel();
 
+
+let climbing=false;
+let climbData=null;
+let climbTimer=0;
+const CLIMB_REACH=2.4;
+const CLIMB_MAX=5.2;
+
+function getClimbTarget(){
+  const origin=camera.position.clone();
+  const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+  raycaster.set(origin,dir);
+  const hits=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
+  if(!hits.length||hits[0].distance>CLIMB_REACH)return null;
+  let obj=hits[0].object,rec=null;
+  while(obj&&!rec){rec=obstacles.find(o=>o.mesh===obj);obj=obj.parent;}
+  if(!rec)return null;
+  const top=rec.mesh.position.y+rec.h/2;
+  const delta=top-player.pos.y;
+  if(delta<-0.8||delta>CLIMB_MAX)return null;
+  return {rec,top};
+}
+
+function startClimb(){
+  if(climbing)return true;
+  const t=getClimbTarget();
+  if(!t)return false;
+  climbing=true;climbData=t;climbTimer=.42;player.vel.set(0,0,0);
+  document.body.classList.add('nearClimb');
+  return true;
+}
+
+function updateClimb(dt){
+  if(!climbing)return;
+  climbTimer-=dt;
+  const top=climbData.top+.78;
+  const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+  player.pos.y=THREE.MathUtils.lerp(player.pos.y,top,Math.min(1,dt*14));
+  if(climbTimer<=0){
+    const push=forward.clone().multiplyScalar(-.95);
+    const nx=player.pos.x+push.x,nz=player.pos.z+push.z;
+    if(!collidesPoint(nx,player.pos.z,.48))player.pos.x=nx;
+    if(!collidesPoint(player.pos.x,nz,.48))player.pos.z=nz;
+    player.vel.y=1.8;player.canJump=false;climbing=false;climbData=null;
+    document.body.classList.remove('nearClimb');
+  }
+}
+
 let locked=false;
 document.addEventListener("pointerlockchange",()=>{
   locked=document.pointerLockElement===document.body;
@@ -225,7 +275,10 @@ document.addEventListener("pointerlockchange",()=>{
 document.addEventListener("mousemove",e=>{if(!locked)return;player.yaw-=e.movementX*.0021;player.pitch-=e.movementY*.0021;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.45,1.45)});
 document.addEventListener("keydown",e=>{
   keys[e.code]=true;
-  if(e.code==="Space"&&player.canJump){player.vel.y=9.5;player.canJump=false}
+  if((e.code==="KeyE"||e.code==="Space")&&!climbing){
+    if(startClimb()){e.preventDefault();return;}
+  }
+  if(e.code==="Space"&&player.canJump&&!climbing){player.vel.y=9.5;player.canJump=false}
   if(e.code==="KeyR")reload();
   if(e.code==="KeyF")useScanner();
   if(e.code==="KeyT")resetGame();
@@ -353,6 +406,12 @@ function collidesPoint(x,z,r){
 }
 function updatePlayer(dt){
  if(!locked)return;
+ if(climbing){
+   updateClimb(dt);
+   camera.position.copy(player.pos);
+   camera.rotation.order='YXZ';camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
+   return;
+ }
  if(fireHeld)shoot();
  let f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),len=Math.hypot(f,r);
  if(len){f/=len;r/=len}
@@ -360,17 +419,19 @@ function updatePlayer(dt){
  const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
  const move=forward.clone().multiplyScalar(f*speed*dt).add(right.clone().multiplyScalar(r*speed*dt));
  const nx=player.pos.x+move.x,nz=player.pos.z+move.z;
- if(!collidesPoint(nx,player.pos.z,.45))player.pos.x=nx;if(!collidesPoint(player.pos.x,nz,.45))player.pos.z=nz;
- player.vel.y-=25*dt;player.pos.y+=player.vel.y*dt;if(player.pos.y<1.7){player.pos.y=1.7;player.vel.y=0;player.canJump=true}
+ if(!collidesPoint(nx,player.pos.z,.45))player.pos.x=nx;
+ if(!collidesPoint(player.pos.x,nz,.45))player.pos.z=nz;
+ player.vel.y-=25*dt;player.pos.y+=player.vel.y*dt;
+ if(player.pos.y<1.7){player.pos.y=1.7;player.vel.y=0;player.canJump=true}
+ if((keys.KeyE||keys.KeyW)&&getClimbTarget())startClimb();
  player.fireCD=Math.max(0,player.fireCD-dt);player.inv=Math.max(0,player.inv-dt);
  if(player.reload){player.reloadT-=dt;if(player.reloadT<=0){player.ammo=player.maxAmmo;player.reload=false}}
- camera.position.copy(player.pos);
- camera.rotation.order="YXZ";camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
- camera.fov=THREE.MathUtils.lerp(camera.fov,aiming?52:76,Math.min(1,dt*14));
- camera.updateProjectionMatrix();
+ camera.position.copy(player.pos);camera.rotation.order='YXZ';camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
+ camera.fov=THREE.MathUtils.lerp(camera.fov,aiming?52:76,Math.min(1,dt*14));camera.updateProjectionMatrix();
  weapon.position.x=THREE.MathUtils.lerp(weapon.position.x,aiming?.02:0,Math.min(1,dt*12));
  weapon.position.y=Math.sin(performance.now()*.008)*(len ? .018 : 0);
  weapon.position.z=THREE.MathUtils.lerp(weapon.position.z,aiming?.12:0,Math.min(1,dt*12));
+ if(getClimbTarget())document.body.classList.add('nearClimb');else document.body.classList.remove('nearClimb');
 }
 function useScanner(){
  for(const e of enemies){if(!e.alive)continue;const mat=e.mesh.children[0].material,old=mat.emissive.clone();mat.emissive.set(0x00ffff);setTimeout(()=>mat.emissive.copy(old),450)}
