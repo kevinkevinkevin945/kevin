@@ -144,7 +144,11 @@ const gunCore=new THREE.Mesh(new THREE.BoxGeometry(.09,.09,.72),neonBlue);gunCor
 camera.add(weapon);scene.add(camera);
 
 let locked=false;
-document.addEventListener("pointerlockchange",()=>locked=document.pointerLockElement===document.body);
+document.addEventListener("pointerlockchange",()=>{
+  locked=document.pointerLockElement===document.body;
+  const intro=document.getElementById("intro");
+  if(intro) intro.style.display=locked ? "none" : "block";
+});
 document.addEventListener("mousemove",e=>{if(!locked)return;player.yaw-=e.movementX*.0021;player.pitch-=e.movementY*.0021;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.45,1.45)});
 document.addEventListener("keydown",e=>{keys[e.code]=true;if(e.code==="Space"&&player.canJump){player.vel.y=9.5;player.canJump=false}if(e.code==="KeyR")reload();if(e.code==="KeyF")useScanner();if(e.code==="KeyT")resetGame()});
 document.addEventListener("keyup",e=>keys[e.code]=false);
