@@ -1,468 +1,585 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEON CITY // Urban Arena</title>
-<style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101a;font-family:Arial,"Microsoft JhengHei",sans-serif}canvas{display:block}
-#hud{position:fixed;inset:0;color:#fff;pointer-events:none;text-shadow:0 2px 5px #000;z-index:20}
-#topLeft{position:absolute;left:18px;top:15px;font-size:16px;line-height:1.65}
-#topRight{position:absolute;right:18px;top:15px;text-align:right;font-size:16px;line-height:1.65}
-#status{position:absolute;left:18px;bottom:18px;width:300px;font-size:13px}
-.bar{height:15px;background:#141a25;border:1px solid #fff;margin:3px 0 7px}.fill{height:100%}
-#hpFill{background:#24e06d;width:100%}#shieldFill{background:#31a9ff;width:100%}
-#ammo{position:absolute;right:24px;bottom:24px;font-size:34px;font-weight:800}
-#weaponList{position:absolute;right:24px;bottom:118px;text-align:right;font-size:12px;line-height:1.55;opacity:.72}
-#weaponList b{opacity:1}
-#adsText{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;letter-spacing:3px;opacity:0}
-body.aiming #adsText{opacity:.9}
-body.aiming #cross{opacity:.35}
-#weapon{position:absolute;right:25px;bottom:67px;font-size:13px;opacity:.8}
-#cross{position:absolute;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%)}
-#cross:before,#cross:after{content:"";position:absolute;background:#fff;box-shadow:0 0 4px #00eaff}
-#cross:before{width:24px;height:2px;top:11px}#cross:after{width:2px;height:24px;left:11px}
-#hit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;opacity:0}
-#message{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:28px;font-weight:800;opacity:0;text-align:center}
-#climbHint{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);font-size:12px;letter-spacing:2px;color:#45eaff;opacity:0}
-body.nearClimb #climbHint{opacity:.95}
-#tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;opacity:.62;white-space:nowrap}
-#damage{position:fixed;inset:0;background:radial-gradient(transparent 35%,rgba(255,0,0,.32));opacity:0;pointer-events:none;z-index:30}
-#intro{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:25;color:#fff;text-align:center;pointer-events:none}
-#intro h1{font-size:54px;letter-spacing:8px;margin:0 0 8px}#intro p{margin:5px;opacity:.75}
-#mini{position:absolute;left:18px;top:155px;width:150px;height:150px;border:1px solid rgba(255,255,255,.45);background:rgba(3,7,15,.5);border-radius:50%;overflow:hidden}
-#mapCanvas{width:100%;height:100%}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>僵尸枪战·载具风暴 精致版</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background: #0a0f0c;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 1200px;
+      max-height: 800px;
+      background: #1d2b24;
+      box-shadow: 0 0 60px rgba(0, 255, 100, 0.2);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 30% 30%, #2c4a3a, #0e1f16);
+      cursor: crosshair;
+    }
+    #hud {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      color: #e0ffe8;
+      text-shadow: 0 0 10px #00c853, 0 2px 4px black;
+      font-weight: bold;
+      font-size: 18px;
+      letter-spacing: 1px;
+      z-index: 10;
+    }
+    .badge {
+      background: rgba(10, 25, 18, 0.7);
+      backdrop-filter: blur(6px);
+      padding: 8px 16px;
+      border-radius: 40px;
+      border: 1px solid #4caf7a;
+      box-shadow: 0 0 15px #1e5a3a;
+    }
+    #ammo-panel {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(0, 15, 5, 0.8);
+      padding: 10px 20px;
+      border-radius: 50px;
+      border: 2px solid #b3ffb0;
+      color: #f2ffe6;
+      font-size: 26px;
+      font-weight: bold;
+      text-shadow: 0 0 12px #69f0ae;
+      letter-spacing: 2px;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      z-index: 10;
+    }
+    #vehicle-status {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      background: rgba(20, 35, 25, 0.85);
+      padding: 8px 20px;
+      border-radius: 40px;
+      border: 1px solid #9dffb0;
+      color: #cdffd8;
+      font-weight: bold;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+      z-index: 10;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+      z-index: 20;
+      filter: drop-shadow(0 0 8px #aaffaa);
+    }
+  </style>
 </head>
 <body>
-<div id="hud">
-<div id="topLeft">WAVE <b id="wave">1</b> / 5<br>ENEMIES <b id="enemyCount">0</b><br>CITY SECTOR <b>A-01</b></div>
-<div id="topRight">SCORE <b id="score">0</b><br>KILLS <b id="kills">0</b><br>COMBO <b id="combo">0</b></div>
-<div id="mini"><canvas id="mapCanvas" width="150" height="150"></canvas></div>
-<div id="status">HP<div class="bar"><div id="hpFill" class="fill"></div></div>SHIELD<div class="bar"><div id="shieldFill" class="fill"></div></div></div>
-<div id="weapon">PULSE CARBINE // ENERGY</div>
-<div id="weaponList"></div>
-<div id="adsText">ADS</div>
-<div id="ammo"><span id="ammoNow">18</span> / 18</div>
-<div id="cross"></div><div id="hit">✦</div><div id="message"></div><div id="climbHint">E：攀爬</div>
-<div id="tip">WASD 移動　SHIFT 衝刺　SPACE 跳躍　E 攀爬　左鍵射擊　右鍵開鏡　1-8 換槍　R 裝填　F 掃描　ESC 解鎖</div>
+<div id="game-container">
+  <canvas id="gameCanvas" width="1200" height="800"></canvas>
+  <div id="hud">
+    <div class="badge" id="healthDisplay">❤️ 100</div>
+    <div class="badge" id="zombieCount">🧟 0</div>
+    <div class="badge" id="vehicleName">🚶 步行</div>
+  </div>
+  <div id="ammo-panel" id="ammoDisplay">🔫 30 / 无限</div>
+  <div id="vehicle-status" id="vehicleHp">载具HP: --</div>
+  <svg id="crosshair" viewBox="0 0 100 100" width="30" height="30">
+    <circle cx="50" cy="50" r="28" fill="none" stroke="#c8ffb0" stroke-width="4" opacity="0.8"/>
+    <line x1="50" y1="10" x2="50" y2="30" stroke="#eaffdd" stroke-width="6" stroke-linecap="round"/>
+    <line x1="50" y1="70" x2="50" y2="90" stroke="#eaffdd" stroke-width="6" stroke-linecap="round"/>
+    <line x1="10" y1="50" x2="30" y2="50" stroke="#eaffdd" stroke-width="6" stroke-linecap="round"/>
+    <line x1="70" y1="50" x2="90" y2="50" stroke="#eaffdd" stroke-width="6" stroke-linecap="round"/>
+  </svg>
 </div>
-<div id="damage"></div>
-<div id="intro"><h1>NEON CITY</h1><p>URBAN ARENA // 5 WAVES</p><p>點一下畫面鎖定滑鼠並開始</p></div>
 
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
-<script type="module">
-import * as THREE from "three";
+<script>
+  (function(){
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const healthDisplay = document.getElementById('healthDisplay');
+    const zombieCountSpan = document.getElementById('zombieCount');
+    const vehicleNameSpan = document.getElementById('vehicleName');
+    const ammoDisplay = document.getElementById('ammoDisplay');
+    const vehicleHpSpan = document.getElementById('vehicleHp');
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x07101b);
-scene.fog=new THREE.Fog(0x07101b,55,260);
+    // ---------- 地图尺寸 ----------
+    const WORLD_WIDTH = 3000;
+    const WORLD_HEIGHT = 2000;
+    const LAKE_CENTER_X = 1700, LAKE_CENTER_Y = 500, LAKE_RADIUS = 280;
 
-const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,500);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
+    // ---------- 输入状态 ----------
+    const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+    let mouseX = 0, mouseY = 0;
+    let mouseDown = false;
 
-scene.add(new THREE.HemisphereLight(0x9fc8ff,0x101522,1.15));
-const sun=new THREE.DirectionalLight(0xffffff,1.6);
-sun.position.set(40,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
-sun.shadow.camera.left=-120;sun.shadow.camera.right=120;sun.shadow.camera.top=120;sun.shadow.camera.bottom=-120;
-scene.add(sun);
+    // ---------- 玩家属性 ----------
+    let player = {
+      x: 400, y: 900,
+      vx: 0, vy: 0,
+      width: 28, height: 40,
+      health: 100,
+      maxHealth: 100,
+      speed: 180,
+      onGround: true,
+      climbing: false,
+      vehicle: null,         // 当前载具引用 (null表示步行)
+      weapon: 'rifle',
+      ammo: 30,
+      maxAmmo: 30,
+      lastDirection: 1
+    };
 
-const neonBlue=new THREE.MeshStandardMaterial({color:0x21b8e8,emissive:0x06364a,emissiveIntensity:1.7});
-const neonPink=new THREE.MeshStandardMaterial({color:0xff2d87,emissive:0x4a0624,emissiveIntensity:1.6});
-const glassMat=new THREE.MeshStandardMaterial({color:0x152a43,metalness:.5,roughness:.28});
-const darkMat=new THREE.MeshStandardMaterial({color:0x101827,roughness:.75});
-const roadMat=new THREE.MeshStandardMaterial({color:0x171c25,roughness:.9});
-const sidewalkMat=new THREE.MeshStandardMaterial({color:0x2a3038,roughness:.9});
-const windowMat=new THREE.MeshStandardMaterial({color:0x7bdcff,emissive:0x12526e,emissiveIntensity:1.2});
-const obstacles=[],buildings=[],enemies=[],effects=[],keys={};
+    // ---------- 载具系统 ----------
+    const vehicles = [];
+    class Vehicle {
+      constructor(type, x, y, hp, maxHp, speed, color, name) {
+        this.type = type; // 'boat', 'car', 'plane'
+        this.x = x; this.y = y;
+        this.width = type === 'plane' ? 70 : type === 'boat' ? 90 : 80;
+        this.height = type === 'plane' ? 45 : type === 'boat' ? 40 : 50;
+        this.hp = hp; this.maxHp = maxHp;
+        this.speed = speed;
+        this.color = color;
+        this.name = name;
+        this.direction = 1;
+        this.active = true;
+        this.attackCooldown = 0;
+        this.bullets = [];
+      }
+      draw(ctx) {
+        if (!this.active) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        // 船
+        if (this.type === 'boat') {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 45, 20, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#6d4c2f';
+          ctx.fillRect(-25, -22, 50, 12);
+          ctx.fillStyle = '#ddd';
+          ctx.font = 'bold 12px monospace';
+          ctx.fillText('🚤', -15, -8);
+        } else if (this.type === 'car') {
+          ctx.fillStyle = this.color;
+          ctx.fillRect(-40, -20, 80, 40);
+          ctx.fillStyle = '#222';
+          ctx.fillRect(-20, -30, 40, 16);
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(15, -25, 6, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#333';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText('🚗', -25, -10);
+        } else if (this.type === 'plane') {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.moveTo(-35, 0); ctx.lineTo(35, -15); ctx.lineTo(35, 15); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#f0f0f0';
+          ctx.beginPath();
+          ctx.arc(25, 0, 8, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#111';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText('✈️', -15, -15);
+        }
+        ctx.restore();
+        // 血条
+        if (this.hp < this.maxHp) {
+          ctx.fillStyle = '#ff5555';
+          ctx.fillRect(this.x-35, this.y-40, 70, 8);
+          ctx.fillStyle = '#55ff55';
+          ctx.fillRect(this.x-35, this.y-40, 70 * (this.hp/this.maxHp), 8);
+        }
+      }
+    }
 
-function addBox(x,y,z,w,h,d,mat,collide=true){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
- m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);
- if(collide)obstacles.push({mesh:m,w,h,d});return m;
-}
-function addGlowLine(x,y,z,w,d,mat=neonBlue){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,.055,d),mat);m.position.set(x,y,z);scene.add(m);return m;
-}
-function building(x,z,w,d,h,style){
- const bodyMat=style%3===0?new THREE.MeshStandardMaterial({color:0x17243a,metalness:.45,roughness:.45}):style%3===1?new THREE.MeshStandardMaterial({color:0x202a35,metalness:.35,roughness:.5}):new THREE.MeshStandardMaterial({color:0x111a2c,metalness:.6,roughness:.35});
- addBox(x,h/2,z,w,h,d,bodyMat,true);buildings.push({x,z,w,d,h});
- addBox(x,h+.12,z,w+.15,.24,d+.15,style%2?neonBlue:neonPink,false);
- for(let sx=x-w*.32;sx<x+w*.33;sx+=Math.max(2.2,w*.22)){
-   const strip=new THREE.Mesh(new THREE.BoxGeometry(.09,.8,d*.72),style%2?neonBlue:neonPink);
-   strip.position.set(sx,h*.52,z-d/2-.035);scene.add(strip);
- }
- const cols=Math.max(2,Math.floor(w/2.4)),rows=Math.max(2,Math.floor(h/3.3));
- for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-   if((r+c+style)%4===0)continue;
-   const ww=Math.min(1.25,(w*.7)/cols);
-   const win=new THREE.Mesh(new THREE.BoxGeometry(ww,.7,.035),windowMat);
-   win.position.set(x-w*.35+c*(w*.7/Math.max(1,cols-1)),2+r*3,z-d/2-.025);scene.add(win);
- }
-}
-function road(x,z,w,d){
- addBox(x,-.48,z,w,.4,d,roadMat,false);
- if(w>d)for(let px=x-w/2+6;px<x+w/2;px+=10)addGlowLine(px,-.25,z,.5,d*.012,new THREE.MeshStandardMaterial({color:0x59616b}));
- else for(let pz=z-d/2+6;pz<z+d/2;pz+=10){const line=new THREE.Mesh(new THREE.BoxGeometry(d*.012,.03,.5),new THREE.MeshStandardMaterial({color:0x59616b}));line.position.set(x,-.25,pz);scene.add(line);}
-}
-function streetLight(x,z,rot=0){
- const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,4.2,8),new THREE.MeshStandardMaterial({color:0x3d4653,metalness:.7}));
- pole.position.set(x,2.1,z);pole.rotation.z=rot;scene.add(pole);
- const lamp=new THREE.Mesh(new THREE.BoxGeometry(.5,.12,.15),neonBlue);
- lamp.position.set(x+Math.sin(rot)*.55,4.15,z+Math.cos(rot)*.55);scene.add(lamp);
-}
-function car(x,z,color=0x263447,rot=0){
- const g=new THREE.Group();
- const body=new THREE.Mesh(new THREE.BoxGeometry(2.1,.55,4.2),new THREE.MeshStandardMaterial({color,metalness:.55,roughness:.3}));body.position.y=.45;g.add(body);
- const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.55,.55,1.7),glassMat);cabin.position.set(0,.88,-.15);g.add(cabin);
- const light=new THREE.Mesh(new THREE.BoxGeometry(1.2,.08,.08),neonBlue);light.position.set(0,.5,-2.13);g.add(light);
- g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
-  obstacles.push({mesh:g,w:2.1,h:1.4,d:4.2});
-}
-function billboard(x,y,z,w,h,color){
- addBox(x,y,z,w,h,.25,new THREE.MeshStandardMaterial({color:0x080b12,metalness:.6}),false);
- addBox(x,y,z-.16,w-.25,h-.25,.06,color,false);
- for(let i=0;i<5;i++)addBox(x-w*.28+i*w*.14,y,z-.2,.07,h*.48,.03,neonBlue,false);
-}
+    // 创建载具：船、汽车、飞机
+    vehicles.push(new Vehicle('boat', 1500, 480, 200, 200, 150, '#5c4e3d', '巡逻艇'));
+    vehicles.push(new Vehicle('car', 600, 1200, 180, 180, 220, '#3a6ea5', '装甲车'));
+    vehicles.push(new Vehicle('plane', 2200, 300, 300, 300, 280, '#7b8c9e', '武装飞机'));
 
-const CITY=220;
-addBox(0,-1.05,0,CITY*2,.5,CITY*2,new THREE.MeshStandardMaterial({color:0x0c111a}),false);
-for(let p=-200;p<=200;p+=40){road(0,p,440,13);road(p,0,13,440);addBox(0,-.20,p,440,.18,16,sidewalkMat,false);addBox(p,-.20,0,16,.18,440,sidewalkMat,false);}
-for(let x=-180;x<=180;x+=40)for(let z=-180;z<=180;z+=40){
- if(Math.abs(x)<35&&Math.abs(z)<35)continue;
- const w=22+((x+z+400)%3)*4,d=22+((x*2+z+400)%3)*4,h=10+(Math.abs(x*3+z*5)%8)*3;
- building(x+(x%2?5:-5),z+(z%2?4:-4),w,d,h,Math.abs(x+z));
-}
-for(let x=-180;x<=180;x+=20){streetLight(x,-6,0);streetLight(x,6,Math.PI)}
-for(let z=-180;z<=180;z+=20){streetLight(-6,z,Math.PI/2);streetLight(6,z,-Math.PI/2)}
-for(let i=0;i<28;i++){const x=-180+Math.random()*360,z=-180+Math.random()*360;if(Math.abs(x)<15&&Math.abs(z)<15)continue;car(x,z,[0x263447,0x47304a,0x29433d,0x3f3f2a][i%4],Math.random()*Math.PI);}
-billboard(-30,10,-18,10,5,neonPink);billboard(42,14,-38,14,7,neonBlue);billboard(-60,8,30,12,6,neonPink);
-addBox(0,.25,0,24,.5,24,sidewalkMat,false);
-for(const p of [[-8,1,-8],[8,1,-8],[-8,1,8],[8,1,8]])addBox(p[0],p[1],p[2],4,2,1.4,darkMat,true);
-for(let i=-10;i<=10;i+=5)addGlowLine(i,.55,0,2.2,.06,neonBlue);
-for(const p of [[-25,5,-25],[25,7,-25],[-25,4,25],[25,9,25]]){addBox(p[0],p[1],p[2],8,.8,8,darkMat,true);addGlowLine(p[0],p[1]+.45,p[2],7.5,.08,neonPink);}
+    // ---------- 僵尸群 ----------
+    let zombies = [];
+    const ZOMBIE_COUNT = 45;
+    class Zombie {
+      constructor(x, y) {
+        this.x = x; this.y = y;
+        this.width = 26; this.height = 38;
+        this.hp = 50;
+        this.maxHp = 50;
+        this.speed = 40 + Math.random() * 50;
+        this.damage = 8;
+        this.attackCooldown = 0;
+        this.color = `hsl(${80 + Math.random()*40}, 60%, 45%)`;
+      }
+      draw(ctx) {
+        ctx.fillStyle = '#2f5e3a';
+        ctx.fillRect(this.x-13, this.y-19, 26, 38);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x-8, this.y-25, 16, 14);
+        ctx.fillStyle = '#ff5555';
+        ctx.fillRect(this.x-5, this.y-18, 3, 3);
+        ctx.fillRect(this.x+2, this.y-18, 3, 3);
+      }
+    }
 
-const player={pos:new THREE.Vector3(0,2,24),vel:new THREE.Vector3(),yaw:Math.PI,pitch:0,hp:100,shield:100,ammo:24,maxAmmo:24,score:0,kills:0,combo:0,canJump:false,reload:false,reloadT:0,fireCD:0,inv:1};
-const weapon=new THREE.Group();
-const weaponCore=new THREE.Group();
-weapon.add(weaponCore);
-camera.add(weapon);scene.add(camera);
+    function spawnZombies() {
+      zombies = [];
+      for (let i=0; i<ZOMBIE_COUNT; i++) {
+        let x = 300 + Math.random() * 2400;
+        let y = 300 + Math.random() * 1400;
+        zombies.push(new Zombie(x, y));
+      }
+    }
+    spawnZombies();
 
-const weapons=[
- {name:"PULSE CARBINE",type:"AR",mag:24,damage:34,rate:.13,spread:.012,ads:.62,reload:.85,color:0x21b8e8},
- {name:"RAPID SMG",type:"SMG",mag:32,damage:21,rate:.075,spread:.028,ads:.70,reload:.75,color:0xff3d88},
- {name:"BURST RIFLE",type:"BURST",mag:21,damage:42,rate:.16,spread:.009,ads:.58,reload:.9,color:0xa36bff},
- {name:"SCOUT",type:"DMR",mag:12,damage:78,rate:.42,spread:.004,ads:.45,reload:1.05,color:0x48e0a0},
- {name:"HEAVY CANNON",type:"HEAVY",mag:8,damage:105,rate:.7,spread:.018,ads:.72,reload:1.35,color:0xffb52e},
- {name:"ENERGY BLASTER",type:"ENERGY",mag:18,damage:55,rate:.22,spread:.006,ads:.55,reload:.95,color:0x00eaff},
- {name:"PLASMA REPEATER",type:"PLASMA",mag:40,damage:17,rate:.055,spread:.035,ads:.78,reload:1.15,color:0x7cff5b},
- {name:"PRECISION RAIL",type:"PRECISION",mag:5,damage:160,rate:.95,spread:.001,ads:.32,reload:1.5,color:0xff5b5b}
-];
+    // ---------- 子弹系统 ----------
+    let bullets = [];
+    class Bullet {
+      constructor(x, y, angle, speed, damage, isPlayer = true) {
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.damage = damage;
+        this.radius = 4;
+        this.isPlayer = isPlayer;
+        this.life = 1.2;
+      }
+    }
 
-let currentWeapon=0;
-let aiming=false;
-let fireHeld=false;
+    // ---------- 攀爬与碰撞 ----------
+    function isLake(x, y) {
+      const dx = x - LAKE_CENTER_X, dy = y - LAKE_CENTER_Y;
+      return (dx*dx + dy*dy) < LAKE_RADIUS * LAKE_RADIUS;
+    }
 
-function buildWeaponModel(){
-  while(weaponCore.children.length) weaponCore.remove(weaponCore.children[0]);
-  const w=weapons[currentWeapon];
-  const bodyMat=new THREE.MeshStandardMaterial({color:0x202936,metalness:.75,roughness:.28});
-  const accentMat=new THREE.MeshStandardMaterial({color:w.color,emissive:w.color,emissiveIntensity:1.6});
+    function canClimbAt(x, y) {
+      // 简单模拟：墙面或树木附近可攀爬（地图上设置一些攀爬点：城市边缘）
+      if (x > 2200 && x < 2700 && y > 1200 && y < 1600) return true;
+      if (x > 400 && x < 800 && y > 1500 && y < 1700) return true;
+      return false;
+    }
 
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.27,.22,.95),bodyMat);
-  body.position.set(.31,-.27,-.72); weaponCore.add(body);
+    // ---------- 枪械定义 ----------
+    const weapons = [
+      { name: '步枪', damage: 24, range: 700, fireRate: 8, ammoMax: 30 },
+      { name: '霰弹枪', damage: 45, range: 250, fireRate: 3, ammoMax: 12 },
+      { name: '狙击枪', damage: 90, range: 900, fireRate: 1.2, ammoMax: 8 },
+      { name: '冲锋枪', damage: 14, range: 400, fireRate: 15, ammoMax: 40 }
+    ];
+    let currentWeaponIndex = 0;
 
-  const upper=new THREE.Mesh(new THREE.BoxGeometry(.11,.10,.76),accentMat);
-  upper.position.set(.31,-.25,-1.15); weaponCore.add(upper);
+    // ---------- 相机 ----------
+    let camera = { x: 0, y: 0 };
 
-  const stock=new THREE.Mesh(new THREE.BoxGeometry(.18,.18,.38),bodyMat);
-  stock.position.set(.31,-.25,-.18); weaponCore.add(stock);
+    // ---------- 辅助函数 ----------
+    function updateCamera() {
+      camera.x = player.x - canvas.width/2;
+      camera.y = player.y - canvas.height/2;
+      camera.x = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, camera.x));
+      camera.y = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, camera.y));
+    }
 
-  // Different silhouettes by weapon class
-  if(w.type==="HEAVY"){
-    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.10,.13,.75,12),bodyMat);
-    barrel.rotation.x=Math.PI/2; barrel.position.set(.31,-.24,-1.65); weaponCore.add(barrel);
-  }else if(w.type==="PRECISION"){
-    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.055,.07,1.25,10),bodyMat);
-    barrel.rotation.x=Math.PI/2; barrel.position.set(.31,-.24,-1.75); weaponCore.add(barrel);
-    const scope=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.42,12),accentMat);
-    scope.rotation.x=Math.PI/2; scope.position.set(.31,-.10,-.82); weaponCore.add(scope);
-  }else{
-    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.045,.06,.62,10),bodyMat);
-    barrel.rotation.x=Math.PI/2; barrel.position.set(.31,-.24,-1.55); weaponCore.add(barrel);
-  }
-}
+    function drawWorld() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(-camera.x, -camera.y);
 
-function updateWeaponHUD(){
-  const w=weapons[currentWeapon];
-  document.getElementById("weapon").textContent=`${w.name} // ${w.type}`;
-  document.getElementById("ammoNow").textContent=player.ammo;
-  document.getElementById("weaponList").innerHTML=weapons.map((x,i)=>
-    `${i+1}. ${i===currentWeapon?`<b>${x.name}</b>`:x.name}`
-  ).join("<br>");
-}
+      // 地面纹理
+      ctx.fillStyle = '#2a3d2e';
+      ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+      for (let i=0; i<140; i+=20) {
+        ctx.fillStyle = '#3a5240';
+        ctx.fillRect(i*20, 0, 8, WORLD_HEIGHT);
+        ctx.fillRect(0, i*20, WORLD_WIDTH, 8);
+      }
 
-function switchWeapon(i){
-  if(i<0||i>=weapons.length||i===currentWeapon)return;
-  currentWeapon=i;
-  player.ammo=weapons[currentWeapon].mag;
-  player.maxAmmo=weapons[currentWeapon].mag;
-  player.reload=false;
-  buildWeaponModel();
-  updateWeaponHUD();
-}
+      // 城市建筑
+      const buildings = [
+        [250, 250, 160, 200, '#5a4e3c'], [700, 150, 200, 250, '#6a5c46'], [1200, 300, 250, 280, '#4e5a40'],
+        [2100, 200, 220, 300, '#7a6a4a'], [2600, 400, 180, 250, '#5e5040'], [1800, 1100, 260, 220, '#6f5f48'],
+        [300, 1100, 200, 240, '#4f5a3e'], [1000, 1300, 240, 260, '#7c654a'], [2200, 1400, 280, 200, '#5c5e3c']
+      ];
+      buildings.forEach(b => {
+        ctx.fillStyle = b[4];
+        ctx.fillRect(b[0], b[1], b[2], b[3]);
+        ctx.fillStyle = '#3b3520';
+        ctx.fillRect(b[0]+10, b[1]+10, b[2]-20, b[3]-20);
+        ctx.fillStyle = '#b3a68b';
+        for (let wy=b[1]+20; wy<b[1]+b[3]-20; wy+=40) {
+          for (let wx=b[0]+15; wx<b[0]+b[2]-15; wx+=30) ctx.fillRect(wx, wy, 12, 18);
+        }
+      });
 
-buildWeaponModel();
+      // 湖泊
+      ctx.fillStyle = '#2c7a9c';
+      ctx.beginPath();
+      ctx.ellipse(LAKE_CENTER_X, LAKE_CENTER_Y, LAKE_RADIUS, LAKE_RADIUS, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#3f9fc8';
+      ctx.beginPath();
+      ctx.ellipse(LAKE_CENTER_X-20, LAKE_CENTER_Y-10, LAKE_RADIUS-40, LAKE_RADIUS-30, 0, 0, Math.PI*2);
+      ctx.fill();
 
+      // 载具绘制
+      vehicles.forEach(v => v.draw(ctx));
 
-let climbing=false;
-let climbData=null;
-let climbTimer=0;
-const CLIMB_REACH=2.4;
-const CLIMB_MAX=5.2;
+      // 僵尸绘制
+      zombies.forEach(z => z.draw(ctx));
 
-function getClimbTarget(){
-  const origin=camera.position.clone();
-  const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-  raycaster.set(origin,dir);
-  const hits=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
-  if(!hits.length||hits[0].distance>CLIMB_REACH)return null;
-  let obj=hits[0].object,rec=null;
-  while(obj&&!rec){rec=obstacles.find(o=>o.mesh===obj);obj=obj.parent;}
-  if(!rec)return null;
-  const top=rec.mesh.position.y+rec.h/2;
-  const delta=top-player.pos.y;
-  if(delta<-0.8||delta>CLIMB_MAX)return null;
-  return {rec,top};
-}
+      // 子弹
+      bullets.forEach(b => {
+        ctx.fillStyle = b.isPlayer ? '#ffe066' : '#ff5555';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, 2*Math.PI);
+        ctx.fill();
+      });
 
-function startClimb(){
-  if(climbing)return true;
-  const t=getClimbTarget();
-  if(!t)return false;
-  climbing=true;climbData=t;climbTimer=.42;player.vel.set(0,0,0);
-  document.body.classList.add('nearClimb');
-  return true;
-}
+      // 玩家
+      if (player.vehicle) {
+        // 已在载具上绘制载具，玩家以标记显示在载具上
+        ctx.fillStyle = '#f4d03f';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y-25, 12, 0, 2*Math.PI);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#f4d03f';
+        ctx.fillRect(player.x-14, player.y-20, 28, 40);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(player.x-8, player.y-28, 16, 12);
+      }
+      ctx.restore();
+    }
 
-function updateClimb(dt){
-  if(!climbing)return;
-  climbTimer-=dt;
-  const top=climbData.top+.78;
-  const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
-  player.pos.y=THREE.MathUtils.lerp(player.pos.y,top,Math.min(1,dt*14));
-  if(climbTimer<=0){
-    const push=forward.clone().multiplyScalar(-.95);
-    const nx=player.pos.x+push.x,nz=player.pos.z+push.z;
-    if(!collidesPoint(nx,player.pos.z,.48))player.pos.x=nx;
-    if(!collidesPoint(player.pos.x,nz,.48))player.pos.z=nz;
-    player.vel.y=1.8;player.canJump=false;climbing=false;climbData=null;
-    document.body.classList.remove('nearClimb');
-  }
-}
+    // ---------- 更新逻辑 ----------
+    function update(dt) {
+      if (dt > 0.1) dt = 0.1;
 
-let locked=false;
-document.addEventListener("pointerlockchange",()=>{
-  locked=document.pointerLockElement===document.body;
-  const intro=document.getElementById("intro");
-  if(intro) intro.style.display=locked ? "none" : "block";
-});
-document.addEventListener("mousemove",e=>{if(!locked)return;player.yaw-=e.movementX*.0021;player.pitch-=e.movementY*.0021;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.45,1.45)});
-document.addEventListener("keydown",e=>{
-  keys[e.code]=true;
-  if((e.code==="KeyE"||e.code==="Space")&&!climbing){
-    if(startClimb()){e.preventDefault();return;}
-  }
-  if(e.code==="Space"&&player.canJump&&!climbing){player.vel.y=9.5;player.canJump=false}
-  if(e.code==="KeyR")reload();
-  if(e.code==="KeyF")useScanner();
-  if(e.code==="KeyT")resetGame();
-  const n=Number(e.key);
-  if(n>=1&&n<=8)switchWeapon(n-1);
-});
-document.addEventListener("keyup",e=>keys[e.code]=false);
-document.addEventListener("click",()=>{if(!locked)document.body.requestPointerLock()});
-document.addEventListener("mousedown",e=>{
-  if(e.button===0){fireHeld=true;shoot()}
-  if(e.button===2){aiming=true;document.body.classList.add("aiming")}
-});
-document.addEventListener("mouseup",e=>{
-  if(e.button===0)fireHeld=false;
-  if(e.button===2){aiming=false;document.body.classList.remove("aiming")}
-});
-document.addEventListener("contextmenu",e=>e.preventDefault());
+      // 玩家移动
+      let moveX = 0, moveY = 0;
+      if (keys.w) moveY -= 1;
+      if (keys.s) moveY += 1;
+      if (keys.a) moveX -= 1;
+      if (keys.d) moveX += 1;
+      let len = Math.hypot(moveX, moveY);
+      if (len > 0) { moveX /= len; moveY /= len; }
 
-const raycaster=new THREE.Raycaster();
-function reload(){if(player.reload||player.ammo===player.maxAmmo)return;player.reload=true;player.reloadT=weapons[currentWeapon].reload}
-function flashBeam(start,end){
- const g=new THREE.BufferGeometry().setFromPoints([start,end]),m=new THREE.LineBasicMaterial({color:0x00eaff,transparent:true,opacity:.95}),line=new THREE.Line(g,m);
- scene.add(line);effects.push({obj:line,t:.065});
-}
-function shoot(){
- if(!locked||player.fireCD>0||player.reload)return;
- const w=weapons[currentWeapon];
- if(player.ammo<=0){reload();return}
- player.ammo--;player.fireCD=w.rate;
+      const currentSpeed = player.vehicle ? player.vehicle.speed : player.speed;
+      player.vx = moveX * currentSpeed;
+      player.vy = moveY * currentSpeed;
 
- const origin=camera.position.clone();
- const spread=w.spread*(aiming?w.ads:1);
- const dir=new THREE.Vector3(
-   (Math.random()-.5)*spread,
-   (Math.random()-.5)*spread,
-   -1
- ).normalize().applyQuaternion(camera.quaternion);
+      if (keys.space && !player.vehicle && !isLake(player.x, player.y)) {
+        player.vy = -250;
+      }
 
- raycaster.set(origin,dir);
- const wallHits=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
- const enemyHits=raycaster.intersectObjects(enemies.filter(e=>e.alive).map(e=>e.mesh),true);
- const wallDist=wallHits.length?wallHits[0].distance:Infinity;
- const enemyHit=enemyHits.length?enemyHits[0]:null;
+      // 载具驾驶模式
+      if (player.vehicle) {
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+        player.vehicle.x = player.x;
+        player.vehicle.y = player.y;
+      } else {
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+      }
 
- let end=origin.clone().add(dir.clone().multiplyScalar(Math.min(120,wallDist)));
- if(enemyHit&&enemyHit.distance<wallDist){
-   end=enemyHit.point.clone();
-   let obj=enemyHit.object,enemy=null;
-   while(obj&&!enemy){enemy=enemies.find(e=>e.mesh===obj);obj=obj.parent}
-   if(enemy)damageEnemy(enemy,w.damage);
- }
- flashBeam(origin,end);
-}
+      // 地图边界
+      player.x = Math.max(30, Math.min(WORLD_WIDTH-30, player.x));
+      player.y = Math.max(30, Math.min(WORLD_HEIGHT-30, player.y));
 
-function createEnemy(){
- let x=0,z=0,tries=0;
- do{
-   const angle=Math.random()*Math.PI*2,dist=35+Math.random()*75;
-   x=Math.cos(angle)*dist; z=Math.sin(angle)*dist;
-   tries++;
- }while(collidesPoint(x,z,1.0) && tries<80);
- const g=new THREE.Group();
- const body=new THREE.Mesh(new THREE.BoxGeometry(1.25,1.8,1.05),new THREE.MeshStandardMaterial({color:0x9b164f,emissive:0x2d0315}));body.position.y=1;g.add(body);
- const head=new THREE.Mesh(new THREE.BoxGeometry(.85,.65,.8),new THREE.MeshStandardMaterial({color:0x351225,emissive:0x10000a}));head.position.y=2.2;g.add(head);
- const eye=new THREE.Mesh(new THREE.BoxGeometry(.5,.08,.06),neonPink);eye.position.set(0,2.2,-.43);g.add(eye);
- g.position.set(x,0,z);scene.add(g);enemies.push({mesh:g,hp:100,speed:2.5+Math.random()*1.5,attack:Math.random(),alive:true});
-}
-let wave=1;
-function spawnWave(){for(let i=0;i<4+wave*2;i++)createEnemy()}
-spawnWave();
+      // 载具交互 (按E进入/离开)
+      if (keys.e && !player.vehicle) {
+        for (let v of vehicles) {
+          if (v.active && Math.hypot(player.x-v.x, player.y-v.y) < 60) {
+            player.vehicle = v;
+            player.x = v.x; player.y = v.y;
+            break;
+          }
+        }
+      } else if (keys.e && player.vehicle) {
+        player.vehicle = null;
+      }
 
-function damageEnemy(e,dmg){
- if(!e.alive)return;e.hp-=dmg;
- const hit=document.getElementById("hit");hit.style.opacity=1;setTimeout(()=>hit.style.opacity=0,65);
- if(e.hp<=0){
-   e.alive=false;scene.remove(e.mesh);player.kills++;player.combo++;player.score+=100*Math.min(player.combo,10);
-   if(enemies.filter(x=>x.alive).length===0){
-     if(wave<5){wave++;showMessage("WAVE "+wave);setTimeout(()=>{spawnWave();hideMessage()},1100)}
-     else showMessage("CITY SECTOR CLEARED<br><small>按 T 重置</small>");
-   }
- }
-}
-function hurtPlayer(dmg){
- if(player.inv>0)return;player.inv=.22;let left=dmg;
- const s=Math.min(player.shield,left);player.shield-=s;left-=s;player.hp-=left;player.combo=0;
- const d=document.getElementById("damage");d.style.opacity=1;setTimeout(()=>d.style.opacity=0,100);
- if(player.hp<=0)respawn();
-}
-function respawn(){player.pos.set(0,2,24);player.vel.set(0,0,0);player.hp=100;player.shield=100;player.maxAmmo=weapons[currentWeapon].mag;player.ammo=player.maxAmmo;player.combo=0;player.inv=1}
-function updateEnemies(dt){
- for(const e of enemies){
-  if(!e.alive)continue;
-  const p=e.mesh.position,dx=player.pos.x-p.x,dz=player.pos.z-p.z,dist=Math.hypot(dx,dz);
-  if(dist>3.2){
-   const totalStep=e.speed*dt,nx=dx/dist,nz=dz/dist;
-   const parts=Math.max(1,Math.ceil(totalStep/0.18));
-   const step=totalStep/parts;
-   for(let s=0;s<parts;s++){
-     const oldX=p.x,oldZ=p.z;
-     const tx=p.x+nx*step,tz=p.z+nz*step;
-     if(!collidesPoint(tx,p.z,.78)) p.x=tx;
-     if(!collidesPoint(p.x,tz,.78)) p.z=tz;
-     if(Math.abs(p.x-oldX)<0.0001 && Math.abs(p.z-oldZ)<0.0001){
-       // 卡住時沿牆滑動，不直接穿過去
-       const sx=p.x-nz*step*1.4,sz=p.z+nx*step*1.4;
-       if(!collidesPoint(sx,sz,.78)){p.x=sx;p.z=sz;}
-       else break;
-     }
-   }
-  }
-  e.mesh.lookAt(player.pos.x,p.y,player.pos.z);e.attack-=dt;
-  if(dist<18&&e.attack<=0){
-   e.attack=.75+Math.random()*.8;
-   const start=new THREE.Vector3(p.x,1.5,p.z),to=player.pos.clone().sub(start),d=to.length();
-   raycaster.set(start,to.normalize());
-   const walls=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
-   const blocked=walls.length && walls[0].distance < d-0.15;
-   if(!blocked) hurtPlayer(8);
-  }
- }
-}
-function collidesPoint(x,z,r){
- for(const o of obstacles){const p=o.mesh.position;if(x>p.x-o.w/2-r&&x<p.x+o.w/2+r&&z>p.z-o.d/2-r&&z<p.z+o.d/2+r)return true}
- return false;
-}
-function updatePlayer(dt){
- if(!locked)return;
- if(climbing){
-   updateClimb(dt);
-   camera.position.copy(player.pos);
-   camera.rotation.order='YXZ';camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
-   return;
- }
- if(fireHeld)shoot();
- let f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),len=Math.hypot(f,r);
- if(len){f/=len;r/=len}
- const speed=(keys.ShiftLeft||keys.ShiftRight)?13:7.5;
- const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
- const move=forward.clone().multiplyScalar(f*speed*dt).add(right.clone().multiplyScalar(r*speed*dt));
- const nx=player.pos.x+move.x,nz=player.pos.z+move.z;
- if(!collidesPoint(nx,player.pos.z,.45))player.pos.x=nx;
- if(!collidesPoint(player.pos.x,nz,.45))player.pos.z=nz;
- player.vel.y-=25*dt;player.pos.y+=player.vel.y*dt;
- if(player.pos.y<1.7){player.pos.y=1.7;player.vel.y=0;player.canJump=true}
- if((keys.KeyE||keys.KeyW)&&getClimbTarget())startClimb();
- player.fireCD=Math.max(0,player.fireCD-dt);player.inv=Math.max(0,player.inv-dt);
- if(player.reload){player.reloadT-=dt;if(player.reloadT<=0){player.ammo=player.maxAmmo;player.reload=false}}
- camera.position.copy(player.pos);camera.rotation.order='YXZ';camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
- camera.fov=THREE.MathUtils.lerp(camera.fov,aiming?52:76,Math.min(1,dt*14));camera.updateProjectionMatrix();
- weapon.position.x=THREE.MathUtils.lerp(weapon.position.x,aiming?.02:0,Math.min(1,dt*12));
- weapon.position.y=Math.sin(performance.now()*.008)*(len ? .018 : 0);
- weapon.position.z=THREE.MathUtils.lerp(weapon.position.z,aiming?.12:0,Math.min(1,dt*12));
- if(getClimbTarget())document.body.classList.add('nearClimb');else document.body.classList.remove('nearClimb');
-}
-function useScanner(){
- for(const e of enemies){if(!e.alive)continue;const mat=e.mesh.children[0].material,old=mat.emissive.clone();mat.emissive.set(0x00ffff);setTimeout(()=>mat.emissive.copy(old),450)}
-}
-function resetGame(){
- for(const e of enemies)scene.remove(e.mesh);
- enemies.length=0;wave=1;player.score=0;player.kills=0;player.combo=0;player.hp=100;player.shield=100;player.maxAmmo=weapons[currentWeapon].mag;player.ammo=player.maxAmmo;
- document.getElementById("message").style.opacity=0;spawnWave();
-}
-function showMessage(t){const m=document.getElementById("message");m.innerHTML=t;m.style.opacity=1}
-function hideMessage(){document.getElementById("message").style.opacity=0}
-function updateMap(){
- const c=document.getElementById("mapCanvas"),ctx=c.getContext("2d");ctx.clearRect(0,0,150,150);ctx.fillStyle="rgba(5,10,18,.8)";ctx.fillRect(0,0,150,150);
- ctx.strokeStyle="rgba(70,100,130,.35)";for(let p=-100;p<=100;p+=40){const q=75+p*.28;ctx.beginPath();ctx.moveTo(q,0);ctx.lineTo(q,150);ctx.stroke();ctx.beginPath();ctx.moveTo(0,q);ctx.lineTo(150,q);ctx.stroke()}
- const sx=75+player.pos.x*.28,sy=75+player.pos.z*.28;ctx.fillStyle="#00eaff";ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#ff3d88";for(const e of enemies)if(e.alive){const x=75+e.mesh.position.x*.28,y=75+e.mesh.position.z*.28;if(x>=0&&x<=150&&y>=0&&y<=150){ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill()}}
-}
-function updateHUD(){
- document.getElementById("wave").textContent=wave;document.getElementById("enemyCount").textContent=enemies.filter(e=>e.alive).length;
- document.getElementById("score").textContent=player.score;document.getElementById("kills").textContent=player.kills;document.getElementById("combo").textContent=player.combo;
- document.getElementById("ammoNow").textContent=player.ammo;document.getElementById("hpFill").style.width=Math.max(0,player.hp)+"%";document.getElementById("shieldFill").style.width=Math.max(0,player.shield)+"%";
-}
-function animate(){
- requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
- updatePlayer(dt);updateEnemies(dt);
- for(let i=effects.length-1;i>=0;i--){effects[i].t-=dt;if(effects[i].t<=0){scene.remove(effects[i].obj);effects.splice(i,1)}}
- updateHUD();updateMap();renderer.render(scene,camera);
-}
-const clock=new THREE.Clock();animate();
-addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-camera.position.copy(player.pos);camera.rotation.order="YXZ";camera.rotation.y=player.yaw;
+      // 攀爬检测
+      const canClimb = canClimbAt(player.x, player.y);
+      player.climbing = canClimb && !player.vehicle;
+
+      // 载具攻击
+      if (player.vehicle) {
+        if (mouseDown && player.vehicle.attackCooldown <= 0) {
+          const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+          bullets.push(new Bullet(player.x, player.y-25, angle, 400, 15, true));
+          player.vehicle.attackCooldown = 0.25;
+        }
+        if (player.vehicle.attackCooldown > 0) player.vehicle.attackCooldown -= dt;
+        vehicleHpSpan.innerText = `载具HP: ${Math.floor(player.vehicle.hp)}/${player.vehicle.maxHp}`;
+      } else {
+        vehicleHpSpan.innerText = `载具HP: --`;
+      }
+
+      // 射击 (非载具)
+      if (mouseDown && !player.vehicle && player.ammo > 0) {
+        const weapon = weapons[currentWeaponIndex];
+        const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+        bullets.push(new Bullet(player.x, player.y-20, angle, 600, weapon.damage, true));
+        player.ammo--;
+        if (player.ammo < 0) player.ammo = 0;
+      }
+
+      // 换枪 (数字键1-4)
+      if (keys['1']) { currentWeaponIndex = 0; player.ammo = 30; player.maxAmmo=30; }
+      if (keys['2']) { currentWeaponIndex = 1; player.ammo = 12; player.maxAmmo=12; }
+      if (keys['3']) { currentWeaponIndex = 2; player.ammo = 8; player.maxAmmo=8; }
+      if (keys['4']) { currentWeaponIndex = 3; player.ammo = 40; player.maxAmmo=40; }
+
+      // 僵尸AI与碰撞
+      zombies.forEach(z => {
+        const dx = player.x - z.x;
+        const dy = player.y - z.y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        if (dist < 500 && dist > 20) {
+          z.x += (dx/dist) * z.speed * dt;
+          z.y += (dy/dist) * z.speed * dt;
+        }
+        if (dist < 32 && z.attackCooldown <= 0) {
+          if (player.vehicle) {
+            player.vehicle.hp -= z.damage;
+            if (player.vehicle.hp <= 0) {
+              player.vehicle.active = false;
+              player.vehicle = null;
+            }
+          } else {
+            player.health -= z.damage;
+          }
+          z.attackCooldown = 1.0;
+        }
+        if (z.attackCooldown > 0) z.attackCooldown -= dt;
+        // 边界
+        z.x = Math.max(20, Math.min(WORLD_WIDTH-20, z.x));
+        z.y = Math.max(20, Math.min(WORLD_HEIGHT-20, z.y));
+      });
+
+      // 子弹更新
+      bullets.forEach(b => {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt;
+        // 击中僵尸
+        if (b.isPlayer) {
+          zombies.forEach(z => {
+            if (Math.hypot(z.x-b.x, z.y-b.y) < 18 && z.hp > 0) {
+              z.hp -= b.damage;
+              b.life = 0;
+            }
+          });
+          vehicles.forEach(v => {
+            if (v.active && Math.hypot(v.x-b.x, v.y-b.y) < 40 && v !== player.vehicle) {
+              v.hp -= b.damage;
+              b.life = 0;
+            }
+          });
+        }
+      });
+      bullets = bullets.filter(b => b.life > 0 && b.x > 0 && b.x < WORLD_WIDTH && b.y > 0 && b.y < WORLD_HEIGHT);
+      zombies = zombies.filter(z => z.hp > 0);
+
+      if (zombies.length === 0) spawnZombies();
+      if (player.health <= 0) {
+        player.health = 100;
+        player.x = 400; player.y = 900;
+        player.vehicle = null;
+      }
+
+      // HUD更新
+      healthDisplay.innerText = `❤️ ${Math.floor(player.health)}`;
+      zombieCountSpan.innerText = `🧟 ${zombies.length}`;
+      const vehName = player.vehicle ? player.vehicle.name : '步行';
+      vehicleNameSpan.innerText = `🚶 ${vehName}`;
+      ammoDisplay.innerText = `🔫 ${player.ammo} / ${weapons[currentWeaponIndex].name}`;
+
+      updateCamera();
+    }
+
+    // ---------- 渲染循环 ----------
+    function gameLoop() {
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      update(dt);
+      drawWorld();
+      requestAnimationFrame(gameLoop);
+    }
+    let lastTime = performance.now();
+
+    // ---------- 事件监听 ----------
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'a' || key === 's' || key === 'd' || key === ' ') keys[key] = true;
+      if (key === 'e') keys.e = true;
+      if (key === 'shift') keys.shift = true;
+      if (key === '1') keys['1'] = true;
+      if (key === '2') keys['2'] = true;
+      if (key === '3') keys['3'] = true;
+      if (key === '4') keys['4'] = true;
+      e.preventDefault();
+    });
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'a' || key === 's' || key === 'd' || key === ' ') keys[key] = false;
+      if (key === 'e') keys.e = false;
+      if (key === 'shift') keys.shift = false;
+      if (key === '1') keys['1'] = false;
+      if (key === '2') keys['2'] = false;
+      if (key === '3') keys['3'] = false;
+      if (key === '4') keys['4'] = false;
+      e.preventDefault();
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      mouseX = (e.clientX - rect.left) * scaleX + camera.x;
+      mouseY = (e.clientY - rect.top) * scaleY + camera.y;
+    });
+    canvas.addEventListener('mousedown', (e) => { if (e.button === 0) mouseDown = true; });
+    canvas.addEventListener('mouseup', () => { mouseDown = false; });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    gameLoop();
+  })();
 </script>
 </body>
 </html>
