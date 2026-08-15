@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEON ARENA FPS</title>
+
+<style>
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#050712;
+    font-family:Arial,"Microsoft JhengHei",sans-serif;
+}
+canvas{display:block}
+
+#hud{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    color:white;
+    z-index:10;
+    text-shadow:0 2px 4px #000;
+}
+
+#top{
+    position:absolute;
+    top:18px;
+    left:20px;
+    font-size:18px;
+    line-height:1.6;
+}
+
+#stats{
+    position:absolute;
+    top:18px;
+    right:20px;
+    text-align:right;
+    font-size:18px;
+    line-height:1.6;
+}
+
+#healthBox{
+    position:absolute;
+    left:20px;
+    bottom:22px;
+    width:300px;
+}
+
+.bar{
+    width:100%;
+    height:18px;
+    background:#202431;
+    border:2px solid #fff;
+    margin-top:5px;
+}
+
+#hp{
+    height:100%;
+    width:100%;
+    background:#27e66b;
+}
+
+#shield{
+    height:100%;
+    width:100%;
+    background:#29a9ff;
+}
+
+#ammo{
+    position:absolute;
+    right:20px;
+    bottom:25px;
+    font-size:32px;
+    font-weight:bold;
+}
+
+#crosshair{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:20px;
+    height:20px;
+    transform:translate(-50%,-50%);
+}
+
+#crosshair:before,
+#crosshair:after{
+    content:"";
+    position:absolute;
+    background:white;
+    box-shadow:0 0 5px #000;
+}
+
+#crosshair:before{
+    width:20px;
+    height:2px;
+    top:9px;
+}
+
+#crosshair:after{
+    width:2px;
+    height:20px;
+    left:9px;
+}
+
+#hit{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    font-size:25px;
+    opacity:0;
+}
+
+#center{
+    position:absolute;
+    left:50%;
+    top:42%;
+    transform:translate(-50%,-50%);
+    font-size:35px;
+    font-weight:bold;
+    text-align:center;
+}
+
+#help{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    font-size:13px;
+    opacity:.7;
+}
+
+#damage{
+    position:fixed;
+    inset:0;
+    background:rgba(255,0,0,.25);
+    opacity:0;
+    pointer-events:none;
+    z-index:20;
+}
+
+#startTip{
+    position:fixed;
+    inset:0;
+    z-index:30;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    background:rgba(0,0,0,.8);
+    color:white;
+    text-align:center;
+}
+
+#startTip h1{
+    font-size:55px;
+    margin:0 0 10px;
+    letter-spacing:6px;
+}
+
+#startTip p{
+    opacity:.8;
+}
+
+#startTip button{
+    padding:13px 35px;
+    border:0;
+    border-radius:8px;
+    font-size:20px;
+    cursor:pointer;
+}
+
+.hidden{
+    display:none!important;
+}
+</style>
+</head>
+
+<body>
+
+<div id="hud">
+
+    <div id="top">
+        波次：<span id="wave">1</span> / 3<br>
+        敵人：<span id="enemies">0</span>
+    </div>
+
+    <div id="stats">
+        SCORE：<span id="score">0</span><br>
+        KILLS：<span id="kills">0</span><br>
+        COMBO：<span id="combo">0</span>
+    </div>
+
+    <div id="healthBox">
+        HP
+        <div class="bar">
+            <div id="hp"></div>
+        </div>
+
+        SHIELD
+        <div class="bar">
+            <div id="shield"></div>
+        </div>
+    </div>
+
+    <div id="ammo">
+        <span id="ammoNow">12</span> / 12
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="hit">✦</div>
+
+    <div id="center"></div>
+
+    <div id="help">
+        WASD 移動　SHIFT 衝刺　SPACE 跳躍　滑鼠瞄準　左鍵射擊　R 充能
+    </div>
+
+</div>
+
+<div id="damage"></div>
+
+<div id="startTip">
+    <h1>NEON ARENA</h1>
+    <p>3D 能量競技場 FPS</p>
+    <button id="enter">進入競技場</button>
+</div>
+
+
+<script type="module">
+
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+
+
+/* =====================================================
+   場景
+===================================================== */
+
+const scene = new THREE.Scene();
+
+scene.background =
+    new THREE.Color(0x050712);
+
+scene.fog =
+    new THREE.Fog(
+        0x050712,
+        35,
+        150
+    );
+
+
+/* =====================================================
+   Camera
+===================================================== */
+
+const camera =
+    new THREE.PerspectiveCamera(
+        75,
+        innerWidth / innerHeight,
+        .1,
+        300
+    );
+
+camera.position.set(
+    0,
+    2,
+    15
+);
+
+
+/* =====================================================
+   Renderer
+===================================================== */
+
+const renderer =
+    new THREE.WebGLRenderer({
+        antialias:true
+    });
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(
+        devicePixelRatio,
+        2
+    )
+);
+
+renderer.shadowMap.enabled = true;
+
+document.body.appendChild(
+    renderer.domElement
+);
+
+
+/* =====================================================
+   光
+===================================================== */
+
+scene.add(
+    new THREE.HemisphereLight(
+        0x99bbff,
+        0x111122,
+        1.2
+    )
+);
+
+
+const sun =
+    new THREE.DirectionalLight(
+        0xffffff,
+        1.5
+    );
+
+sun.position.set(
+    20,
+    40,
+    10
+);
+
+sun.castShadow = true;
+
+scene.add(sun);
+
+
+/* =====================================================
+   玩家
+===================================================== */
+
+const player = {
+
+    pos:
+        new THREE.Vector3(
+            0,
+            2,
+            15
+        ),
+
+    vel:
+        new THREE.Vector3(),
+
+    yaw:0,
+
+    pitch:0,
+
+    hp:100,
+
+    shield:100,
+
+    ammo:12,
+
+    maxAmmo:12,
+
+    score:0,
+
+    kills:0,
+
+    combo:0,
+
+    canJump:false,
+
+    reload:false,
+
+    reloadTime:0,
+
+    shootCooldown:0,
+
+    dashCooldown:0,
+
+    invincible:0
+
+};
+
+
+/* =====================================================
+   地圖
+===================================================== */
+
+const obstacles = [];
+
+
+function box(
+    x,y,z,
+    w,h,d,
+    color=0x1b2440
+){
+
+    const mesh =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                w,h,d
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:color,
+                roughness:.65
+            })
+
+        );
+
+    mesh.position.set(
+        x,y,z
+    );
+
+    mesh.castShadow = true;
+
+    mesh.receiveShadow = true;
+
+    scene.add(mesh);
+
+    obstacles.push({
+        mesh,
+        w,
+        h,
+        d
+    });
+
+    return mesh;
+}
+
+
+/* 地面 */
+
+box(
+    0,
+    -0.5,
+    0,
+    80,
+    1,
+    80,
+    0x101629
+);
+
+
+/* 城市大樓 */
+
+const buildings = [
+
+    [-28,8,-20,10,16,10],
+    [-15,5,-28,8,10,8],
+    [20,10,-25,12,20,12],
+    [32,6,-5,10,12,10],
+    [-32,7,10,12,14,12],
+    [20,4,10,8,8,8],
+    [-18,4,25,12,8,12],
+    [25,7,30,10,14,10]
+
+];
+
+
+for(
+    const b of buildings
+){
+
+    box(
+        ...b,
+        0x182343
+    );
+
+}
+
+
+/* 掩體 */
+
+box(
+    -8,
+    1.5,
+    -8,
+    8,
+    3,
+    3,
+    0x26365d
+);
+
+box(
+    9,
+    1.5,
+    -5,
+    7,
+    3,
+    3,
+    0x26365d
+);
+
+box(
+    -3,
+    1.5,
+    6,
+    5,
+    3,
+    3,
+    0x26365d
+);
+
+
+/* =====================================================
+   玩家位置
+===================================================== */
+
+function syncCamera(){
+
+    camera.position.copy(
+        player.pos
+    );
+
+    camera.rotation.order =
+        "YXZ";
+
+    camera.rotation.y =
+        player.yaw;
+
+    camera.rotation.x =
+        player.pitch;
+
+}
+
+
+/* =====================================================
+   滑鼠
+===================================================== */
+
+let locked = false;
+
+document.addEventListener(
+    "pointerlockchange",
+    ()=>{
+
+        locked =
+            document.pointerLockElement ===
+            document.body;
+
+    }
+);
+
+
+document.addEventListener(
+    "mousemove",
+    e=>{
+
+        if(!locked) return;
+
+        const sensitivity =
+            0.0022;
+
+        player.yaw -=
+            e.movementX *
+            sensitivity;
+
+        player.pitch -=
+            e.movementY *
+            sensitivity;
+
+        player.pitch =
+            Math.max(
+                -1.45,
+                Math.min(
+                    1.45,
+                    player.pitch
+                )
+            );
+
+    }
+);
+
+
+/* =====================================================
+   按鍵
+===================================================== */
+
+const keys = {};
+
+document.addEventListener(
+    "keydown",
+    e=>{
+
+        keys[e.code] = true;
+
+        if(
+            e.code === "Space" &&
+            player.canJump
+        ){
+
+            player.vel.y =
+                9;
+
+            player.canJump =
+                false;
+
+        }
+
+        if(
+            e.code === "KeyR"
+        ){
+
+            reload();
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    e=>{
+
+        keys[e.code] = false;
+
+    }
+);
+
+
+/* =====================================================
+   射擊
+===================================================== */
+
+const shots = [];
+
+const raycaster =
+    new THREE.Raycaster();
+
+
+function shoot(){
+
+    if(
+        !locked ||
+        player.shootCooldown > 0 ||
+        player.reload
+    ){
+
+        return;
+
+    }
+
+    if(
+        player.ammo <= 0
+    ){
+
+        reload();
+
+        return;
+
+    }
+
+
+    player.ammo--;
+
+    player.shootCooldown =
+        .16;
+
+
+    /* 能量光束 */
+
+    const origin =
+        camera.position.clone();
+
+    const direction =
+        new THREE.Vector3(
+            0,
+            0,
+            -1
+        );
+
+    direction.applyQuaternion(
+        camera.quaternion
+    );
+
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints([
+                origin,
+                origin.clone().add(
+                    direction.clone().multiplyScalar(70)
+                )
+            ]);
+
+
+    const material =
+        new THREE.LineBasicMaterial({
+            color:0x00eaff
+        });
+
+
+    const line =
+        new THREE.Line(
+            geometry,
+            material
+        );
+
+    scene.add(line);
+
+
+    shots.push({
+        object:line,
+        life:.05
+    });
+
+
+    /* 打敵人 */
+
+    raycaster.set(
+        origin,
+        direction
+    );
+
+
+    const targets =
+        enemies.map(
+            e=>e.mesh
+        );
+
+
+    const hits =
+        raycaster.intersectObjects(
+            targets
+        );
+
+
+    if(
+        hits.length
+    ){
+
+        const hit =
+            hits[0].object;
+
+        const enemy =
+            enemies.find(
+                e=>e.mesh === hit
+            );
+
+
+        if(enemy){
+
+            damageEnemy(
+                enemy,
+                34
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   射擊按鍵
+===================================================== */
+
+document.addEventListener(
+    "mousedown",
+    e=>{
+
+        if(
+            e.button === 0
+        ){
+
+            shoot();
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   Reload
+===================================================== */
+
+function reload(){
+
+    if(
+        player.reload ||
+        player.ammo ===
+        player.maxAmmo
+    ){
+
+        return;
+
+    }
+
+
+    player.reload =
+        true;
+
+    player.reloadTime =
+        1.1;
+
+}
+
+
+/* =====================================================
+   敵人
+===================================================== */
+
+const enemies = [];
+
+
+function createEnemy(){
+
+    const mesh =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                1.2,
+                2.2,
+                1.2
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0xff315d,
+                emissive:0x22000a
+            })
+
+        );
+
+
+    const angle =
+        Math.random() *
+        Math.PI *
+        2;
+
+    const distance =
+        20 +
+        Math.random() *
+        25;
+
+
+    mesh.position.set(
+
+        Math.cos(angle) *
+        distance,
+
+        1.1,
+
+        Math.sin(angle) *
+        distance
+
+    );
+
+
+    mesh.castShadow = true;
+
+    scene.add(mesh);
+
+
+    enemies.push({
+
+        mesh,
+
+        hp:100,
+
+        speed:
+            2.5 +
+            Math.random() * 1.4,
+
+        attackCooldown:
+            Math.random(),
+
+        alive:true
+
+    });
+
+}
+
+
+/* =====================================================
+   生成波次
+===================================================== */
+
+let wave = 1;
+
+let waveDelay = 0;
+
+function spawnWave(){
+
+    const count =
+        3 +
+        wave * 2;
+
+
+    for(
+        let i=0;
+        i<count;
+        i++
+    ){
+
+        createEnemy();
+
+    }
+
+}
+
+spawnWave();
+
+
+/* =====================================================
+   敵人傷害
+===================================================== */
+
+function damageEnemy(
+    enemy,
+    damage
+){
+
+    if(
+        !enemy.alive
+    ){
+
+        return;
+
+    }
+
+
+    enemy.hp -=
+        damage;
+
+
+    showHit();
+
+
+    if(
+        enemy.hp <= 0
+    ){
+
+        killEnemy(
+            enemy
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   擊殺
+===================================================== */
+
+function killEnemy(
+    enemy
+){
+
+    enemy.alive =
+        false;
+
+
+    scene.remove(
+        enemy.mesh
+    );
+
+
+    player.kills++;
+
+    player.combo++;
+
+    player.score +=
+        100 *
+        Math.min(
+            player.combo,
+            10
+        );
+
+
+    updateHUD();
+
+
+    setTimeout(
+        checkWave,
+        100
+    );
+
+}
+
+
+/* =====================================================
+   下一波
+===================================================== */
+
+function checkWave(){
+
+    const alive =
+        enemies.filter(
+            e=>e.alive
+        ).length;
+
+
+    if(
+        alive === 0
+    ){
+
+        if(
+            wave >= 3
+        ){
+
+            showCenter(
+                "🏆 ARENA CLEAR<br>" +
+                "<small>R 重置戰績</small>"
+            );
+
+            return;
+
+        }
+
+
+        wave++;
+
+        showCenter(
+            "WAVE " +
+            wave
+        );
+
+
+        setTimeout(
+            ()=>{
+
+                spawnWave();
+
+                hideCenter();
+
+            },
+            1000
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   AI
+===================================================== */
+
+function updateEnemies(
+    dt
+){
+
+    for(
+        const enemy of enemies
+    ){
+
+        if(
+            !enemy.alive
+        ){
+
+            continue;
+
+        }
+
+
+        const pos =
+            enemy.mesh.position;
+
+
+        const target =
+            player.pos;
+
+
+        const dx =
+            target.x -
+            pos.x;
+
+        const dz =
+            target.z -
+            pos.z;
+
+
+        const dist =
+            Math.hypot(
+                dx,
+                dz
+            );
+
+
+        if(
+            dist > 3
+        ){
+
+            pos.x +=
+                dx / dist *
+                enemy.speed *
+                dt;
+
+            pos.z +=
+                dz / dist *
+                enemy.speed *
+                dt;
+
+        }
+
+
+        enemy.mesh.lookAt(
+            player.pos.x,
+            pos.y,
+            player.pos.z
+        );
+
+
+        enemy.attackCooldown -=
+            dt;
+
+
+        if(
+            dist < 18 &&
+            enemy.attackCooldown <= 0
+        ){
+
+            enemy.attackCooldown =
+                .8 +
+                Math.random() *
+                .7;
+
+            hurtPlayer(
+                8
+            );
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   玩家受傷
+===================================================== */
+
+function hurtPlayer(
+    damage
+){
+
+    if(
+        player.invincible > 0
+    ){
+
+        return;
+
+    }
+
+
+    player.invincible =
+        .25;
+
+
+    let remain =
+        damage;
+
+
+    if(
+        player.shield > 0
+    ){
+
+        const use =
+            Math.min(
+                player.shield,
+                remain
+            );
+
+        player.shield -=
+            use;
+
+        remain -=
+            use;
+
+    }
+
+
+    player.hp -=
+        remain;
+
+
+    player.combo =
+        0;
+
+
+    const damageUI =
+        document.getElementById(
+            "damage"
+        );
+
+
+    damageUI.style.opacity =
+        1;
+
+
+    setTimeout(
+        ()=>{
+            damageUI.style.opacity =
+                0;
+        },
+        100
+    );
+
+
+    if(
+        player.hp <= 0
+    ){
+
+        respawn();
+
+    }
+
+
+    updateHUD();
+
+}
+
+
+/* =====================================================
+   玩家重生
+===================================================== */
+
+function respawn(){
+
+    player.pos.set(
+        0,
+        2,
+        15
+    );
+
+    player.vel.set(
+        0,
+        0,
+        0
+    );
+
+    player.hp =
+        100;
+
+    player.shield =
+        100;
+
+    player.ammo =
+        player.maxAmmo;
+
+    player.combo =
+        0;
+
+    player.invincible =
+        1;
+
+
+    showCenter(
+        "RESPAWN"
+    );
+
+
+    setTimeout(
+        hideCenter,
+        600
+    );
+
+}
+
+
+/* =====================================================
+   移動
+===================================================== */
+
+function updatePlayer(
+    dt
+){
+
+    if(!locked)
+        return;
+
+
+    let forward = 0;
+
+    let right = 0;
+
+
+    if(keys.KeyW)
+        forward += 1;
+
+    if(keys.KeyS)
+        forward -= 1;
+
+    if(keys.KeyD)
+        right += 1;
+
+    if(keys.KeyA)
+        right -= 1;
+
+
+    const direction =
+        new THREE.Vector3(
+            right,
+            0,
+            -forward
+        );
+
+
+    if(
+        direction.lengthSq() > 0
+    ){
+
+        direction.normalize();
+
+
+        const speed =
+            keys.ShiftLeft ||
+            keys.ShiftRight
+            ? 13
+            : 7;
+
+
+        const forwardVec =
+            new THREE.Vector3(
+                -Math.sin(player.yaw),
+                0,
+                -Math.cos(player.yaw)
+            );
+
+
+        const rightVec =
+            new THREE.Vector3(
+                Math.cos(player.yaw),
+                0,
+                -Math.sin(player.yaw)
+            );
+
+
+        player.pos.add(
+            forwardVec
+                .multiplyScalar(
+                    direction.z *
+                    speed *
+                    dt
+                )
+        );
+
+
+        player.pos.add(
+            rightVec
+                .multiplyScalar(
+                    direction.x *
+                    speed *
+                    dt
+                )
+        );
+
+    }
+
+
+    player.vel.y -=
+        24 * dt;
+
+
+    player.pos.y +=
+        player.vel.y *
+        dt;
+
+
+    /* 地面 */
+
+    if(
+        player.pos.y < 2
+    ){
+
+        player.pos.y =
+            2;
+
+        player.vel.y =
+            0;
+
+        player.canJump =
+            true;
+
+    }
+
+
+    /* 邊界 */
+
+    player.pos.x =
+        THREE.MathUtils.clamp(
+            player.pos.x,
+            -38,
+            38
+        );
+
+    player.pos.z =
+        THREE.MathUtils.clamp(
+            player.pos.z,
+            -38,
+            38
+        );
+
+
+    if(
+        player.shootCooldown > 0
+    ){
+
+        player.shootCooldown -=
+            dt;
+
+    }
+
+
+    if(
+        player.invincible > 0
+    ){
+
+        player.invincible -=
+            dt;
+
+    }
+
+
+    if(
+        player.reload
+    ){
+
+        player.reloadTime -=
+            dt;
+
+
+        if(
+            player.reloadTime <= 0
+        ){
+
+            player.ammo =
+                player.maxAmmo;
+
+            player.reload =
+                false;
+
+        }
+
+    }
+
+
+    syncCamera();
+
+}
+
+
+/* =====================================================
+   HUD
+===================================================== */
+
+function updateHUD(){
+
+    document.getElementById(
+        "wave"
+    ).textContent =
+        wave;
+
+
+    document.getElementById(
+        "enemies"
+    ).textContent =
+        enemies.filter(
+            e=>e.alive
+        ).length;
+
+
+    document.getElementById(
+        "score"
+    ).textContent =
+        player.score;
+
+
+    document.getElementById(
+        "kills"
+    ).textContent =
+        player.kills;
+
+
+    document.getElementById(
+        "combo"
+    ).textContent =
+        player.combo;
+
+
+    document.getElementById(
+        "ammoNow"
+    ).textContent =
+        player.ammo;
+
+
+    document.getElementById(
+        "hp"
+    ).style.width =
+        Math.max(
+            0,
+            player.hp
+        ) + "%";
+
+
+    document.getElementById(
+        "shield"
+    ).style.width =
+        Math.max(
+            0,
+            player.shield
+        ) + "%";
+
+}
+
+
+/* =====================================================
+   Hit Marker
+===================================================== */
+
+function showHit(){
+
+    const hit =
+        document.getElementById(
+            "hit"
+        );
+
+
+    hit.style.opacity =
+        1;
+
+
+    setTimeout(
+        ()=>{
+            hit.style.opacity =
+                0;
+        },
+        70
+    );
+
+}
+
+
+/* =====================================================
+   中央文字
+===================================================== */
+
+function showCenter(
+    text
+){
+
+    document.getElementById(
+        "center"
+    ).innerHTML =
+        text;
+
+}
+
+
+function hideCenter(){
+
+    document.getElementById(
+        "center"
+    ).innerHTML =
+        "";
+
+}
+
+
+/* =====================================================
+   進入遊戲
+===================================================== */
+
+document.getElementById(
+    "enter"
+).addEventListener(
+    "click",
+    ()=>{
+
+        document.getElementById(
+            "startTip"
+        ).classList.add(
+            "hidden"
+        );
+
+        document.body.requestPointerLock();
+
+    }
+);
+
+
+/* =====================================================
+   ESC 後重新點擊
+===================================================== */
+
+document.addEventListener(
+    "click",
+    ()=>{
+
+        if(
+            !locked &&
+            document.getElementById(
+                "startTip"
+            ).classList.contains(
+                "hidden"
+            )
+        ){
+
+            document.body.requestPointerLock();
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   動畫
+===================================================== */
+
+const clock =
+    new THREE.Clock();
+
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const dt =
+        Math.min(
+            clock.getDelta(),
+            .05
+        );
+
+
+    updatePlayer(
+        dt
+    );
+
+
+    updateEnemies(
+        dt
+    );
+
+
+    updateHUD();
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+}
+
+
+window.addEventListener(
+    "resize",
+    ()=>{
+
+        camera.aspect =
+            innerWidth /
+            innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+
+    }
+);
+
+
+syncCamera();
+
+updateHUD();
+
+animate();
+
+</script>
+
+</body>
+</html>
