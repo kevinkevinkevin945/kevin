@@ -710,45 +710,81 @@ function shoot(){
 
     /* 打敵人 */
 
-    raycaster.set(
-        origin,
-        direction
+    raycaster.set(origin, direction);
+
+/*
+ * 所有可能擋住射擊的東西
+ * 包含城市建築、掩體、地面
+ */
+const wallMeshes = obstacles.map(
+    o => o.mesh
+);
+
+/*
+ * 所有敵人
+ */
+const enemyMeshes = enemies
+    .filter(e => e.alive)
+    .map(e => e.mesh);
+
+
+/*
+ * 分別偵測牆和敵人
+ */
+const wallHits =
+    raycaster.intersectObjects(
+        wallMeshes,
+        false
+    );
+
+const enemyHits =
+    raycaster.intersectObjects(
+        enemyMeshes,
+        false
     );
 
 
-    const targets =
-        enemies.map(
-            e=>e.mesh
+/*
+ * 找最近的牆
+ */
+const nearestWall =
+    wallHits.length
+        ? wallHits[0].distance
+        : Infinity;
+
+
+/*
+ * 找最近的敵人
+ */
+const nearestEnemy =
+    enemyHits.length
+        ? enemyHits[0]
+        : null;
+
+
+/*
+ * 只有「敵人在牆前面」
+ * 才能打中
+ */
+if (
+    nearestEnemy &&
+    nearestEnemy.distance < nearestWall
+) {
+
+    const hit =
+        nearestEnemy.object;
+
+    const enemy =
+        enemies.find(
+            e => e.mesh === hit
         );
 
+    if (enemy) {
 
-    const hits =
-        raycaster.intersectObjects(
-            targets
+        damageEnemy(
+            enemy,
+            34
         );
-
-
-    if(
-        hits.length
-    ){
-
-        const hit =
-            hits[0].object;
-
-        const enemy =
-            enemies.find(
-                e=>e.mesh === hit
-            );
-
-
-        if(enemy){
-
-            damageEnemy(
-                enemy,
-                34
-            );
-
-        }
 
     }
 
