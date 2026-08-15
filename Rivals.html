@@ -2,8 +2,8 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D僵尸枪战 · 载具风暴</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧟 3D僵尸枪战 · 终极版</title>
     <style>
         * {
             margin: 0;
@@ -26,71 +26,71 @@
             display: block;
             width: 100vw;
             height: 100vh;
-            background: #1a2a1f;
         }
         #hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+            top: 15px;
+            left: 15px;
+            right: 15px;
             display: flex;
             justify-content: space-between;
             pointer-events: none;
-            color: #eafff0;
-            text-shadow: 0 0 12px #00e676, 0 2px 4px #000;
+            color: #fff;
+            text-shadow: 0 0 10px #00ff88, 0 2px 4px #000;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
             z-index: 10;
-            letter-spacing: 1px;
         }
-        .hud-badge {
-            background: rgba(10, 25, 15, 0.75);
+        .hud-box {
+            background: rgba(0, 20, 10, 0.8);
             backdrop-filter: blur(8px);
-            padding: 8px 18px;
+            padding: 8px 16px;
             border-radius: 30px;
-            border: 1px solid #6effb0;
-            box-shadow: 0 0 20px rgba(0, 200, 80, 0.4);
+            border: 1px solid #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 100, 0.3);
         }
         #weapon-panel {
             position: absolute;
-            bottom: 25px;
-            right: 25px;
-            background: rgba(15, 30, 20, 0.85);
-            padding: 12px 28px;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 15, 5, 0.9);
+            padding: 15px 30px;
             border-radius: 50px;
-            border: 2px solid #a0ffc0;
-            color: #f2ffe6;
-            font-size: 26px;
+            border: 2px solid #00ff88;
+            color: #fff;
+            font-size: 28px;
             font-weight: bold;
-            text-shadow: 0 0 15px #69f0ae;
-            backdrop-filter: blur(6px);
+            text-shadow: 0 0 15px #00ff88;
             pointer-events: none;
             z-index: 10;
         }
         #vehicle-panel {
             position: absolute;
-            bottom: 25px;
-            left: 25px;
-            background: rgba(20, 35, 25, 0.8);
-            padding: 10px 22px;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0, 20, 10, 0.85);
+            padding: 10px 25px;
             border-radius: 40px;
-            border: 1px solid #b0ffc0;
-            color: #d0ffe0;
+            border: 1px solid #ffaa00;
+            color: #ffdd00;
             font-weight: bold;
-            backdrop-filter: blur(4px);
             pointer-events: none;
             z-index: 10;
         }
-        #crosshair {
+        #score-panel {
             position: absolute;
             top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
+            left: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 20, 10, 0.7);
+            padding: 15px;
+            border-radius: 20px;
+            border: 1px solid #00ff88;
+            color: #fff;
             pointer-events: none;
-            z-index: 30;
-            filter: drop-shadow(0 0 10px #aaffaa);
+            z-index: 10;
+            font-size: 14px;
+            text-align: center;
         }
         #damage-overlay {
             position: absolute;
@@ -100,305 +100,336 @@
             height: 100%;
             pointer-events: none;
             z-index: 5;
-            background: radial-gradient(ellipse at center, transparent 60%, rgba(255,0,0,0.25) 100%);
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.5) 100%);
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.1s;
+        }
+        #reload-indicator {
+            position: absolute;
+            bottom: 100px;
+            right: 50%;
+            transform: translateX(50%);
+            color: #ffaa00;
+            font-size: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        #kill-feed {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            pointer-events: none;
+            z-index: 10;
+            text-align: right;
+        }
+        .kill-message {
+            color: #ffcc00;
+            font-size: 14px;
+            text-shadow: 0 0 8px #ff8800;
+            animation: fadeOut 2s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(50px); }
         }
     </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
 <div id="hud">
-    <div class="hud-badge" id="healthDisplay">❤️ 100</div>
-    <div class="hud-badge" id="zombieCount">🧟 0</div>
-    <div class="hud-badge" id="vehicleStatus">🚶 步行</div>
+    <div class="hud-box">❤️ <span id="healthDisplay">100</span></div>
+    <div class="hud-box">🧟 <span id="zombieCount">0</span></div>
+    <div class="hud-box">💰 <span id="scoreDisplay">0</span></div>
+    <div class="hud-box">🏆 <span id="waveDisplay">第1波</span></div>
 </div>
-<div id="weapon-panel" id="weaponDisplay">🔫 步枪 30/30</div>
-<div id="vehicle-panel" id="vehicleHp">载具HP: --</div>
-<svg id="crosshair" viewBox="0 0 100 100" width="28" height="28">
-    <circle cx="50" cy="50" r="30" fill="none" stroke="#d0ffc0" stroke-width="4" opacity="0.7"/>
-    <line x1="50" y1="8" x2="50" y2="28" stroke="#f0ffe0" stroke-width="6" stroke-linecap="round"/>
-    <line x1="50" y1="72" x2="50" y2="92" stroke="#f0ffe0" stroke-width="6" stroke-linecap="round"/>
-    <line x1="8" y1="50" x2="28" y2="50" stroke="#f0ffe0" stroke-width="6" stroke-linecap="round"/>
-    <line x1="72" y1="50" x2="92" y2="50" stroke="#f0ffe0" stroke-width="6" stroke-linecap="round"/>
-</svg>
+<div id="score-panel">
+    🎯 爆头: <span id="headshotCount">0</span><br>
+    🔫 击杀: <span id="killCount">0</span><br>
+    ⏱️ 生存: <span id="survivalTime">0</span>s
+</div>
+<div id="weapon-panel">🔫 <span id="weaponDisplay">步枪 30/30</span></div>
+<div id="vehicle-panel">🚗 <span id="vehicleHp">载具HP: --</span></div>
+<div id="reload-indicator">🔄 换弹中...</div>
 <div id="damage-overlay"></div>
+<div id="kill-feed"></div>
 
 <script>
     (function(){
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const healthDisplay = document.getElementById('healthDisplay');
-        const zombieCountSpan = document.getElementById('zombieCount');
-        const vehicleStatusSpan = document.getElementById('vehicleStatus');
-        const weaponDisplay = document.getElementById('weaponDisplay');
-        const vehicleHpSpan = document.getElementById('vehicleHp');
-        const damageOverlay = document.getElementById('damage-overlay');
-
-        // ---------- 3D渲染基础 ----------
+        
+        // ---------- 画面尺寸 ----------
         let W, H;
-        function resizeCanvas() {
+        function resize() {
             W = canvas.width = window.innerWidth;
             H = canvas.height = window.innerHeight;
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        window.addEventListener('resize', resize);
+        resize();
 
-        // ---------- 3D世界参数 ----------
-        const WORLD_SIZE = 600;
-        const LAKE_RADIUS = 90;
-        const LAKE_CENTER = { x: 250, z: 180 };
-        const BUILDINGS = [
-            { x: 80, z: 90, w: 40, h: 50, d: 35, color: '#6b5c46' },
-            { x: 220, z: 120, w: 45, h: 65, d: 40, color: '#7a6a4a' },
-            { x: 380, z: 100, w: 50, h: 55, d: 45, color: '#5e5040' },
-            { x: 150, z: 300, w: 55, h: 70, d: 50, color: '#4f5a3e' },
-            { x: 350, z: 330, w: 42, h: 60, d: 38, color: '#6f5f48' },
-            { x: 420, z: 260, w: 60, h: 80, d: 55, color: '#7c654a' },
-            { x: 100, z: 430, w: 50, h: 45, d: 48, color: '#5c5e3c' },
-            { x: 280, z: 480, w: 65, h: 75, d: 60, color: '#5a4e3c' },
-        ];
+        // ---------- 游戏状态 ----------
+        let score = 0;
+        let kills = 0;
+        let headshots = 0;
+        let survivalTime = 0;
+        let wave = 1;
+        let gameRunning = true;
 
-        // ---------- 玩家状态 ----------
-        let player = {
-            x: 150, y: 0, z: 200,   // y是高度
-            speed: 14,
+        // ---------- 玩家 ----------
+        const player = {
+            x: 200, y: 0, z: 200,
+            speed: 20,
             health: 100,
             maxHealth: 100,
-            onGround: true,
             vy: 0,
+            onGround: true,
             vehicle: null,
             weaponIndex: 0,
             ammo: 30,
             maxAmmo: 30,
-            lastDamageTime: 0
+            reloading: false,
+            reloadTime: 0,
+            lastFireTime: 0,
+            damageCooldown: 0,
+            armor: 0
         };
 
-        // ---------- 武器定义 ----------
+        // ---------- 武器系统 ----------
         const weapons = [
-            { name: '步枪', damage: 24, range: 800, fireRate: 6, ammoMax: 30, bulletSpeed: 500, auto: true },
-            { name: '霰弹枪', damage: 38, range: 300, fireRate: 2, ammoMax: 12, bulletSpeed: 300, auto: false },
-            { name: '狙击枪', damage: 95, range: 1000, fireRate: 1, ammoMax: 8, bulletSpeed: 700, auto: false },
-            { name: '冲锋枪', damage: 13, range: 500, fireRate: 12, ammoMax: 40, bulletSpeed: 400, auto: true }
+            { name: '🔫 步枪', damage: 28, range: 900, fireRate: 0.08, ammoMax: 30, bulletSpeed: 600, auto: true, reloadTime: 1.5, spread: 0.02 },
+            { name: '💥 霰弹枪', damage: 45, range: 350, fireRate: 0.8, ammoMax: 8, bulletSpeed: 400, auto: false, reloadTime: 2.0, spread: 0.12, pellets: 8 },
+            { name: '🎯 狙击枪', damage: 120, range: 1500, fireRate: 1.2, ammoMax: 5, bulletSpeed: 900, auto: false, reloadTime: 2.5, spread: 0.001 },
+            { name: '⚡ 冲锋枪', damage: 15, range: 500, fireRate: 0.05, ammoMax: 40, bulletSpeed: 500, auto: true, reloadTime: 1.3, spread: 0.06 },
+            { name: '🔥 火焰枪', damage: 8, range: 200, fireRate: 0.03, ammoMax: 50, bulletSpeed: 300, auto: true, reloadTime: 1.8, spread: 0.15, fire: true }
         ];
 
-        // ---------- 输入 ----------
-        const keys = {};
-        let mouseX = W/2, mouseY = H/2;
-        let mouseDown = false;
-        let yaw = 0, pitch = 0;
-        let isPointerLocked = false;
-
-        // ---------- 僵尸 ----------
-        let zombies = [];
-        const ZOMBIE_COUNT = 30;
-        class Zombie {
-            constructor(x, z) {
-                this.x = x; this.z = z;
-                this.y = 0;
-                this.hp = 50 + Math.random()*30;
-                this.maxHp = this.hp;
-                this.speed = 2.5 + Math.random()*3;
-                this.radius = 14;
-                this.damage = 10;
-                this.attackCooldown = 0;
-            }
-        }
-        function spawnZombies() {
-            zombies = [];
-            for(let i=0; i<ZOMBIE_COUNT; i++) {
-                let x = 50 + Math.random() * (WORLD_SIZE-100);
-                let z = 50 + Math.random() * (WORLD_SIZE-100);
-                zombies.push(new Zombie(x, z));
-            }
-        }
-        spawnZombies();
-
         // ---------- 载具系统 ----------
-        let vehicles = [];
+        const vehicles = [];
         class Vehicle {
-            constructor(type, x, z, color, name) {
-                this.type = type; // 'boat','car','plane'
+            constructor(type, x, z, color, name, hp, speed) {
+                this.type = type;
                 this.x = x; this.z = z;
-                this.y = type === 'plane' ? 35 : 0;
-                this.hp = type === 'plane' ? 300 : 200;
-                this.maxHp = this.hp;
-                this.speed = type === 'plane' ? 22 : type === 'car' ? 18 : 15;
-                this.width = type === 'plane' ? 30 : 35;
-                this.depth = type === 'plane' ? 50 : 40;
+                this.y = type === 'plane' ? 40 : 0;
+                this.hp = hp;
+                this.maxHp = hp;
+                this.speed = speed;
                 this.color = color;
                 this.name = name;
                 this.active = true;
                 this.attackCooldown = 0;
+                this.passenger = null;
             }
         }
-        vehicles.push(new Vehicle('boat', 200, 170, '#6b4e3a', '巡逻艇'));
-        vehicles.push(new Vehicle('car', 400, 400, '#3a6ea5', '装甲车'));
-        vehicles.push(new Vehicle('plane', 500, 100, '#8a9bb0', '武装飞机'));
+        vehicles.push(new Vehicle('boat', 300, 180, '#8B4513', '🚤 巡逻艇', 250, 25));
+        vehicles.push(new Vehicle('car', 450, 350, '#4169E1', '🚗 装甲车', 200, 30));
+        vehicles.push(new Vehicle('plane', 500, 150, '#778899', '✈️ 战斗机', 350, 40));
+        vehicles.push(new Vehicle('tank', 150, 450, '#556B2F', '🎖️ 坦克', 400, 20));
 
-        // ---------- 子弹 ----------
+        // ---------- 僵尸系统 ----------
+        let zombies = [];
+        class Zombie {
+            constructor(x, z, type) {
+                this.x = x; this.z = z;
+                this.y = 0;
+                this.type = type || 'normal';
+                if(this.type === 'fast') {
+                    this.hp = 30; this.speed = 8; this.damage = 8; this.radius = 12;
+                    this.color = '#7FFF00';
+                } else if(this.type === 'tank') {
+                    this.hp = 150; this.speed = 2; this.damage = 25; this.radius = 25;
+                    this.color = '#8B0000';
+                } else if(this.type === 'exploder') {
+                    this.hp = 60; this.speed = 5; this.damage = 40; this.radius = 18;
+                    this.color = '#FF4500';
+                } else {
+                    this.hp = 50; this.speed = 4; this.damage = 10; this.radius = 15;
+                    this.color = '#2E8B57';
+                }
+                this.maxHp = this.hp;
+                this.attackCooldown = 0;
+                this.hitFlash = 0;
+                this.headshot = Math.random() < 0.3;
+            }
+        }
+
+        function spawnWave() {
+            zombies = [];
+            const count = 10 + wave * 5;
+            for(let i = 0; i < count; i++) {
+                const x = 50 + Math.random() * 500;
+                const z = 50 + Math.random() * 500;
+                let type = 'normal';
+                const r = Math.random();
+                if(wave > 1 && r < 0.2) type = 'fast';
+                if(wave > 2 && r < 0.35) type = 'tank';
+                if(wave > 3 && r < 0.45) type = 'exploder';
+                zombies.push(new Zombie(x, z, type));
+            }
+        }
+        spawnWave();
+
+        // ---------- 子弹系统 ----------
         let bullets = [];
         class Bullet {
-            constructor(x, y, z, dx, dy, dz, damage, speed, isPlayer=true) {
+            constructor(x, y, z, dx, dy, dz, damage, speed, isPlayer = true, fire = false) {
                 this.x = x; this.y = y; this.z = z;
                 this.dx = dx; this.dy = dy; this.dz = dz;
                 this.damage = damage;
                 this.speed = speed;
-                this.life = 2.0;
+                this.life = 3.0;
                 this.isPlayer = isPlayer;
+                this.fire = fire;
+                this.trail = [];
             }
         }
 
         // ---------- 3D投影 ----------
+        let yaw = 0, pitch = 0;
+        let isPointerLocked = false;
+        let mouseDown = false;
+        const keys = {};
+
         function project3D(x, y, z) {
-            const camX = player.x, camY = player.y + 12, camZ = player.z;
-            const dx = x - camX, dy = y - camY, dz = z - camZ;
+            const dx = x - player.x;
+            const dy = y - (player.y + 12);
+            const dz = z - player.z;
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
             const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
             const tz = dz * cosY - dx * sinY;
             const tx = dx * cosY + dz * sinY;
             const ty = dy * cosP - tz * sinP;
             const tz2 = dy * sinP + tz * cosP;
-            if (tz2 < 1) return null;
-            const scale = 400 / tz2;
-            const sx = W/2 + tx * scale;
-            const sy = H/2 - ty * scale;
-            return { x: sx, y: sy, scale: scale, depth: tz2 };
+            if(tz2 < 1) return null;
+            const scale = 500 / tz2;
+            return {
+                x: W/2 + tx * scale,
+                y: H/2 - ty * scale,
+                scale: scale,
+                depth: tz2
+            };
         }
 
-        function drawBox3D(x, y, z, w, h, d, color) {
-            const corners = [];
-            for(let dx of [-w/2, w/2]) for(let dy of [0, h]) for(let dz of [-d/2, d/2]) {
-                const p = project3D(x+dx, y+dy, z+dz);
-                if(p) corners.push({...p, dx, dy, dz});
-            }
-            if(corners.length < 2) return;
-            ctx.fillStyle = color;
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 1;
-            for(let i=0; i<corners.length; i+=2) {
-                const p1 = corners[i], p2 = corners[i+1];
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-            }
-        }
-
-        function drawWorld3D() {
-            ctx.clearRect(0, 0, W, H);
+        // ---------- 绘制3D世界 ----------
+        function drawWorld() {
             // 天空
-            const skyGrad = ctx.createLinearGradient(0,0,0,H);
-            skyGrad.addColorStop(0, '#1a2f3a');
-            skyGrad.addColorStop(0.7, '#3a5f4a');
-            skyGrad.addColorStop(1, '#6a5f4a');
-            ctx.fillStyle = skyGrad;
+            const grad = ctx.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, '#0a0a2a');
+            grad.addColorStop(0.4, '#1a3a3a');
+            grad.addColorStop(0.7, '#3a5a3a');
+            grad.addColorStop(1, '#5a4a3a');
+            ctx.fillStyle = grad;
             ctx.fillRect(0, 0, W, H);
 
             // 地面
-            ctx.fillStyle = '#3a4d3a';
-            ctx.fillRect(0, H*0.6, W, H*0.4);
+            ctx.fillStyle = '#2a3a2a';
+            ctx.fillRect(0, H * 0.6, W, H * 0.4);
 
-            // 画湖泊
-            const lakeCenter = project3D(LAKE_CENTER.x, 0, LAKE_CENTER.z);
-            if(lakeCenter) {
-                const lakeR = LAKE_RADIUS * lakeCenter.scale * 0.9;
-                ctx.fillStyle = '#3a8fa0';
+            // 地面网格
+            ctx.strokeStyle = 'rgba(0,255,0,0.1)';
+            ctx.lineWidth = 1;
+            for(let i = 0; i < 600; i += 20) {
+                const p1 = project3D(i, 0, 0);
+                const p2 = project3D(i, 0, 600);
+                if(p1 && p2) {
+                    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                }
+                const p3 = project3D(0, 0, i);
+                const p4 = project3D(600, 0, i);
+                if(p3 && p4) {
+                    ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+                }
+            }
+
+            // 湖泊
+            const lake = project3D(300, 0, 200);
+            if(lake) {
+                ctx.fillStyle = 'rgba(30,80,120,0.8)';
                 ctx.beginPath();
-                ctx.ellipse(lakeCenter.x, lakeCenter.y, lakeR, lakeR*0.6, 0, 0, Math.PI*2);
-                ctx.fill();
-                ctx.fillStyle = '#4aa8c0';
-                ctx.beginPath();
-                ctx.ellipse(lakeCenter.x-10, lakeCenter.y-8, lakeR*0.7, lakeR*0.4, 0, 0, Math.PI*2);
+                ctx.ellipse(lake.x, lake.y, 100 * lake.scale, 60 * lake.scale, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
 
-            // 建筑
-            BUILDINGS.forEach(b => {
-                drawBox3D(b.x, 0, b.z, b.w, b.h, b.d, b.color);
-            });
-
-            // 载具
+            // 绘制载具
             vehicles.forEach(v => {
                 if(!v.active) return;
                 const p = project3D(v.x, v.y, v.z);
                 if(p) {
                     const s = p.scale;
+                    ctx.fillStyle = v.color;
                     if(v.type === 'boat') {
-                        ctx.fillStyle = v.color;
-                        ctx.beginPath();
-                        ctx.ellipse(p.x, p.y, 40*s, 18*s, 0, 0, Math.PI*2);
-                        ctx.fill();
-                        ctx.fillStyle = '#d0b090';
-                        ctx.fillRect(p.x-25*s, p.y-30*s, 50*s, 15*s);
+                        ctx.fillRect(p.x - 40*s, p.y - 20*s, 80*s, 40*s);
                     } else if(v.type === 'car') {
-                        ctx.fillStyle = v.color;
-                        ctx.fillRect(p.x-35*s, p.y-25*s, 70*s, 40*s);
-                        ctx.fillStyle = '#222';
-                        ctx.fillRect(p.x-20*s, p.y-35*s, 40*s, 18*s);
-                    } else {
-                        ctx.fillStyle = v.color;
+                        ctx.fillRect(p.x - 35*s, p.y - 25*s, 70*s, 45*s);
+                        ctx.fillRect(p.x - 20*s, p.y - 35*s, 40*s, 20*s);
+                    } else if(v.type === 'plane') {
                         ctx.beginPath();
-                        ctx.moveTo(p.x-40*s, p.y);
-                        ctx.lineTo(p.x+45*s, p.y-20*s);
-                        ctx.lineTo(p.x+45*s, p.y+20*s);
+                        ctx.moveTo(p.x - 45*s, p.y);
+                        ctx.lineTo(p.x + 50*s, p.y - 20*s);
+                        ctx.lineTo(p.x + 50*s, p.y + 20*s);
                         ctx.closePath();
                         ctx.fill();
+                    } else if(v.type === 'tank') {
+                        ctx.fillRect(p.x - 30*s, p.y - 20*s, 60*s, 40*s);
+                        ctx.fillRect(p.x - 15*s, p.y - 35*s, 30*s, 15*s);
                     }
-                }
-                // 血条
-                if(v.hp < v.maxHp) {
-                    const ph = project3D(v.x, v.y+30, v.z);
-                    if(ph) {
-                        ctx.fillStyle = '#ff5555';
-                        ctx.fillRect(ph.x-25, ph.y-5, 50, 6);
-                        ctx.fillStyle = '#55ff55';
-                        ctx.fillRect(ph.x-25, ph.y-5, 50*(v.hp/v.maxHp), 6);
-                    }
+                    // 载具名字
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `${Math.max(10, 12*s)}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(v.name, p.x, p.y - 40*s);
                 }
             });
 
-            // 僵尸
+            // 绘制僵尸
             zombies.forEach(z => {
                 const p = project3D(z.x, z.y, z.z);
                 if(p) {
                     const s = p.scale;
-                    ctx.fillStyle = '#2f6e3a';
-                    ctx.fillRect(p.x-14*s, p.y-28*s, 28*s, 38*s);
-                    ctx.fillStyle = '#4a8f3f';
-                    ctx.fillRect(p.x-10*s, p.y-38*s, 20*s, 18*s);
-                    ctx.fillStyle = '#ff3333';
-                    ctx.fillRect(p.x-6*s, p.y-32*s, 4*s, 4*s);
-                    ctx.fillRect(p.x+2*s, p.y-32*s, 4*s, 4*s);
+                    const flash = z.hitFlash > 0;
+                    ctx.fillStyle = flash ? '#fff' : z.color;
+                    ctx.fillRect(p.x - z.radius*s, p.y - 25*s, z.radius*2*s, 35*s);
+                    ctx.fillStyle = flash ? '#fff' : '#3a5a2a';
+                    ctx.fillRect(p.x - 10*s, p.y - 35*s, 20*s, 15*s);
+                    // 眼睛
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(p.x - 6*s, p.y - 30*s, 4*s, 4*s);
+                    ctx.fillRect(p.x + 2*s, p.y - 30*s, 4*s, 4*s);
+                    // 血量条
+                    if(z.hp < z.maxHp) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(p.x - 20*s, p.y - 45*s, 40*s, 4*s);
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(p.x - 20*s, p.y - 45*s, 40*s * (z.hp / z.maxHp), 4*s);
+                    }
                 }
             });
 
-            // 子弹
+            // 绘制子弹
             bullets.forEach(b => {
                 const p = project3D(b.x, b.y, b.z);
                 if(p) {
-                    ctx.fillStyle = b.isPlayer ? '#ffe066' : '#ff6666';
+                    ctx.fillStyle = b.fire ? '#ff6600' : '#ffff00';
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+                    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
                     ctx.fill();
+                    if(b.fire) {
+                        ctx.fillStyle = 'rgba(255,100,0,0.3)';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             });
-
-            // 玩家标记
-            if(!player.vehicle) {
-                const pp = project3D(player.x, player.y+10, player.z);
-                if(pp) {
-                    ctx.fillStyle = '#f4d03f';
-                    ctx.fillRect(pp.x-8, pp.y-20, 16, 30);
-                }
-            }
         }
 
-        // ---------- 更新 ----------
+        // ---------- 更新逻辑 ----------
         function update(dt) {
-            if(dt > 0.1) dt = 0.1;
+            if(!gameRunning) return;
+            survivalTime += dt;
 
-            // 玩家移动
+            // 移动
             let moveX = 0, moveZ = 0;
             if(keys['w']) moveZ -= 1;
             if(keys['s']) moveZ += 1;
@@ -408,33 +439,27 @@
             if(len > 0) { moveX /= len; moveZ /= len; }
 
             const speed = player.vehicle ? player.vehicle.speed : player.speed;
-            // 旋转移动方向
             const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-            const worldMoveX = (moveX * cosY - moveZ * sinY) * speed;
-            const worldMoveZ = (moveX * sinY + moveZ * cosY) * speed;
+            const wx = (moveX * cosY - moveZ * sinY) * speed;
+            const wz = (moveX * sinY + moveZ * cosY) * speed;
 
-            player.x += worldMoveX * dt;
-            player.z += worldMoveZ * dt;
+            player.x += wx * dt;
+            player.z += wz * dt;
+            player.x = Math.max(20, Math.min(580, player.x));
+            player.z = Math.max(20, Math.min(580, player.z));
 
-            // 边界限制
-            player.x = Math.max(15, Math.min(WORLD_SIZE-15, player.x));
-            player.z = Math.max(15, Math.min(WORLD_SIZE-15, player.z));
-
-            // 载具位置更新
+            // 载具
             if(player.vehicle) {
                 player.vehicle.x = player.x;
                 player.vehicle.z = player.z;
-                if(player.vehicle.type === 'plane') {
-                    player.y = 35;
-                } else {
-                    player.y = 0;
-                }
+                if(player.vehicle.type === 'plane') player.y = 40;
+                else player.y = 0;
             } else {
                 if(keys[' '] && player.onGround) {
-                    player.vy = 25;
+                    player.vy = 30;
                     player.onGround = false;
                 }
-                player.vy -= 40 * dt;
+                player.vy -= 50 * dt;
                 player.y += player.vy * dt;
                 if(player.y <= 0) {
                     player.y = 0;
@@ -445,11 +470,12 @@
 
             // 载具交互
             if(keys['e'] && !player.vehicle) {
-                for(let v of vehicles) {
-                    if(v.active && Math.hypot(v.x-player.x, v.z-player.z) < 40) {
+                for(const v of vehicles) {
+                    if(v.active && Math.hypot(v.x - player.x, v.z - player.z) < 50) {
                         player.vehicle = v;
-                        player.x = v.x; player.z = v.z;
-                        if(v.type === 'plane') player.y = 35;
+                        player.x = v.x;
+                        player.z = v.z;
+                        if(v.type === 'plane') player.y = 40;
                         else player.y = 0;
                         break;
                     }
@@ -459,44 +485,79 @@
                 player.y = 0;
             }
 
+            // 换弹
+            if(keys['r'] && !player.reloading && player.ammo < player.maxAmmo) {
+                player.reloading = true;
+                player.reloadTime = weapons[player.weaponIndex].reloadTime;
+            }
+            if(player.reloading) {
+                player.reloadTime -= dt;
+                document.getElementById('reload-indicator').style.display = 'block';
+                if(player.reloadTime <= 0) {
+                    player.ammo = player.maxAmmo;
+                    player.reloading = false;
+                    document.getElementById('reload-indicator').style.display = 'none';
+                }
+            }
+
             // 射击
-            if(mouseDown && player.ammo > 0) {
+            if(mouseDown && !player.reloading && player.ammo > 0 && performance.now() - player.lastFireTime > weapons[player.weaponIndex].fireRate * 1000) {
                 const weapon = weapons[player.weaponIndex];
-                const dirX = -Math.sin(yaw) * Math.cos(pitch);
-                const dirY = Math.sin(pitch);
-                const dirZ = -Math.cos(yaw) * Math.cos(pitch);
-                const muzzleY = player.vehicle ? player.y + 25 : player.y + 18;
-                bullets.push(new Bullet(player.x, muzzleY, player.z, dirX, dirY, dirZ, weapon.damage, weapon.bulletSpeed, true));
+                const dx = -Math.sin(yaw) * Math.cos(pitch);
+                const dy = Math.sin(pitch);
+                const dz = -Math.cos(yaw) * Math.cos(pitch);
+                const muzzleY = player.vehicle ? player.y + 30 : player.y + 20;
+                
+                if(weapon.pellets) {
+                    for(let i = 0; i < weapon.pellets; i++) {
+                        const spreadX = (Math.random() - 0.5) * weapon.spread;
+                        const spreadY = (Math.random() - 0.5) * weapon.spread;
+                        bullets.push(new Bullet(player.x, muzzleY, player.z, dx + spreadX, dy + spreadY, dz + spreadX, weapon.damage / weapon.pellets, weapon.bulletSpeed, true, weapon.fire));
+                    }
+                } else {
+                    bullets.push(new Bullet(player.x, muzzleY, player.z, dx, dy, dz, weapon.damage, weapon.bulletSpeed, true, weapon.fire));
+                }
+                
                 player.ammo--;
-                if(player.ammo < 0) player.ammo = 0;
+                player.lastFireTime = performance.now();
+                
+                // 枪口后坐力
+                pitch += 0.01;
             }
+
+            // 载具武器
             if(player.vehicle && mouseDown && player.vehicle.attackCooldown <= 0) {
-                const dirX = -Math.sin(yaw) * Math.cos(pitch);
-                const dirY = Math.sin(pitch);
-                const dirZ = -Math.cos(yaw) * Math.cos(pitch);
-                bullets.push(new Bullet(player.x, player.y+25, player.z, dirX, dirY, dirZ, 20, 450, true));
-                player.vehicle.attackCooldown = 0.2;
+                const dx = -Math.sin(yaw) * Math.cos(pitch);
+                const dy = Math.sin(pitch);
+                const dz = -Math.cos(yaw) * Math.cos(pitch);
+                bullets.push(new Bullet(player.x, player.y + 30, player.z, dx, dy, dz, 30, 700, true));
+                player.vehicle.attackCooldown = 0.15;
             }
-            if(player.vehicle && player.vehicle.attackCooldown > 0) player.vehicle.attackCooldown -= dt;
+            if(player.vehicle && player.vehicle.attackCooldown > 0) {
+                player.vehicle.attackCooldown -= dt;
+            }
 
             // 换枪
-            for(let i=0; i<weapons.length; i++) {
-                if(keys[String(i+1)]) {
+            for(let i = 0; i < weapons.length; i++) {
+                if(keys[String(i + 1)]) {
                     player.weaponIndex = i;
                     player.ammo = weapons[i].ammoMax;
                     player.maxAmmo = weapons[i].ammoMax;
+                    player.reloading = false;
+                    document.getElementById('reload-indicator').style.display = 'none';
                 }
             }
 
             // 僵尸AI
             zombies.forEach(z => {
-                const dx = player.x - z.x, dz = player.z - z.z;
+                const dx = player.x - z.x;
+                const dz = player.z - z.z;
                 const dist = Math.hypot(dx, dz);
-                if(dist > 20 && dist < 600) {
-                    z.x += (dx/dist) * z.speed * dt;
-                    z.z += (dz/dist) * z.speed * dt;
+                if(dist > 20 && dist < 700) {
+                    z.x += (dx / dist) * z.speed * dt;
+                    z.z += (dz / dist) * z.speed * dt;
                 }
-                if(dist < 25 && z.attackCooldown <= 0) {
+                if(dist < z.radius + 10 && z.attackCooldown <= 0) {
                     if(player.vehicle) {
                         player.vehicle.hp -= z.damage;
                         if(player.vehicle.hp <= 0) {
@@ -505,16 +566,22 @@
                             player.y = 0;
                         }
                     } else {
-                        player.health -= z.damage;
-                        damageOverlay.style.opacity = '1';
-                        setTimeout(() => damageOverlay.style.opacity = '0', 200);
+                        if(player.damageCooldown <= 0) {
+                            player.health -= z.damage;
+                            player.damageCooldown = 0.5;
+                            document.getElementById('damage-overlay').style.opacity = '1';
+                            setTimeout(() => document.getElementById('damage-overlay').style.opacity = '0', 200);
+                        }
                     }
                     z.attackCooldown = 0.8;
                 }
                 if(z.attackCooldown > 0) z.attackCooldown -= dt;
-                z.x = Math.max(10, Math.min(WORLD_SIZE-10, z.x));
-                z.z = Math.max(10, Math.min(WORLD_SIZE-10, z.z));
+                if(z.hitFlash > 0) z.hitFlash -= dt;
+                z.x = Math.max(10, Math.min(590, z.x));
+                z.z = Math.max(10, Math.min(590, z.z));
             });
+
+            if(player.damageCooldown > 0) player.damageCooldown -= dt;
 
             // 子弹更新
             bullets.forEach(b => {
@@ -524,43 +591,76 @@
                 b.life -= dt;
                 if(b.isPlayer) {
                     zombies.forEach(z => {
-                        if(Math.hypot(z.x-b.x, z.z-b.z) < z.radius && z.hp > 0) {
+                        if(Math.hypot(z.x - b.x, z.z - b.z) < z.radius && z.hp > 0) {
                             z.hp -= b.damage;
+                            z.hitFlash = 0.2;
                             b.life = 0;
+                            if(z.hp <= 0) {
+                                kills++;
+                                score += 100;
+                                if(z.headshot) {
+                                    headshots++;
+                                    score += 50;
+                                }
+                                if(z.type === 'tank') score += 100;
+                                if(z.type === 'exploder') {
+                                    zombies.forEach(z2 => {
+                                        if(Math.hypot(z2.x - z.x, z2.z - z.z) < 50) {
+                                            z2.hp -= 30;
+                                        }
+                                    });
+                                }
+                                const killMsg = document.createElement('div');
+                                killMsg.className = 'kill-message';
+                                killMsg.textContent = `💀 击杀 ${z.type} 僵尸 +${100}`;
+                                document.getElementById('kill-feed').appendChild(killMsg);
+                                setTimeout(() => killMsg.remove(), 2000);
+                            }
                         }
                     });
                     vehicles.forEach(v => {
-                        if(v.active && v !== player.vehicle && Math.hypot(v.x-b.x, v.z-b.z) < 25) {
+                        if(v.active && v !== player.vehicle && Math.hypot(v.x - b.x, v.z - b.z) < 30) {
                             v.hp -= b.damage;
                             b.life = 0;
+                            if(v.hp <= 0) {
+                                v.active = false;
+                                score += 500;
+                            }
                         }
                     });
                 }
             });
-            bullets = bullets.filter(b => b.life > 0 && b.x > 0 && b.x < WORLD_SIZE && b.z > 0 && b.z < WORLD_SIZE);
-            zombies = zombies.filter(z => z.hp > 0);
-            if(zombies.length === 0) spawnZombies();
 
-            // HUD
-            healthDisplay.innerText = `❤️ ${Math.floor(player.health)}`;
-            zombieCountSpan.innerText = `🧟 ${zombies.length}`;
-            vehicleStatusSpan.innerText = player.vehicle ? `🚗 ${player.vehicle.name}` : '🚶 步行';
-            weaponDisplay.innerText = `🔫 ${weapons[player.weaponIndex].name} ${player.ammo}/${player.maxAmmo}`;
-            vehicleHpSpan.innerText = player.vehicle ? `载具HP: ${Math.floor(player.vehicle.hp)}/${player.vehicle.maxHp}` : '载具HP: --';
+            bullets = bullets.filter(b => b.life > 0);
+            zombies = zombies.filter(z => z.hp > 0);
+            
+            if(zombies.length === 0) {
+                wave++;
+                score += 1000;
+                spawnWave();
+            }
+
+            // HUD更新
+            document.getElementById('healthDisplay').textContent = Math.floor(player.health);
+            document.getElementById('zombieCount').textContent = zombies.length;
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('waveDisplay').textContent = `第${wave}波`;
+            document.getElementById('headshotCount').textContent = headshots;
+            document.getElementById('killCount').textContent = kills;
+            document.getElementById('survivalTime').textContent = Math.floor(survivalTime);
+            document.getElementById('weaponDisplay').textContent = `${weapons[player.weaponIndex].name} ${player.ammo}/${player.maxAmmo}`;
+            document.getElementById('vehicleHp').textContent = player.vehicle ? `载具HP: ${Math.floor(player.vehicle.hp)}/${player.vehicle.maxHp}` : '载具HP: --';
 
             if(player.health <= 0) {
-                player.health = 100;
-                player.x = 150; player.z = 200; player.y = 0;
-                player.vehicle = null;
-                spawnZombies();
+                gameRunning = false;
+                alert(`游戏结束！\n最终得分: ${score}\n击杀: ${kills}\n爆头: ${headshots}\n生存时间: ${Math.floor(survivalTime)}秒\n波数: ${wave}`);
+                location.reload();
             }
         }
 
-        // ---------- 鼠标/指针锁定 ----------
+        // ---------- 输入处理 ----------
         canvas.addEventListener('click', () => {
-            if(!isPointerLocked) {
-                canvas.requestPointerLock();
-            }
+            if(!isPointerLocked) canvas.requestPointerLock();
         });
         document.addEventListener('pointerlockchange', () => {
             isPointerLocked = document.pointerLockElement === canvas;
@@ -569,9 +669,7 @@
             if(isPointerLocked) {
                 yaw -= e.movementX * 0.003;
                 pitch -= e.movementY * 0.003;
-                pitch = Math.max(-1.2, Math.min(1.2, pitch));
-            } else {
-                mouseX = e.clientX; mouseY = e.clientY;
+                pitch = Math.max(-1.3, Math.min(1.3, pitch));
             }
         });
         document.addEventListener('mousedown', (e) => {
@@ -579,9 +677,8 @@
         });
         document.addEventListener('mouseup', () => { mouseDown = false; });
         document.addEventListener('keydown', (e) => {
-            const k = e.key.toLowerCase();
-            keys[k] = true;
-            if(k === ' ') e.preventDefault();
+            keys[e.key.toLowerCase()] = true;
+            if(e.key === ' ') e.preventDefault();
         });
         document.addEventListener('keyup', (e) => {
             keys[e.key.toLowerCase()] = false;
@@ -594,7 +691,7 @@
             const dt = (now - lastTime) / 1000;
             lastTime = now;
             update(dt);
-            drawWorld3D();
+            drawWorld();
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
