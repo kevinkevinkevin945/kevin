@@ -3,1718 +3,274 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEON ARENA FPS</title>
-
+<title>NEON CITY // Urban Arena</title>
 <style>
-*{box-sizing:border-box}
-html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:#050712;
-    font-family:Arial,"Microsoft JhengHei",sans-serif;
-}
-canvas{display:block}
-
-#hud{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    color:white;
-    z-index:10;
-    text-shadow:0 2px 4px #000;
-}
-
-#top{
-    position:absolute;
-    top:18px;
-    left:20px;
-    font-size:18px;
-    line-height:1.6;
-}
-
-#stats{
-    position:absolute;
-    top:18px;
-    right:20px;
-    text-align:right;
-    font-size:18px;
-    line-height:1.6;
-}
-
-#healthBox{
-    position:absolute;
-    left:20px;
-    bottom:22px;
-    width:300px;
-}
-
-.bar{
-    width:100%;
-    height:18px;
-    background:#202431;
-    border:2px solid #fff;
-    margin-top:5px;
-}
-
-#hp{
-    height:100%;
-    width:100%;
-    background:#27e66b;
-}
-
-#shield{
-    height:100%;
-    width:100%;
-    background:#29a9ff;
-}
-
-#ammo{
-    position:absolute;
-    right:20px;
-    bottom:25px;
-    font-size:32px;
-    font-weight:bold;
-}
-
-#crosshair{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:20px;
-    height:20px;
-    transform:translate(-50%,-50%);
-}
-
-#crosshair:before,
-#crosshair:after{
-    content:"";
-    position:absolute;
-    background:white;
-    box-shadow:0 0 5px #000;
-}
-
-#crosshair:before{
-    width:20px;
-    height:2px;
-    top:9px;
-}
-
-#crosshair:after{
-    width:2px;
-    height:20px;
-    left:9px;
-}
-
-#hit{
-    position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    font-size:25px;
-    opacity:0;
-}
-
-#center{
-    position:absolute;
-    left:50%;
-    top:42%;
-    transform:translate(-50%,-50%);
-    font-size:35px;
-    font-weight:bold;
-    text-align:center;
-}
-
-#help{
-    position:absolute;
-    left:50%;
-    bottom:18px;
-    transform:translateX(-50%);
-    font-size:13px;
-    opacity:.7;
-}
-
-#damage{
-    position:fixed;
-    inset:0;
-    background:rgba(255,0,0,.25);
-    opacity:0;
-    pointer-events:none;
-    z-index:20;
-}
-
-#startTip{
-    position:fixed;
-    inset:0;
-    z-index:30;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    background:rgba(0,0,0,.8);
-    color:white;
-    text-align:center;
-}
-
-#startTip h1{
-    font-size:55px;
-    margin:0 0 10px;
-    letter-spacing:6px;
-}
-
-#startTip p{
-    opacity:.8;
-}
-
-#startTip button{
-    padding:13px 35px;
-    border:0;
-    border-radius:8px;
-    font-size:20px;
-    cursor:pointer;
-}
-
-.hidden{
-    display:none!important;
-}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07101a;font-family:Arial,"Microsoft JhengHei",sans-serif}canvas{display:block}
+#hud{position:fixed;inset:0;color:#fff;pointer-events:none;text-shadow:0 2px 5px #000;z-index:20}
+#topLeft{position:absolute;left:18px;top:15px;font-size:16px;line-height:1.65}
+#topRight{position:absolute;right:18px;top:15px;text-align:right;font-size:16px;line-height:1.65}
+#status{position:absolute;left:18px;bottom:18px;width:300px;font-size:13px}
+.bar{height:15px;background:#141a25;border:1px solid #fff;margin:3px 0 7px}.fill{height:100%}
+#hpFill{background:#24e06d;width:100%}#shieldFill{background:#31a9ff;width:100%}
+#ammo{position:absolute;right:24px;bottom:24px;font-size:34px;font-weight:800}
+#weapon{position:absolute;right:25px;bottom:67px;font-size:13px;opacity:.8}
+#cross{position:absolute;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%)}
+#cross:before,#cross:after{content:"";position:absolute;background:#fff;box-shadow:0 0 4px #00eaff}
+#cross:before{width:24px;height:2px;top:11px}#cross:after{width:2px;height:24px;left:11px}
+#hit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;opacity:0}
+#message{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:28px;font-weight:800;opacity:0;text-align:center}
+#tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;opacity:.62;white-space:nowrap}
+#damage{position:fixed;inset:0;background:radial-gradient(transparent 35%,rgba(255,0,0,.32));opacity:0;pointer-events:none;z-index:30}
+#intro{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:25;color:#fff;text-align:center;pointer-events:none}
+#intro h1{font-size:54px;letter-spacing:8px;margin:0 0 8px}#intro p{margin:5px;opacity:.75}
+#mini{position:absolute;left:18px;top:155px;width:150px;height:150px;border:1px solid rgba(255,255,255,.45);background:rgba(3,7,15,.5);border-radius:50%;overflow:hidden}
+#mapCanvas{width:100%;height:100%}
 </style>
 </head>
-
 <body>
-
 <div id="hud">
-
-    <div id="top">
-        波次：<span id="wave">1</span> / 3<br>
-        敵人：<span id="enemies">0</span>
-    </div>
-
-    <div id="stats">
-        SCORE：<span id="score">0</span><br>
-        KILLS：<span id="kills">0</span><br>
-        COMBO：<span id="combo">0</span>
-    </div>
-
-    <div id="healthBox">
-        HP
-        <div class="bar">
-            <div id="hp"></div>
-        </div>
-
-        SHIELD
-        <div class="bar">
-            <div id="shield"></div>
-        </div>
-    </div>
-
-    <div id="ammo">
-        <span id="ammoNow">12</span> / 12
-    </div>
-
-    <div id="crosshair"></div>
-
-    <div id="hit">✦</div>
-
-    <div id="center"></div>
-
-    <div id="help">
-        WASD 移動　SHIFT 衝刺　SPACE 跳躍　滑鼠瞄準　左鍵射擊　R 充能
-    </div>
-
+<div id="topLeft">WAVE <b id="wave">1</b> / 5<br>ENEMIES <b id="enemyCount">0</b><br>CITY SECTOR <b>A-01</b></div>
+<div id="topRight">SCORE <b id="score">0</b><br>KILLS <b id="kills">0</b><br>COMBO <b id="combo">0</b></div>
+<div id="mini"><canvas id="mapCanvas" width="150" height="150"></canvas></div>
+<div id="status">HP<div class="bar"><div id="hpFill" class="fill"></div></div>SHIELD<div class="bar"><div id="shieldFill" class="fill"></div></div></div>
+<div id="weapon">PULSE CARBINE // ENERGY</div><div id="ammo"><span id="ammoNow">18</span> / 18</div>
+<div id="cross"></div><div id="hit">✦</div><div id="message"></div>
+<div id="tip">WASD 移動　SHIFT 衝刺　SPACE 跳躍　滑鼠瞄準　左鍵射擊　R 充能　F 掃描　ESC 解鎖</div>
 </div>
-
 <div id="damage"></div>
+<div id="intro"><h1>NEON CITY</h1><p>URBAN ARENA // 5 WAVES</p><p>點一下畫面鎖定滑鼠並開始</p></div>
 
-<div id="startTip">
-    <h1>NEON ARENA</h1>
-    <p>3D 能量競技場 FPS</p>
-    <button id="enter">進入競技場</button>
-</div>
-
-
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
 <script type="module">
+import * as THREE from "three";
 
-import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x07101b);
+scene.fog=new THREE.Fog(0x07101b,55,260);
 
+const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
 
-/* =====================================================
-   場景
-===================================================== */
-
-const scene = new THREE.Scene();
-
-scene.background =
-    new THREE.Color(0x050712);
-
-scene.fog =
-    new THREE.Fog(
-        0x050712,
-        35,
-        150
-    );
-
-
-/* =====================================================
-   Camera
-===================================================== */
-
-const camera =
-    new THREE.PerspectiveCamera(
-        75,
-        innerWidth / innerHeight,
-        .1,
-        300
-    );
-
-camera.position.set(
-    0,
-    2,
-    15
-);
-
-
-/* =====================================================
-   Renderer
-===================================================== */
-
-const renderer =
-    new THREE.WebGLRenderer({
-        antialias:true
-    });
-
-renderer.setSize(
-    innerWidth,
-    innerHeight
-);
-
-renderer.setPixelRatio(
-    Math.min(
-        devicePixelRatio,
-        2
-    )
-);
-
-renderer.shadowMap.enabled = true;
-
-document.body.appendChild(
-    renderer.domElement
-);
-
-
-/* =====================================================
-   光
-===================================================== */
-
-scene.add(
-    new THREE.HemisphereLight(
-        0x99bbff,
-        0x111122,
-        1.2
-    )
-);
-
-
-const sun =
-    new THREE.DirectionalLight(
-        0xffffff,
-        1.5
-    );
-
-sun.position.set(
-    20,
-    40,
-    10
-);
-
-sun.castShadow = true;
-
+scene.add(new THREE.HemisphereLight(0x9fc8ff,0x101522,1.15));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);
+sun.position.set(40,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-120;sun.shadow.camera.right=120;sun.shadow.camera.top=120;sun.shadow.camera.bottom=-120;
 scene.add(sun);
 
+const neonBlue=new THREE.MeshStandardMaterial({color:0x21b8e8,emissive:0x06364a,emissiveIntensity:1.7});
+const neonPink=new THREE.MeshStandardMaterial({color:0xff2d87,emissive:0x4a0624,emissiveIntensity:1.6});
+const glassMat=new THREE.MeshStandardMaterial({color:0x152a43,metalness:.5,roughness:.28});
+const darkMat=new THREE.MeshStandardMaterial({color:0x101827,roughness:.75});
+const roadMat=new THREE.MeshStandardMaterial({color:0x171c25,roughness:.9});
+const sidewalkMat=new THREE.MeshStandardMaterial({color:0x2a3038,roughness:.9});
+const windowMat=new THREE.MeshStandardMaterial({color:0x7bdcff,emissive:0x12526e,emissiveIntensity:1.2});
+const obstacles=[],buildings=[],enemies=[],effects=[],keys={};
 
-/* =====================================================
-   玩家
-===================================================== */
-
-const player = {
-
-    pos:
-        new THREE.Vector3(
-            0,
-            2,
-            15
-        ),
-
-    vel:
-        new THREE.Vector3(),
-
-    yaw:0,
-
-    pitch:0,
-
-    hp:100,
-
-    shield:100,
-
-    ammo:12,
-
-    maxAmmo:12,
-
-    score:0,
-
-    kills:0,
-
-    combo:0,
-
-    canJump:false,
-
-    reload:false,
-
-    reloadTime:0,
-
-    shootCooldown:0,
-
-    dashCooldown:0,
-
-    invincible:0
-
-};
-
-
-/* =====================================================
-   地圖
-===================================================== */
-
-const obstacles = [];
-
-
-function box(
-    x,y,z,
-    w,h,d,
-    color=0x1b2440
-){
-
-    const mesh =
-        new THREE.Mesh(
-
-            new THREE.BoxGeometry(
-                w,h,d
-            ),
-
-            new THREE.MeshStandardMaterial({
-                color:color,
-                roughness:.65
-            })
-
-        );
-
-    mesh.position.set(
-        x,y,z
-    );
-
-    mesh.castShadow = true;
-
-    mesh.receiveShadow = true;
-
-    scene.add(mesh);
-
-    obstacles.push({
-        mesh,
-        w,
-        h,
-        d
-    });
-
-    return mesh;
+function addBox(x,y,z,w,h,d,mat,collide=true){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+ m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);
+ if(collide)obstacles.push({mesh:m,w,h,d});return m;
+}
+function addGlowLine(x,y,z,w,d,mat=neonBlue){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,.055,d),mat);m.position.set(x,y,z);scene.add(m);return m;
+}
+function building(x,z,w,d,h,style){
+ const bodyMat=style%3===0?new THREE.MeshStandardMaterial({color:0x17243a,metalness:.45,roughness:.45}):style%3===1?new THREE.MeshStandardMaterial({color:0x202a35,metalness:.35,roughness:.5}):new THREE.MeshStandardMaterial({color:0x111a2c,metalness:.6,roughness:.35});
+ addBox(x,h/2,z,w,h,d,bodyMat,true);buildings.push({x,z,w,d,h});
+ addBox(x,h+.12,z,w+.15,.24,d+.15,style%2?neonBlue:neonPink,false);
+ for(let sx=x-w*.32;sx<x+w*.33;sx+=Math.max(2.2,w*.22)){
+   const strip=new THREE.Mesh(new THREE.BoxGeometry(.09,.8,d*.72),style%2?neonBlue:neonPink);
+   strip.position.set(sx,h*.52,z-d/2-.035);scene.add(strip);
+ }
+ const cols=Math.max(2,Math.floor(w/2.4)),rows=Math.max(2,Math.floor(h/3.3));
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+   if((r+c+style)%4===0)continue;
+   const ww=Math.min(1.25,(w*.7)/cols);
+   const win=new THREE.Mesh(new THREE.BoxGeometry(ww,.7,.035),windowMat);
+   win.position.set(x-w*.35+c*(w*.7/Math.max(1,cols-1)),2+r*3,z-d/2-.025);scene.add(win);
+ }
+}
+function road(x,z,w,d){
+ addBox(x,-.48,z,w,.4,d,roadMat,false);
+ if(w>d)for(let px=x-w/2+6;px<x+w/2;px+=10)addGlowLine(px,-.25,z,.5,d*.012,new THREE.MeshStandardMaterial({color:0x59616b}));
+ else for(let pz=z-d/2+6;pz<z+d/2;pz+=10){const line=new THREE.Mesh(new THREE.BoxGeometry(d*.012,.03,.5),new THREE.MeshStandardMaterial({color:0x59616b}));line.position.set(x,-.25,pz);scene.add(line);}
+}
+function streetLight(x,z,rot=0){
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,4.2,8),new THREE.MeshStandardMaterial({color:0x3d4653,metalness:.7}));
+ pole.position.set(x,2.1,z);pole.rotation.z=rot;scene.add(pole);
+ const lamp=new THREE.Mesh(new THREE.BoxGeometry(.5,.12,.15),neonBlue);
+ lamp.position.set(x+Math.sin(rot)*.55,4.15,z+Math.cos(rot)*.55);scene.add(lamp);
+}
+function car(x,z,color=0x263447,rot=0){
+ const g=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.BoxGeometry(2.1,.55,4.2),new THREE.MeshStandardMaterial({color,metalness:.55,roughness:.3}));body.position.y=.45;g.add(body);
+ const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.55,.55,1.7),glassMat);cabin.position.set(0,.88,-.15);g.add(cabin);
+ const light=new THREE.Mesh(new THREE.BoxGeometry(1.2,.08,.08),neonBlue);light.position.set(0,.5,-2.13);g.add(light);
+ g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);
+}
+function billboard(x,y,z,w,h,color){
+ addBox(x,y,z,w,h,.25,new THREE.MeshStandardMaterial({color:0x080b12,metalness:.6}),false);
+ addBox(x,y,z-.16,w-.25,h-.25,.06,color,false);
+ for(let i=0;i<5;i++)addBox(x-w*.28+i*w*.14,y,z-.2,.07,h*.48,.03,neonBlue,false);
 }
 
-
-/* 地面 */
-
-box(
-    0,
-    -0.5,
-    0,
-    80,
-    1,
-    80,
-    0x101629
-);
-
-
-/* 城市大樓 */
-
-const buildings = [
-
-    [-28,8,-20,10,16,10],
-    [-15,5,-28,8,10,8],
-    [20,10,-25,12,20,12],
-    [32,6,-5,10,12,10],
-    [-32,7,10,12,14,12],
-    [20,4,10,8,8,8],
-    [-18,4,25,12,8,12],
-    [25,7,30,10,14,10]
-
-];
-
-
-for(
-    const b of buildings
-){
-
-    box(
-        ...b,
-        0x182343
-    );
-
+const CITY=220;
+addBox(0,-1.05,0,CITY*2,.5,CITY*2,new THREE.MeshStandardMaterial({color:0x0c111a}),false);
+for(let p=-200;p<=200;p+=40){road(0,p,440,13);road(p,0,13,440);addBox(0,-.20,p,440,.18,16,sidewalkMat,false);addBox(p,-.20,0,16,.18,440,sidewalkMat,false);}
+for(let x=-180;x<=180;x+=40)for(let z=-180;z<=180;z+=40){
+ if(Math.abs(x)<35&&Math.abs(z)<35)continue;
+ const w=22+((x+z+400)%3)*4,d=22+((x*2+z+400)%3)*4,h=10+(Math.abs(x*3+z*5)%8)*3;
+ building(x+(x%2?5:-5),z+(z%2?4:-4),w,d,h,Math.abs(x+z));
 }
+for(let x=-180;x<=180;x+=20){streetLight(x,-6,0);streetLight(x,6,Math.PI)}
+for(let z=-180;z<=180;z+=20){streetLight(-6,z,Math.PI/2);streetLight(6,z,-Math.PI/2)}
+for(let i=0;i<28;i++){const x=-180+Math.random()*360,z=-180+Math.random()*360;if(Math.abs(x)<15&&Math.abs(z)<15)continue;car(x,z,[0x263447,0x47304a,0x29433d,0x3f3f2a][i%4],Math.random()*Math.PI);}
+billboard(-30,10,-18,10,5,neonPink);billboard(42,14,-38,14,7,neonBlue);billboard(-60,8,30,12,6,neonPink);
+addBox(0,.25,0,24,.5,24,sidewalkMat,false);
+for(const p of [[-8,1,-8],[8,1,-8],[-8,1,8],[8,1,8]])addBox(p[0],p[1],p[2],4,2,1.4,darkMat,true);
+for(let i=-10;i<=10;i+=5)addGlowLine(i,.55,0,2.2,.06,neonBlue);
+for(const p of [[-25,5,-25],[25,7,-25],[-25,4,25],[25,9,25]]){addBox(p[0],p[1],p[2],8,.8,8,darkMat,true);addGlowLine(p[0],p[1]+.45,p[2],7.5,.08,neonPink);}
 
+const player={pos:new THREE.Vector3(0,2,24),vel:new THREE.Vector3(),yaw:Math.PI,pitch:0,hp:100,shield:100,ammo:18,maxAmmo:18,score:0,kills:0,combo:0,canJump:false,reload:false,reloadT:0,fireCD:0,inv:1};
+const weapon=new THREE.Group();
+const gunBody=new THREE.Mesh(new THREE.BoxGeometry(.24,.22,.9),new THREE.MeshStandardMaterial({color:0x202936,metalness:.7}));
+gunBody.position.set(.32,-.27,-.72);weapon.add(gunBody);
+const gunCore=new THREE.Mesh(new THREE.BoxGeometry(.09,.09,.72),neonBlue);gunCore.position.set(.32,-.26,-1.15);weapon.add(gunCore);
+camera.add(weapon);scene.add(camera);
 
-/* 掩體 */
+let locked=false;
+document.addEventListener("pointerlockchange",()=>locked=document.pointerLockElement===document.body);
+document.addEventListener("mousemove",e=>{if(!locked)return;player.yaw-=e.movementX*.0021;player.pitch-=e.movementY*.0021;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.45,1.45)});
+document.addEventListener("keydown",e=>{keys[e.code]=true;if(e.code==="Space"&&player.canJump){player.vel.y=9.5;player.canJump=false}if(e.code==="KeyR")reload();if(e.code==="KeyF")useScanner();if(e.code==="KeyT")resetGame()});
+document.addEventListener("keyup",e=>keys[e.code]=false);
+document.addEventListener("click",()=>{if(!locked)document.body.requestPointerLock()});
+document.addEventListener("mousedown",e=>{if(e.button===0)shoot()});
 
-box(
-    -8,
-    1.5,
-    -8,
-    8,
-    3,
-    3,
-    0x26365d
-);
-
-box(
-    9,
-    1.5,
-    -5,
-    7,
-    3,
-    3,
-    0x26365d
-);
-
-box(
-    -3,
-    1.5,
-    6,
-    5,
-    3,
-    3,
-    0x26365d
-);
-
-
-/* =====================================================
-   玩家位置
-===================================================== */
-
-function syncCamera(){
-
-    camera.position.copy(
-        player.pos
-    );
-
-    camera.rotation.order =
-        "YXZ";
-
-    camera.rotation.y =
-        player.yaw;
-
-    camera.rotation.x =
-        player.pitch;
-
+const raycaster=new THREE.Raycaster();
+function reload(){if(player.reload||player.ammo===player.maxAmmo)return;player.reload=true;player.reloadT=.9}
+function flashBeam(start,end){
+ const g=new THREE.BufferGeometry().setFromPoints([start,end]),m=new THREE.LineBasicMaterial({color:0x00eaff,transparent:true,opacity:.95}),line=new THREE.Line(g,m);
+ scene.add(line);effects.push({obj:line,t:.065});
 }
-
-
-/* =====================================================
-   滑鼠
-===================================================== */
-
-let locked = false;
-
-document.addEventListener(
-    "pointerlockchange",
-    ()=>{
-
-        locked =
-            document.pointerLockElement ===
-            document.body;
-
-    }
-);
-
-
-document.addEventListener(
-    "mousemove",
-    e=>{
-
-        if(!locked) return;
-
-        const sensitivity =
-            0.0022;
-
-        player.yaw -=
-            e.movementX *
-            sensitivity;
-
-        player.pitch -=
-            e.movementY *
-            sensitivity;
-
-        player.pitch =
-            Math.max(
-                -1.45,
-                Math.min(
-                    1.45,
-                    player.pitch
-                )
-            );
-
-    }
-);
-
-
-/* =====================================================
-   按鍵
-===================================================== */
-
-const keys = {};
-
-document.addEventListener(
-    "keydown",
-    e=>{
-
-        keys[e.code] = true;
-
-        if(
-            e.code === "Space" &&
-            player.canJump
-        ){
-
-            player.vel.y =
-                9;
-
-            player.canJump =
-                false;
-
-        }
-
-        if(
-            e.code === "KeyR"
-        ){
-
-            reload();
-
-        }
-
-    }
-);
-
-
-document.addEventListener(
-    "keyup",
-    e=>{
-
-        keys[e.code] = false;
-
-    }
-);
-
-
-/* =====================================================
-   射擊
-===================================================== */
-
-const shots = [];
-
-const raycaster =
-    new THREE.Raycaster();
-
-
 function shoot(){
-
-    if(
-        !locked ||
-        player.shootCooldown > 0 ||
-        player.reload
-    ){
-
-        return;
-
-    }
-
-    if(
-        player.ammo <= 0
-    ){
-
-        reload();
-
-        return;
-
-    }
-
-
-    player.ammo--;
-
-    player.shootCooldown =
-        .16;
-
-
-    /* 能量光束 */
-
-    const origin =
-        camera.position.clone();
-
-    const direction =
-        new THREE.Vector3(
-            0,
-            0,
-            -1
-        );
-
-    direction.applyQuaternion(
-        camera.quaternion
-    );
-
-
-    const geometry =
-        new THREE.BufferGeometry()
-            .setFromPoints([
-                origin,
-                origin.clone().add(
-                    direction.clone().multiplyScalar(70)
-                )
-            ]);
-
-
-    const material =
-        new THREE.LineBasicMaterial({
-            color:0x00eaff
-        });
-
-
-    const line =
-        new THREE.Line(
-            geometry,
-            material
-        );
-
-    scene.add(line);
-
-
-    shots.push({
-        object:line,
-        life:.05
-    });
-
-
-    /* 打敵人 */
-
-    raycaster.set(origin, direction);
-
-/*
- * 所有可能擋住射擊的東西
- * 包含城市建築、掩體、地面
- */
-const wallMeshes = obstacles.map(
-    o => o.mesh
-);
-
-/*
- * 所有敵人
- */
-const enemyMeshes = enemies
-    .filter(e => e.alive)
-    .map(e => e.mesh);
-
-
-/*
- * 分別偵測牆和敵人
- */
-const wallHits =
-    raycaster.intersectObjects(
-        wallMeshes,
-        false
-    );
-
-const enemyHits =
-    raycaster.intersectObjects(
-        enemyMeshes,
-        false
-    );
-
-
-/*
- * 找最近的牆
- */
-const nearestWall =
-    wallHits.length
-        ? wallHits[0].distance
-        : Infinity;
-
-
-/*
- * 找最近的敵人
- */
-const nearestEnemy =
-    enemyHits.length
-        ? enemyHits[0]
-        : null;
-
-
-/*
- * 只有「敵人在牆前面」
- * 才能打中
- */
-if (
-    nearestEnemy &&
-    nearestEnemy.distance < nearestWall
-) {
-
-    const hit =
-        nearestEnemy.object;
-
-    const enemy =
-        enemies.find(
-            e => e.mesh === hit
-        );
-
-    if (enemy) {
-
-        damageEnemy(
-            enemy,
-            34
-        );
-
-    }
-
+ if(!locked||player.fireCD>0||player.reload)return;
+ if(player.ammo<=0){reload();return}
+ player.ammo--;player.fireCD=.13;
+ const origin=camera.position.clone(),dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+ raycaster.set(origin,dir);
+ const wallHits=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
+ const enemyHits=raycaster.intersectObjects(enemies.filter(e=>e.alive).map(e=>e.mesh),true);
+ const wallDist=wallHits.length?wallHits[0].distance:Infinity,enemyHit=enemyHits.length?enemyHits[0]:null;
+ let end=origin.clone().add(dir.clone().multiplyScalar(Math.min(100,wallDist)));
+ if(enemyHit&&enemyHit.distance<wallDist){
+   end=enemyHit.point.clone();let obj=enemyHit.object,enemy=null;
+   while(obj&&!enemy){enemy=enemies.find(e=>e.mesh===obj);obj=obj.parent}
+   if(enemy)damageEnemy(enemy,34);
+ }
+ flashBeam(origin,end);
 }
-
-
-/* =====================================================
-   射擊按鍵
-===================================================== */
-
-document.addEventListener(
-    "mousedown",
-    e=>{
-
-        if(
-            e.button === 0
-        ){
-
-            shoot();
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   Reload
-===================================================== */
-
-function reload(){
-
-    if(
-        player.reload ||
-        player.ammo ===
-        player.maxAmmo
-    ){
-
-        return;
-
-    }
-
-
-    player.reload =
-        true;
-
-    player.reloadTime =
-        1.1;
-
-}
-
-
-/* =====================================================
-   敵人
-===================================================== */
-
-const enemies = [];
-
-
 function createEnemy(){
-
-    const mesh =
-        new THREE.Mesh(
-
-            new THREE.BoxGeometry(
-                1.2,
-                2.2,
-                1.2
-            ),
-
-            new THREE.MeshStandardMaterial({
-                color:0xff315d,
-                emissive:0x22000a
-            })
-
-        );
-
-
-    const angle =
-        Math.random() *
-        Math.PI *
-        2;
-
-    const distance =
-        20 +
-        Math.random() *
-        25;
-
-
-    mesh.position.set(
-
-        Math.cos(angle) *
-        distance,
-
-        1.1,
-
-        Math.sin(angle) *
-        distance
-
-    );
-
-
-    mesh.castShadow = true;
-
-    scene.add(mesh);
-
-
-    enemies.push({
-
-        mesh,
-
-        hp:100,
-
-        speed:
-            2.5 +
-            Math.random() * 1.4,
-
-        attackCooldown:
-            Math.random(),
-
-        alive:true
-
-    });
-
+ const angle=Math.random()*Math.PI*2,dist=35+Math.random()*55,x=Math.cos(angle)*dist,z=Math.sin(angle)*dist;
+ const g=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.BoxGeometry(1.25,1.8,1.05),new THREE.MeshStandardMaterial({color:0x9b164f,emissive:0x2d0315}));body.position.y=1;g.add(body);
+ const head=new THREE.Mesh(new THREE.BoxGeometry(.85,.65,.8),new THREE.MeshStandardMaterial({color:0x351225,emissive:0x10000a}));head.position.y=2.2;g.add(head);
+ const eye=new THREE.Mesh(new THREE.BoxGeometry(.5,.08,.06),neonPink);eye.position.set(0,2.2,-.43);g.add(eye);
+ g.position.set(x,0,z);scene.add(g);enemies.push({mesh:g,hp:100,speed:2.5+Math.random()*1.5,attack:Math.random(),alive:true});
 }
-
-
-/* =====================================================
-   生成波次
-===================================================== */
-
-let wave = 1;
-
-let waveDelay = 0;
-
-function spawnWave(){
-
-    const count =
-        3 +
-        wave * 2;
-
-
-    for(
-        let i=0;
-        i<count;
-        i++
-    ){
-
-        createEnemy();
-
-    }
-
-}
-
+let wave=1;
+function spawnWave(){for(let i=0;i<4+wave*2;i++)createEnemy()}
 spawnWave();
 
-
-/* =====================================================
-   敵人傷害
-===================================================== */
-
-function damageEnemy(
-    enemy,
-    damage
-){
-
-    if(
-        !enemy.alive
-    ){
-
-        return;
-
-    }
-
-
-    enemy.hp -=
-        damage;
-
-
-    showHit();
-
-
-    if(
-        enemy.hp <= 0
-    ){
-
-        killEnemy(
-            enemy
-        );
-
-    }
-
+function damageEnemy(e,dmg){
+ if(!e.alive)return;e.hp-=dmg;
+ const hit=document.getElementById("hit");hit.style.opacity=1;setTimeout(()=>hit.style.opacity=0,65);
+ if(e.hp<=0){
+   e.alive=false;scene.remove(e.mesh);player.kills++;player.combo++;player.score+=100*Math.min(player.combo,10);
+   if(enemies.filter(x=>x.alive).length===0){
+     if(wave<5){wave++;showMessage("WAVE "+wave);setTimeout(()=>{spawnWave();hideMessage()},1100)}
+     else showMessage("CITY SECTOR CLEARED<br><small>按 T 重置</small>");
+   }
+ }
 }
-
-
-/* =====================================================
-   擊殺
-===================================================== */
-
-function killEnemy(
-    enemy
-){
-
-    enemy.alive =
-        false;
-
-
-    scene.remove(
-        enemy.mesh
-    );
-
-
-    player.kills++;
-
-    player.combo++;
-
-    player.score +=
-        100 *
-        Math.min(
-            player.combo,
-            10
-        );
-
-
-    updateHUD();
-
-
-    setTimeout(
-        checkWave,
-        100
-    );
-
+function hurtPlayer(dmg){
+ if(player.inv>0)return;player.inv=.22;let left=dmg;
+ const s=Math.min(player.shield,left);player.shield-=s;left-=s;player.hp-=left;player.combo=0;
+ const d=document.getElementById("damage");d.style.opacity=1;setTimeout(()=>d.style.opacity=0,100);
+ if(player.hp<=0)respawn();
 }
-
-
-/* =====================================================
-   下一波
-===================================================== */
-
-function checkWave(){
-
-    const alive =
-        enemies.filter(
-            e=>e.alive
-        ).length;
-
-
-    if(
-        alive === 0
-    ){
-
-        if(
-            wave >= 3
-        ){
-
-            showCenter(
-                "🏆 ARENA CLEAR<br>" +
-                "<small>R 重置戰績</small>"
-            );
-
-            return;
-
-        }
-
-
-        wave++;
-
-        showCenter(
-            "WAVE " +
-            wave
-        );
-
-
-        setTimeout(
-            ()=>{
-
-                spawnWave();
-
-                hideCenter();
-
-            },
-            1000
-        );
-
-    }
-
+function respawn(){player.pos.set(0,2,24);player.vel.set(0,0,0);player.hp=100;player.shield=100;player.ammo=player.maxAmmo;player.combo=0;player.inv=1}
+function updateEnemies(dt){
+ for(const e of enemies){
+  if(!e.alive)continue;
+  const p=e.mesh.position,dx=player.pos.x-p.x,dz=player.pos.z-p.z,dist=Math.hypot(dx,dz);
+  if(dist>3.2){
+   const step=e.speed*dt,nx=dx/dist,nz=dz/dist,oldX=p.x,oldZ=p.z;
+   p.x+=nx*step;p.z+=nz*step;
+   if(collidesPoint(p.x,p.z,.65)){p.x=oldX-nz*step*1.5;p.z=oldZ+nx*step*1.5;if(collidesPoint(p.x,p.z,.65)){p.x=oldX;p.z=oldZ}}
+  }
+  e.mesh.lookAt(player.pos.x,p.y,player.pos.z);e.attack-=dt;
+  if(dist<18&&e.attack<=0){
+   e.attack=.75+Math.random()*.8;
+   const start=new THREE.Vector3(p.x,1.5,p.z),to=player.pos.clone().sub(start),d=to.length();
+   raycaster.set(start,to.normalize());const walls=raycaster.intersectObjects(obstacles.map(o=>o.mesh),true);
+   if(!walls.length||walls[0].distance>d)hurtPlayer(8);
+  }
+ }
 }
-
-
-/* =====================================================
-   AI
-===================================================== */
-
-function updateEnemies(
-    dt
-){
-
-    for(
-        const enemy of enemies
-    ){
-
-        if(
-            !enemy.alive
-        ){
-
-            continue;
-
-        }
-
-
-        const pos =
-            enemy.mesh.position;
-
-
-        const target =
-            player.pos;
-
-
-        const dx =
-            target.x -
-            pos.x;
-
-        const dz =
-            target.z -
-            pos.z;
-
-
-        const dist =
-            Math.hypot(
-                dx,
-                dz
-            );
-
-
-        if(
-            dist > 3
-        ){
-
-            pos.x +=
-                dx / dist *
-                enemy.speed *
-                dt;
-
-            pos.z +=
-                dz / dist *
-                enemy.speed *
-                dt;
-
-        }
-
-
-        enemy.mesh.lookAt(
-            player.pos.x,
-            pos.y,
-            player.pos.z
-        );
-
-
-        enemy.attackCooldown -=
-            dt;
-
-
-        if(
-            dist < 18 &&
-            enemy.attackCooldown <= 0
-        ){
-
-            enemy.attackCooldown =
-                .8 +
-                Math.random() *
-                .7;
-
-            hurtPlayer(
-                8
-            );
-
-        }
-
-    }
-
+function collidesPoint(x,z,r){
+ for(const o of obstacles){const p=o.mesh.position;if(x>p.x-o.w/2-r&&x<p.x+o.w/2+r&&z>p.z-o.d/2-r&&z<p.z+o.d/2+r)return true}
+ return false;
 }
-
-
-/* =====================================================
-   玩家受傷
-===================================================== */
-
-function hurtPlayer(
-    damage
-){
-
-    if(
-        player.invincible > 0
-    ){
-
-        return;
-
-    }
-
-
-    player.invincible =
-        .25;
-
-
-    let remain =
-        damage;
-
-
-    if(
-        player.shield > 0
-    ){
-
-        const use =
-            Math.min(
-                player.shield,
-                remain
-            );
-
-        player.shield -=
-            use;
-
-        remain -=
-            use;
-
-    }
-
-
-    player.hp -=
-        remain;
-
-
-    player.combo =
-        0;
-
-
-    const damageUI =
-        document.getElementById(
-            "damage"
-        );
-
-
-    damageUI.style.opacity =
-        1;
-
-
-    setTimeout(
-        ()=>{
-            damageUI.style.opacity =
-                0;
-        },
-        100
-    );
-
-
-    if(
-        player.hp <= 0
-    ){
-
-        respawn();
-
-    }
-
-
-    updateHUD();
-
+function updatePlayer(dt){
+ if(!locked)return;
+ let f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),len=Math.hypot(f,r);
+ if(len){f/=len;r/=len}
+ const speed=(keys.ShiftLeft||keys.ShiftRight)?13:7.5;
+ const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+ const move=forward.clone().multiplyScalar(f*speed*dt).add(right.clone().multiplyScalar(r*speed*dt));
+ const nx=player.pos.x+move.x,nz=player.pos.z+move.z;
+ if(!collidesPoint(nx,player.pos.z,.45))player.pos.x=nx;if(!collidesPoint(player.pos.x,nz,.45))player.pos.z=nz;
+ player.vel.y-=25*dt;player.pos.y+=player.vel.y*dt;if(player.pos.y<1.7){player.pos.y=1.7;player.vel.y=0;player.canJump=true}
+ player.fireCD=Math.max(0,player.fireCD-dt);player.inv=Math.max(0,player.inv-dt);
+ if(player.reload){player.reloadT-=dt;if(player.reloadT<=0){player.ammo=player.maxAmmo;player.reload=false}}
+ camera.position.copy(player.pos);camera.rotation.order="YXZ";camera.rotation.y=player.yaw;camera.rotation.x=player.pitch;
+ weapon.position.y=Math.sin(performance.now()*.008)*(len ? .018 : 0);
 }
-
-
-/* =====================================================
-   玩家重生
-===================================================== */
-
-function respawn(){
-
-    player.pos.set(
-        0,
-        2,
-        15
-    );
-
-    player.vel.set(
-        0,
-        0,
-        0
-    );
-
-    player.hp =
-        100;
-
-    player.shield =
-        100;
-
-    player.ammo =
-        player.maxAmmo;
-
-    player.combo =
-        0;
-
-    player.invincible =
-        1;
-
-
-    showCenter(
-        "RESPAWN"
-    );
-
-
-    setTimeout(
-        hideCenter,
-        600
-    );
-
+function useScanner(){
+ for(const e of enemies){if(!e.alive)continue;const mat=e.mesh.children[0].material,old=mat.emissive.clone();mat.emissive.set(0x00ffff);setTimeout(()=>mat.emissive.copy(old),450)}
 }
-
-
-/* =====================================================
-   移動
-===================================================== */
-
-function updatePlayer(
-    dt
-){
-
-    if(!locked)
-        return;
-
-
-    let forward = 0;
-
-    let right = 0;
-
-
-    if(keys.KeyW)
-        forward += 1;
-
-    if(keys.KeyS)
-        forward -= 1;
-
-    if(keys.KeyD)
-        right += 1;
-
-    if(keys.KeyA)
-        right -= 1;
-
-
-    const direction =
-        new THREE.Vector3(
-            right,
-            0,
-            -forward
-        );
-
-
-    if(
-        direction.lengthSq() > 0
-    ){
-
-        direction.normalize();
-
-
-        const speed =
-            keys.ShiftLeft ||
-            keys.ShiftRight
-            ? 13
-            : 7;
-
-
-        const forwardVec =
-            new THREE.Vector3(
-                -Math.sin(player.yaw),
-                0,
-                -Math.cos(player.yaw)
-            );
-
-
-        const rightVec =
-            new THREE.Vector3(
-                Math.cos(player.yaw),
-                0,
-                -Math.sin(player.yaw)
-            );
-
-
-        player.pos.add(
-            forwardVec
-                .multiplyScalar(
-                    direction.z *
-                    speed *
-                    dt
-                )
-        );
-
-
-        player.pos.add(
-            rightVec
-                .multiplyScalar(
-                    direction.x *
-                    speed *
-                    dt
-                )
-        );
-
-    }
-
-
-    player.vel.y -=
-        24 * dt;
-
-
-    player.pos.y +=
-        player.vel.y *
-        dt;
-
-
-    /* 地面 */
-
-    if(
-        player.pos.y < 2
-    ){
-
-        player.pos.y =
-            2;
-
-        player.vel.y =
-            0;
-
-        player.canJump =
-            true;
-
-    }
-
-
-    /* 邊界 */
-
-    player.pos.x =
-        THREE.MathUtils.clamp(
-            player.pos.x,
-            -38,
-            38
-        );
-
-    player.pos.z =
-        THREE.MathUtils.clamp(
-            player.pos.z,
-            -38,
-            38
-        );
-
-
-    if(
-        player.shootCooldown > 0
-    ){
-
-        player.shootCooldown -=
-            dt;
-
-    }
-
-
-    if(
-        player.invincible > 0
-    ){
-
-        player.invincible -=
-            dt;
-
-    }
-
-
-    if(
-        player.reload
-    ){
-
-        player.reloadTime -=
-            dt;
-
-
-        if(
-            player.reloadTime <= 0
-        ){
-
-            player.ammo =
-                player.maxAmmo;
-
-            player.reload =
-                false;
-
-        }
-
-    }
-
-
-    syncCamera();
-
+function resetGame(){
+ for(const e of enemies)scene.remove(e.mesh);
+ enemies.length=0;wave=1;player.score=0;player.kills=0;player.combo=0;player.hp=100;player.shield=100;player.ammo=player.maxAmmo;
+ document.getElementById("message").style.opacity=0;spawnWave();
 }
-
-
-/* =====================================================
-   HUD
-===================================================== */
-
+function showMessage(t){const m=document.getElementById("message");m.innerHTML=t;m.style.opacity=1}
+function hideMessage(){document.getElementById("message").style.opacity=0}
+function updateMap(){
+ const c=document.getElementById("mapCanvas"),ctx=c.getContext("2d");ctx.clearRect(0,0,150,150);ctx.fillStyle="rgba(5,10,18,.8)";ctx.fillRect(0,0,150,150);
+ ctx.strokeStyle="rgba(70,100,130,.35)";for(let p=-100;p<=100;p+=40){const q=75+p*.28;ctx.beginPath();ctx.moveTo(q,0);ctx.lineTo(q,150);ctx.stroke();ctx.beginPath();ctx.moveTo(0,q);ctx.lineTo(150,q);ctx.stroke()}
+ const sx=75+player.pos.x*.28,sy=75+player.pos.z*.28;ctx.fillStyle="#00eaff";ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#ff3d88";for(const e of enemies)if(e.alive){const x=75+e.mesh.position.x*.28,y=75+e.mesh.position.z*.28;if(x>=0&&x<=150&&y>=0&&y<=150){ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill()}}
+}
 function updateHUD(){
-
-    document.getElementById(
-        "wave"
-    ).textContent =
-        wave;
-
-
-    document.getElementById(
-        "enemies"
-    ).textContent =
-        enemies.filter(
-            e=>e.alive
-        ).length;
-
-
-    document.getElementById(
-        "score"
-    ).textContent =
-        player.score;
-
-
-    document.getElementById(
-        "kills"
-    ).textContent =
-        player.kills;
-
-
-    document.getElementById(
-        "combo"
-    ).textContent =
-        player.combo;
-
-
-    document.getElementById(
-        "ammoNow"
-    ).textContent =
-        player.ammo;
-
-
-    document.getElementById(
-        "hp"
-    ).style.width =
-        Math.max(
-            0,
-            player.hp
-        ) + "%";
-
-
-    document.getElementById(
-        "shield"
-    ).style.width =
-        Math.max(
-            0,
-            player.shield
-        ) + "%";
-
+ document.getElementById("wave").textContent=wave;document.getElementById("enemyCount").textContent=enemies.filter(e=>e.alive).length;
+ document.getElementById("score").textContent=player.score;document.getElementById("kills").textContent=player.kills;document.getElementById("combo").textContent=player.combo;
+ document.getElementById("ammoNow").textContent=player.ammo;document.getElementById("hpFill").style.width=Math.max(0,player.hp)+"%";document.getElementById("shieldFill").style.width=Math.max(0,player.shield)+"%";
 }
-
-
-/* =====================================================
-   Hit Marker
-===================================================== */
-
-function showHit(){
-
-    const hit =
-        document.getElementById(
-            "hit"
-        );
-
-
-    hit.style.opacity =
-        1;
-
-
-    setTimeout(
-        ()=>{
-            hit.style.opacity =
-                0;
-        },
-        70
-    );
-
-}
-
-
-/* =====================================================
-   中央文字
-===================================================== */
-
-function showCenter(
-    text
-){
-
-    document.getElementById(
-        "center"
-    ).innerHTML =
-        text;
-
-}
-
-
-function hideCenter(){
-
-    document.getElementById(
-        "center"
-    ).innerHTML =
-        "";
-
-}
-
-
-/* =====================================================
-   進入遊戲
-===================================================== */
-
-document.getElementById(
-    "enter"
-).addEventListener(
-    "click",
-    ()=>{
-
-        document.getElementById(
-            "startTip"
-        ).classList.add(
-            "hidden"
-        );
-
-        document.body.requestPointerLock();
-
-    }
-);
-
-
-/* =====================================================
-   ESC 後重新點擊
-===================================================== */
-
-document.addEventListener(
-    "click",
-    ()=>{
-
-        if(
-            !locked &&
-            document.getElementById(
-                "startTip"
-            ).classList.contains(
-                "hidden"
-            )
-        ){
-
-            document.body.requestPointerLock();
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   動畫
-===================================================== */
-
-const clock =
-    new THREE.Clock();
-
-
 function animate(){
-
-    requestAnimationFrame(
-        animate
-    );
-
-
-    const dt =
-        Math.min(
-            clock.getDelta(),
-            .05
-        );
-
-
-    updatePlayer(
-        dt
-    );
-
-
-    updateEnemies(
-        dt
-    );
-
-
-    updateHUD();
-
-
-    renderer.render(
-        scene,
-        camera
-    );
-
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
+ updatePlayer(dt);updateEnemies(dt);
+ for(let i=effects.length-1;i>=0;i--){effects[i].t-=dt;if(effects[i].t<=0){scene.remove(effects[i].obj);effects.splice(i,1)}}
+ updateHUD();updateMap();renderer.render(scene,camera);
 }
-
-
-window.addEventListener(
-    "resize",
-    ()=>{
-
-        camera.aspect =
-            innerWidth /
-            innerHeight;
-
-        camera.updateProjectionMatrix();
-
-        renderer.setSize(
-            innerWidth,
-            innerHeight
-        );
-
-    }
-);
-
-
-syncCamera();
-
-updateHUD();
-
-animate();
-
+const clock=new THREE.Clock();animate();
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+camera.position.copy(player.pos);camera.rotation.order="YXZ";camera.rotation.y=player.yaw;
 </script>
-
 </body>
 </html>
