@@ -2,841 +2,573 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 3D僵尸猎杀 · 超爽版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Minecraft 风格 - 网页版</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body {
-            background: #000;
+            margin: 0;
             overflow: hidden;
-            font-family: 'Arial Black', 'Segoe UI', sans-serif;
-            cursor: crosshair;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            font-family: 'Courier New', monospace;
         }
-        canvas { display: block; width: 100vw; height: 100vh; }
-        
-        #start-screen {
+        #info {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: #fff;
-            z-index: 100;
-            pointer-events: auto;
-        }
-        #start-screen h1 {
-            font-size: 60px;
-            color: #ff0000;
-            text-shadow: 0 0 30px #ff0000, 0 0 60px #ff6600;
-            animation: pulse 1.5s infinite;
-            margin-bottom: 30px;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        #start-btn {
-            font-size: 30px;
-            padding: 20px 50px;
-            background: linear-gradient(45deg, #ff0000, #ff6600);
-            color: #fff;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            letter-spacing: 3px;
-            transition: all 0.3s;
-            box-shadow: 0 0 40px rgba(255,0,0,0.6);
-        }
-        #start-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 60px rgba(255,0,0,0.9);
-        }
-        
-        #hud {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 14px;
             pointer-events: none;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.2);
+            user-select: none;
             z-index: 10;
         }
-        .hud-item {
-            background: rgba(0,0,0,0.8);
-            padding: 12px 20px;
-            border-radius: 25px;
-            border: 2px solid #ff6600;
-            color: #fff;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #ff6600;
-            backdrop-filter: blur(5px);
-        }
-        #money-display {
-            color: #ffd700;
-            border-color: #ffd700;
-            text-shadow: 0 0 10px #ffd700;
-            animation: moneyGlow 2s infinite;
-        }
-        @keyframes moneyGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.5); }
-            50% { box-shadow: 0 0 40px rgba(255,215,0,0.9); }
-        }
-        
-        #weapon-slots {
+        #controls-hint {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
-            z-index: 20;
+            color: rgba(255,255,255,0.7);
+            background: rgba(0,0,0,0.5);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 15px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.15);
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+            letter-spacing: 1px;
         }
-        .weapon-slot {
-            width: 60px;
-            height: 60px;
-            background: rgba(0,0,0,0.7);
-            border: 2px solid #666;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            cursor: pointer;
-            transition: all 0.2s;
+        #controls-hint span {
+            display: inline-block;
+            margin: 0 8px;
+            color: #aaffaa;
         }
-        .weapon-slot.active {
-            border-color: #ff6600;
-            background: rgba(255,102,0,0.3);
-            box-shadow: 0 0 20px #ff6600;
-            transform: scale(1.1);
+        @media (max-width: 600px) {
+            #controls-hint {
+                font-size: 11px;
+                padding: 6px 14px;
+                white-space: normal;
+                width: 80%;
+                text-align: center;
+                bottom: 15px;
+            }
+            #info {
+                font-size: 11px;
+                top: 12px;
+                left: 12px;
+                padding: 5px 14px;
+            }
         }
-        .weapon-slot:hover {
-            border-color: #ffaa00;
-        }
-        
-        #reload-bar {
+        #blocker {
             position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 10px;
-            background: #333;
-            border-radius: 10px;
-            display: none;
-            z-index: 20;
-            overflow: hidden;
-        }
-        #reload-progress {
+            width: 100%;
             height: 100%;
-            background: #ff6600;
-            width: 0%;
-            transition: width 0.1s;
+            background: rgba(0,0,0,0.1);
+            z-index: 5;
+            cursor: pointer;
         }
-        
-        #combo-display {
+        #loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 40px;
-            font-weight: bold;
-            color: #ff0000;
-            text-shadow: 0 0 30px #ff0000;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 24px;
+            border: 1px solid #888;
+            z-index: 20;
+            backdrop-filter: blur(6px);
             pointer-events: none;
-            z-index: 15;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        #damage-vignette {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
-            background: radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.6) 100%);
-            opacity: 0;
-            transition: opacity 0.1s;
-        }
-        
-        #kill-feed {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            pointer-events: none;
-            z-index: 15;
-            text-align: right;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .kill-msg {
-            color: #ffaa00;
-            font-size: 16px;
-            text-shadow: 0 0 10px #ff6600;
-            animation: slideIn 0.3s, fadeOut 2s 1.5s forwards;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes fadeOut {
-            to { opacity: 0; }
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="start-screen">
-        <h1>🧟 僵尸猎杀</h1>
-        <button id="start-btn">开始游戏</button>
+    <div id="loading">⛏️ 載入世界...</div>
+    <div id="info">🎮 3D Minecraft · 隨機地形</div>
+    <div id="controls-hint">
+        <span>🖱️</span> 滑鼠拖曳視角 · <span>W A S D</span> 移動 · <span>空白</span> 跳躍 · <span>Shift</span> 奔跑
     </div>
-    
-    <div id="hud" style="display:none;">
-        <div class="hud-item">❤️ <span id="health">100</span></div>
-        <div class="hud-item">🧟 <span id="zombies">0</span></div>
-        <div class="hud-item" id="money-display">💰 <span id="money">0</span></div>
-        <div class="hud-item">🔫 <span id="ammo">30/30</span></div>
-        <div class="hud-item">🏆 连杀: <span id="combo">0</span></div>
-    </div>
-    
-    <div id="weapon-slots" style="display:none;">
-        <div class="weapon-slot" data-weapon="0">🔫</div>
-        <div class="weapon-slot" data-weapon="1">💥</div>
-        <div class="weapon-slot" data-weapon="2">🎯</div>
-        <div class="weapon-slot" data-weapon="3">⚡</div>
-        <div class="weapon-slot" data-weapon="4">🔥</div>
-    </div>
-    
-    <div id="reload-bar"><div id="reload-progress"></div></div>
-    <div id="combo-display"></div>
-    <div id="damage-vignette"></div>
-    <div id="kill-feed"></div>
+    <div id="blocker" onclick="focusGame()"></div>
 
-    <script>
-        (function(){
-            const canvas = document.getElementById('gameCanvas');
+    <!-- 引入 Three.js 核心庫與擴展 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- 初始化場景、相機、渲染器 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // 天空藍
+        
+        // 相機
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 12, 20);
+        camera.lookAt(0, 0, 0);
+
+        // WebGL渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 加載完成後隱藏 loading ---
+        document.getElementById('loading').style.display = 'none';
+
+        // --- 指針鎖定控制 (第一人稱) ---
+        const controls = new PointerLockControls(camera, document.body);
+        const blocker = document.getElementById('blocker');
+        
+        function focusGame() {
+            controls.lock();
+        }
+        
+        controls.addEventListener('lock', () => {
+            blocker.style.display = 'none';
+        });
+        controls.addEventListener('unlock', () => {
+            blocker.style.display = 'block';
+        });
+
+        // 預設鎖定
+        setTimeout(() => {
+            controls.lock();
+        }, 500);
+
+        // --- 輔助元素 (可選) ---
+        // 環境光 + 定向光 (陰影)
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        sunLight.position.set(30, 50, 20);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 120;
+        sunLight.shadow.camera.left = -50;
+        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50;
+        sunLight.shadow.camera.bottom = -50;
+        scene.add(sunLight);
+
+        const fillLight = new THREE.DirectionalLight(0xccddff, 0.4);
+        fillLight.position.set(-20, 10, -30);
+        scene.add(fillLight);
+
+        // 增加一些氛圍光
+        const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3a7d44, 0.6);
+        scene.add(hemiLight);
+
+        // --- 創建地面 (超大地圖) ---
+        function createGround() {
+            const groundGroup = new THREE.Group();
+            
+            // 使用紋理生成器創建草地色塊
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
             const ctx = canvas.getContext('2d');
             
-            let W, H;
-            function resize() {
-                W = canvas.width = window.innerWidth;
-                H = canvas.height = window.innerHeight;
+            // 草地底色
+            ctx.fillStyle = '#7cb342';
+            ctx.fillRect(0, 0, 64, 64);
+            
+            // 雜點增加細節
+            for (let i = 0; i < 600; i++) {
+                const x = Math.floor(Math.random() * 64);
+                const y = Math.floor(Math.random() * 64);
+                const bright = Math.random() * 40 + 30;
+                ctx.fillStyle = `rgb(${bright+80}, ${bright+120}, ${bright+40})`;
+                ctx.fillRect(x, y, 1, 1);
             }
-            window.addEventListener('resize', resize);
-            resize();
             
-            // 游戏状态
-            let gameStarted = false;
-            let money = 0;
-            let combo = 0;
-            let comboTimer = 0;
+            // 隨機小草
+            ctx.strokeStyle = '#4caf50';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 80; i++) {
+                const x = Math.floor(Math.random() * 64);
+                const y = Math.floor(Math.random() * 64);
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x+2, y-6);
+                ctx.stroke();
+            }
             
-            // 玩家
-            const player = {
-                x: 300, y: 0, z: 300,
-                speed: 25,
-                health: 100,
-                maxHealth: 100,
-                vy: 0,
-                onGround: true,
-                weaponIndex: 0,
-                ammo: 30,
-                maxAmmo: 30,
-                reloading: false,
-                reloadTime: 0,
-                lastFireTime: 0,
-                damageCooldown: 0,
-                armor: 0
-            };
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(20, 20);
+
+            // 地面方塊 (用一個大平面 + 紋理)
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                map: texture,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.5;
+            ground.receiveShadow = true;
+            groundGroup.add(ground);
+
+            // 隨機生成樹木、石頭、小花 (裝飾)
+            for (let i = 0; i < 180; i++) {
+                const x = (Math.random() - 0.5) * 70;
+                const z = (Math.random() - 0.5) * 70;
+                // 避免中心區域太擠
+                if (Math.abs(x) < 8 && Math.abs(z) < 8) continue;
+                
+                const type = Math.random();
+                if (type < 0.35) { // 樹
+                    createTree(groundGroup, x, 0, z);
+                } else if (type < 0.5) { // 石頭
+                    createRock(groundGroup, x, 0, z);
+                } else if (type < 0.65) { // 小花
+                    createFlower(groundGroup, x, 0, z);
+                }
+            }
+
+            // 遠景雲朵
+            for (let i = 0; i < 25; i++) {
+                const x = (Math.random() - 0.5) * 140;
+                const z = (Math.random() - 0.5) * 140;
+                if (Math.abs(x) < 30 && Math.abs(z) < 30) continue;
+                createCloud(groundGroup, x, 12 + Math.random() * 8, z);
+            }
+
+            return groundGroup;
+        }
+
+        // --- 輔助函數: 方塊紋理 (通用) ---
+        function createBlockTexture(baseColor, detailColor = null) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
             
-            // 武器
-            const weapons = [
-                { name: '步枪', icon: '🔫', damage: 30, fireRate: 0.08, ammoMax: 30, bulletSpeed: 700, reloadTime: 1.2, spread: 0.02, color: '#ffff00' },
-                { name: '霰弹枪', icon: '💥', damage: 50, fireRate: 0.7, ammoMax: 8, bulletSpeed: 500, reloadTime: 1.8, spread: 0.1, pellets: 8, color: '#ff8800' },
-                { name: '狙击枪', icon: '🎯', damage: 150, fireRate: 1.0, ammoMax: 5, bulletSpeed: 1000, reloadTime: 2.2, spread: 0.001, color: '#00ffff' },
-                { name: '冲锋枪', icon: '⚡', damage: 20, fireRate: 0.04, ammoMax: 40, bulletSpeed: 600, reloadTime: 1.0, spread: 0.05, color: '#00ff00' },
-                { name: '火焰枪', icon: '🔥', damage: 10, fireRate: 0.02, ammoMax: 50, bulletSpeed: 400, reloadTime: 1.5, spread: 0.15, fire: true, color: '#ff4400' }
+            // 底色
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // 邊框線 (立體感)
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, 32, 32);
+            
+            // 內部細節
+            if (detailColor) {
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.floor(Math.random() * 32);
+                    const y = Math.floor(Math.random() * 32);
+                    ctx.fillStyle = detailColor;
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            
+            // 隨機雜點
+            for (let i = 0; i < 50; i++) {
+                const x = Math.floor(Math.random() * 32);
+                const y = Math.floor(Math.random() * 32);
+                const bright = Math.random() * 40 + 20;
+                ctx.fillStyle = `rgba(${bright}, ${bright}, ${bright}, 0.3)`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // --- 創建樹 ---
+        function createTree(group, x, y, z) {
+            const treeGroup = new THREE.Group();
+            
+            // 樹幹 (棕色)
+            const trunkMat = new THREE.MeshStandardMaterial({ 
+                map: createBlockTexture('#8B5A2B', '#6B4226'),
+                roughness: 0.9
+            });
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.8), trunkMat);
+            trunk.position.y = 0.9;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            treeGroup.add(trunk);
+
+            // 樹葉 (綠色)
+            const leafMat = new THREE.MeshStandardMaterial({ 
+                map: createBlockTexture('#2E7D32', '#1B5E20'),
+                roughness: 0.7
+            });
+            const leafPositions = [
+                [0, 2.0, 0, 1.4, 1.2, 1.4],
+                [-0.8, 2.4, 0.6, 1.0, 0.8, 1.0],
+                [0.8, 2.4, -0.6, 1.0, 0.8, 1.0],
+                [0.6, 2.4, 0.8, 1.0, 0.8, 1.0],
+                [-0.6, 2.4, -0.8, 1.0, 0.8, 1.0],
+                [0, 3.0, 0, 1.0, 0.6, 1.0]
             ];
-            
-            // 载具
-            const vehicles = [];
-            class Vehicle {
-                constructor(type, x, z, color, name, hp, speed, weaponDamage) {
-                    this.type = type;
-                    this.x = x; this.z = z;
-                    this.y = type === 'plane' ? 50 : 0;
-                    this.hp = hp;
-                    this.maxHp = hp;
-                    this.speed = speed;
-                    this.color = color;
-                    this.name = name;
-                    this.active = true;
-                    this.attackCooldown = 0;
-                    this.weaponDamage = weaponDamage;
-                }
+            for (const pos of leafPositions) {
+                const leaf = new THREE.Mesh(new THREE.BoxGeometry(pos[3], pos[4], pos[5]), leafMat);
+                leaf.position.set(pos[0], pos[1], pos[2]);
+                leaf.castShadow = true;
+                leaf.receiveShadow = true;
+                treeGroup.add(leaf);
             }
-            vehicles.push(new Vehicle('boat', 300, 250, '#8B4513', '🚤 巡逻艇', 300, 30, 40));
-            vehicles.push(new Vehicle('car', 500, 400, '#4169E1', '🚗 装甲车', 250, 35, 30));
-            vehicles.push(new Vehicle('plane', 550, 200, '#778899', '✈️ 战斗机', 400, 50, 50));
-            vehicles.push(new Vehicle('tank', 200, 500, '#556B2F', '🎖️ 坦克', 500, 25, 60));
+
+            treeGroup.position.set(x, y, z);
+            group.add(treeGroup);
+        }
+
+        // --- 創建石頭 ---
+        function createRock(group, x, y, z) {
+            const rockMat = new THREE.MeshStandardMaterial({
+                map: createBlockTexture('#9E9E9E', '#757575'),
+                roughness: 0.95
+            });
+            const size = 0.4 + Math.random() * 0.5;
+            const rock = new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.6, size * 0.8), rockMat);
+            rock.position.set(x, y + size * 0.3, z);
+            rock.rotation.y = Math.random() * Math.PI;
+            rock.rotation.x = (Math.random() - 0.5) * 0.2;
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            group.add(rock);
+        }
+
+        // --- 創建小花 (彩色小方塊) ---
+        function createFlower(group, x, y, z) {
+            const colors = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF6BD6'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const flowerMat = new THREE.MeshStandardMaterial({
+                map: createBlockTexture(color, '#ffffff'),
+                roughness: 0.6
+            });
+            const flower = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), flowerMat);
+            flower.position.set(x, y + 0.2, z);
+            flower.castShadow = true;
+            flower.receiveShadow = true;
+            group.add(flower);
             
-            // 僵尸
-            let zombies = [];
-            class Zombie {
-                constructor(x, z, type) {
-                    this.x = x; this.z = z;
-                    this.y = 0;
-                    this.type = type || 'normal';
-                    if(type === 'fast') {
-                        this.hp = 40; this.speed = 10; this.damage = 10; this.radius = 14;
-                        this.color = '#7FFF00';
-                    } else if(type === 'tank') {
-                        this.hp = 200; this.speed = 3; this.damage = 30; this.radius = 30;
-                        this.color = '#8B0000';
-                    } else if(type === 'exploder') {
-                        this.hp = 80; this.speed = 6; this.damage = 50; this.radius = 20;
-                        this.color = '#FF4500';
-                    } else if(type === 'boss') {
-                        this.hp = 1000; this.speed = 4; this.damage = 50; this.radius = 50;
-                        this.color = '#FF00FF';
-                    } else {
-                        this.hp = 60; this.speed = 5; this.damage = 15; this.radius = 18;
-                        this.color = '#2E8B57';
-                    }
-                    this.maxHp = this.hp;
-                    this.attackCooldown = 0;
-                    this.hitFlash = 0;
-                    this.dropMoney = type === 'boss' ? 1000 : type === 'tank' ? 300 : type === 'exploder' ? 200 : 100;
-                }
+            // 加一個小莖
+            const stemMat = new THREE.MeshStandardMaterial({ color: '#4CAF50' });
+            const stem = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), stemMat);
+            stem.position.set(x, y, z);
+            group.add(stem);
+        }
+
+        // --- 創建雲朵 (裝飾) ---
+        function createCloud(group, x, y, z) {
+            const cloudGroup = new THREE.Group();
+            const cloudMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.7,
+                roughness: 0.1,
+                emissive: new THREE.Color(0xeeeeee),
+                emissiveIntensity: 0.1
+            });
+            
+            const positions = [
+                [0, 0, 0, 1.6, 0.5, 1.0],
+                [-1.0, 0.2, 0.2, 1.2, 0.4, 0.8],
+                [1.0, 0.1, -0.2, 1.2, 0.4, 0.8],
+                [-0.5, 0.4, -0.6, 0.8, 0.3, 0.6],
+                [0.6, 0.3, 0.7, 0.8, 0.3, 0.6]
+            ];
+            for (const p of positions) {
+                const box = new THREE.Mesh(new THREE.BoxGeometry(p[3], p[4], p[5]), cloudMat);
+                box.position.set(p[0], p[1], p[2]);
+                box.castShadow = false;
+                box.receiveShadow = false;
+                cloudGroup.add(box);
             }
-            
-            let wave = 1;
-            function spawnWave() {
-                zombies = [];
-                const count = 15 + wave * 8;
-                for(let i = 0; i < count; i++) {
-                    const x = 50 + Math.random() * 500;
-                    const z = 50 + Math.random() * 500;
-                    let type = 'normal';
-                    const r = Math.random();
-                    if(wave > 1 && r < 0.2) type = 'fast';
-                    if(wave > 2 && r < 0.4) type = 'tank';
-                    if(wave > 3 && r < 0.5) type = 'exploder';
-                    zombies.push(new Zombie(x, z, type));
-                }
-                if(wave % 3 === 0) {
-                    zombies.push(new Zombie(300, 300, 'boss'));
-                }
+            cloudGroup.position.set(x, y, z);
+            group.add(cloudGroup);
+        }
+
+        // --- 生成世界 ---
+        const worldGroup = createGround();
+        scene.add(worldGroup);
+
+        // --- 添加一些隨機的 "礦石" 方塊在地面 (趣味) ---
+        function addOreBlocks() {
+            const oreMat = new THREE.MeshStandardMaterial({
+                map: createBlockTexture('#FFD700', '#DAA520'),
+                emissive: new THREE.Color(0x553300),
+                emissiveIntensity: 0.2
+            });
+            for (let i = 0; i < 30; i++) {
+                const x = (Math.random() - 0.5) * 60;
+                const z = (Math.random() - 0.5) * 60;
+                if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+                const ore = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), oreMat);
+                ore.position.set(x, 0.1, z);
+                ore.castShadow = true;
+                ore.receiveShadow = true;
+                scene.add(ore);
             }
-            
-            // 子弹
-            let bullets = [];
-            class Bullet {
-                constructor(x, y, z, dx, dy, dz, damage, speed, color, fire = false) {
-                    this.x = x; this.y = y; this.z = z;
-                    this.dx = dx; this.dy = dy; this.dz = dz;
-                    this.damage = damage;
-                    this.speed = speed;
-                    this.life = 2.0;
-                    this.color = color;
-                    this.fire = fire;
-                }
+        }
+        addOreBlocks();
+
+        // --- 邊界圍欄 (光柱) 防止走太遠 ---
+        function createBoundaryBeacons() {
+            const beaconMat = new THREE.MeshStandardMaterial({
+                color: 0xffaa00,
+                emissive: 0x442200,
+                transparent: true,
+                opacity: 0.3
+            });
+            const positions = [
+                [-38, 0, -38], [38, 0, -38], [-38, 0, 38], [38, 0, 38],
+                [-38, 0, 0], [38, 0, 0], [0, 0, -38], [0, 0, 38]
+            ];
+            for (const pos of positions) {
+                const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), beaconMat);
+                pillar.position.set(pos[0], 1, pos[1]);
+                pillar.castShadow = true;
+                pillar.receiveShadow = true;
+                scene.add(pillar);
+                
+                // 頂部小光點
+                const topMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff5500 });
+                const top = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), topMat);
+                top.position.set(pos[0], 2.2, pos[1]);
+                scene.add(top);
             }
-            
-            // 3D投影
-            let yaw = 0, pitch = 0;
-            let isPointerLocked = false;
-            let mouseDown = false;
-            const keys = {};
-            
-            function project3D(x, y, z) {
-                const dx = x - player.x;
-                const dy = y - (player.y + 15);
-                const dz = z - player.z;
-                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-                const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-                const tz = dz * cosY - dx * sinY;
-                const tx = dx * cosY + dz * sinY;
-                const ty = dy * cosP - tz * sinP;
-                const tz2 = dy * sinP + tz * cosP;
-                if(tz2 < 1) return null;
-                const scale = 600 / tz2;
-                return { x: W/2 + tx * scale, y: H/2 - ty * scale, scale: scale, depth: tz2 };
-            }
-            
-            function drawWorld() {
-                // 天空
-                const grad = ctx.createLinearGradient(0, 0, 0, H);
-                grad.addColorStop(0, '#1a0a2a');
-                grad.addColorStop(0.5, '#2a1a3a');
-                grad.addColorStop(0.8, '#4a3a2a');
-                grad.addColorStop(1, '#6a5a3a');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, W, H);
-                
-                // 地面
-                ctx.fillStyle = '#1a2a1a';
-                ctx.fillRect(0, H * 0.6, W, H * 0.4);
-                
-                // 地面网格
-                ctx.strokeStyle = 'rgba(255,100,0,0.1)';
-                ctx.lineWidth = 1;
-                for(let i = 0; i < 600; i += 25) {
-                    const p1 = project3D(i, 0, 0);
-                    const p2 = project3D(i, 0, 600);
-                    if(p1 && p2) {
-                        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-                    }
-                    const p3 = project3D(0, 0, i);
-                    const p4 = project3D(600, 0, i);
-                    if(p3 && p4) {
-                        ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
-                    }
-                }
-                
-                // 湖泊
-                const lake = project3D(300, 0, 300);
-                if(lake) {
-                    ctx.fillStyle = 'rgba(30,100,150,0.7)';
-                    ctx.beginPath();
-                    ctx.ellipse(lake.x, lake.y, 80 * lake.scale, 50 * lake.scale, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'rgba(50,130,180,0.5)';
-                    ctx.beginPath();
-                    ctx.ellipse(lake.x - 10, lake.y - 10, 50 * lake.scale, 30 * lake.scale, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                
-                // 绘制载具
-                vehicles.forEach(v => {
-                    if(!v.active) return;
-                    const p = project3D(v.x, v.y, v.z);
-                    if(p) {
-                        const s = p.scale;
-                        ctx.fillStyle = v.color;
-                        if(v.type === 'boat') {
-                            ctx.fillRect(p.x - 40*s, p.y - 20*s, 80*s, 40*s);
-                            ctx.fillRect(p.x - 25*s, p.y - 30*s, 50*s, 15*s);
-                        } else if(v.type === 'car') {
-                            ctx.fillRect(p.x - 35*s, p.y - 25*s, 70*s, 45*s);
-                            ctx.fillRect(p.x - 20*s, p.y - 35*s, 40*s, 20*s);
-                        } else if(v.type === 'plane') {
-                            ctx.beginPath();
-                            ctx.moveTo(p.x - 45*s, p.y);
-                            ctx.lineTo(p.x + 50*s, p.y - 25*s);
-                            ctx.lineTo(p.x + 50*s, p.y + 25*s);
-                            ctx.closePath();
-                            ctx.fill();
-                        } else if(v.type === 'tank') {
-                            ctx.fillRect(p.x - 35*s, p.y - 25*s, 70*s, 45*s);
-                            ctx.fillRect(p.x - 15*s, p.y - 40*s, 30*s, 20*s);
-                            ctx.fillRect(p.x - 10*s, p.y - 50*s, 50*s, 15*s);
-                        }
-                        
-                        // 载具血量
-                        if(v.hp < v.maxHp) {
-                            ctx.fillStyle = '#ff0000';
-                            ctx.fillRect(p.x - 40*s, p.y - 60*s, 80*s, 8*s);
-                            ctx.fillStyle = '#00ff00';
-                            ctx.fillRect(p.x - 40*s, p.y - 60*s, 80*s * (v.hp / v.maxHp), 8*s);
-                        }
-                        
-                        // 载具名字
-                        ctx.fillStyle = '#fff';
-                        ctx.font = `bold ${Math.max(12, 14*s)}px Arial`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText(v.name, p.x, p.y - 70*s);
-                    }
-                });
-                
-                // 绘制僵尸
-                zombies.forEach(z => {
-                    const p = project3D(z.x, z.y, z.z);
-                    if(p) {
-                        const s = p.scale;
-                        const flash = z.hitFlash > 0;
-                        ctx.fillStyle = flash ? '#ffffff' : z.color;
-                        const h = z.radius * 2 * s;
-                        ctx.fillRect(p.x - z.radius*s, p.y - 35*s, z.radius*2*s, 45*s);
-                        ctx.fillStyle = flash ? '#ffffff' : '#3a5a2a';
-                        ctx.fillRect(p.x - 12*s, p.y - 45*s, 24*s, 18*s);
-                        ctx.fillStyle = '#ff0000';
-                        ctx.fillRect(p.x - 7*s, p.y - 38*s, 5*s, 5*s);
-                        ctx.fillRect(p.x + 2*s, p.y - 38*s, 5*s, 5*s);
-                        
-                        // 血量条
-                        ctx.fillStyle = '#ff0000';
-                        ctx.fillRect(p.x - z.radius*s, p.y - 55*s, z.radius*2*s, 6*s);
-                        ctx.fillStyle = '#00ff00';
-                        ctx.fillRect(p.x - z.radius*s, p.y - 55*s, z.radius*2*s * (z.hp / z.maxHp), 6*s);
-                        
-                        // Boss标记
-                        if(z.type === 'boss') {
-                            ctx.fillStyle = '#ff00ff';
-                            ctx.font = `bold ${20*s}px Arial`;
-                            ctx.fillText('👑 BOSS', p.x, p.y - 60*s);
-                        }
-                    }
-                });
-                
-                // 绘制子弹
-                bullets.forEach(b => {
-                    const p = project3D(b.x, b.y, b.z);
-                    if(p) {
-                        if(b.fire) {
-                            ctx.fillStyle = 'rgba(255,68,0,0.8)';
-                            ctx.beginPath();
-                            ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.fillStyle = '#ffaa00';
-                            ctx.beginPath();
-                            ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-                            ctx.fill();
-                        } else {
-                            ctx.fillStyle = b.color;
-                            ctx.beginPath();
-                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
+        }
+        createBoundaryBeacons();
+
+        // --- 添加霧效 ---
+        scene.fog = new THREE.Fog(0x87CEEB, 40, 80);
+
+        // --- 動態雲朵 (緩慢飄動) ---
+        const clouds = [];
+        scene.children.forEach(child => {
+            if (child.type === 'Group') {
+                child.children.forEach(sub => {
+                    if (sub.type === 'Group' && sub.children.length > 0 && sub.children[0].material && sub.children[0].material.color.getHex() === 0xffffff) {
+                        clouds.push(sub);
                     }
                 });
             }
-            
-            function update(dt) {
-                if(!gameStarted) return;
-                
-                // 连杀计时
-                if(comboTimer > 0) {
-                    comboTimer -= dt;
-                    if(comboTimer <= 0) combo = 0;
-                }
-                
-                // 移动
-                let moveX = 0, moveZ = 0;
-                if(keys['w']) moveZ -= 1;
-                if(keys['s']) moveZ += 1;
-                if(keys['a']) moveX -= 1;
-                if(keys['d']) moveX += 1;
-                const len = Math.hypot(moveX, moveZ);
-                if(len > 0) { moveX /= len; moveZ /= len; }
-                
-                const speed = player.vehicle ? player.vehicle.speed : player.speed;
-                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-                const wx = (moveX * cosY - moveZ * sinY) * speed;
-                const wz = (moveX * sinY + moveZ * cosY) * speed;
-                
-                player.x += wx * dt;
-                player.z += wz * dt;
-                player.x = Math.max(20, Math.min(580, player.x));
-                player.z = Math.max(20, Math.min(580, player.z));
-                
-                // 载具
-                if(player.vehicle) {
-                    player.vehicle.x = player.x;
-                    player.vehicle.z = player.z;
-                    if(player.vehicle.type === 'plane') player.y = 50;
-                    else player.y = 0;
-                } else {
-                    if(keys[' '] && player.onGround) {
-                        player.vy = 35;
-                        player.onGround = false;
-                    }
-                    player.vy -= 60 * dt;
-                    player.y += player.vy * dt;
-                    if(player.y <= 0) {
-                        player.y = 0;
-                        player.vy = 0;
-                        player.onGround = true;
-                    }
-                }
-                
-                // 载具交互
-                if(keys['e'] && !player.vehicle) {
-                    for(const v of vehicles) {
-                        if(v.active && Math.hypot(v.x - player.x, v.z - player.z) < 60) {
-                            player.vehicle = v;
-                            player.x = v.x;
-                            player.z = v.z;
-                            if(v.type === 'plane') player.y = 50;
-                            else player.y = 0;
-                            break;
-                        }
-                    }
-                } else if(keys['e'] && player.vehicle) {
-                    player.vehicle = null;
-                    player.y = 0;
-                }
-                
-                // 换弹
-                if(keys['r'] && !player.reloading && player.ammo < player.maxAmmo) {
-                    player.reloading = true;
-                    player.reloadTime = weapons[player.weaponIndex].reloadTime;
-                    document.getElementById('reload-bar').style.display = 'block';
-                }
-                if(player.reloading) {
-                    player.reloadTime -= dt;
-                    const progress = ((weapons[player.weaponIndex].reloadTime - player.reloadTime) / weapons[player.weaponIndex].reloadTime) * 100;
-                    document.getElementById('reload-progress').style.width = progress + '%';
-                    if(player.reloadTime <= 0) {
-                        player.ammo = player.maxAmmo;
-                        player.reloading = false;
-                        document.getElementById('reload-bar').style.display = 'none';
-                    }
-                }
-                
-                // 射击
-                if(mouseDown && !player.reloading && player.ammo > 0 && performance.now() - player.lastFireTime > weapons[player.weaponIndex].fireRate * 1000) {
-                    const weapon = weapons[player.weaponIndex];
-                    const dx = -Math.sin(yaw) * Math.cos(pitch);
-                    const dy = Math.sin(pitch);
-                    const dz = -Math.cos(yaw) * Math.cos(pitch);
-                    const muzzleY = player.vehicle ? player.y + 35 : player.y + 25;
-                    
-                    if(weapon.pellets) {
-                        for(let i = 0; i < weapon.pellets; i++) {
-                            const spreadX = (Math.random() - 0.5) * weapon.spread;
-                            const spreadY = (Math.random() - 0.5) * weapon.spread;
-                            bullets.push(new Bullet(player.x, muzzleY, player.z, dx + spreadX, dy + spreadY, dz + spreadX, weapon.damage / weapon.pellets, weapon.bulletSpeed, weapon.color, weapon.fire));
-                        }
-                    } else {
-                        bullets.push(new Bullet(player.x, muzzleY, player.z, dx, dy, dz, weapon.damage, weapon.bulletSpeed, weapon.color, weapon.fire));
-                    }
-                    
-                    player.ammo--;
-                    player.lastFireTime = performance.now();
-                    pitch += 0.005;
-                }
-                
-                // 载具武器
-                if(player.vehicle && mouseDown && player.vehicle.attackCooldown <= 0) {
-                    const dx = -Math.sin(yaw) * Math.cos(pitch);
-                    const dy = Math.sin(pitch);
-                    const dz = -Math.cos(yaw) * Math.cos(pitch);
-                    bullets.push(new Bullet(player.x, player.y + 35, player.z, dx, dy, dz, player.vehicle.weaponDamage, 800, '#ff0000'));
-                    player.vehicle.attackCooldown = 0.1;
-                }
-                if(player.vehicle && player.vehicle.attackCooldown > 0) {
-                    player.vehicle.attackCooldown -= dt;
-                }
-                
-                // 换枪
-                for(let i = 0; i < weapons.length; i++) {
-                    if(keys[String(i + 1)]) {
-                        player.weaponIndex = i;
-                        player.ammo = weapons[i].ammoMax;
-                        player.maxAmmo = weapons[i].ammoMax;
-                        player.reloading = false;
-                        document.getElementById('reload-bar').style.display = 'none';
-                        document.querySelectorAll('.weapon-slot').forEach(slot => {
-                            slot.classList.toggle('active', parseInt(slot.dataset.weapon) === i);
-                        });
-                    }
-                }
-                
-                // 僵尸AI
-                zombies.forEach(z => {
-                    const dx = player.x - z.x;
-                    const dz = player.z - z.z;
-                    const dist = Math.hypot(dx, dz);
-                    if(dist > 20 && dist < 800) {
-                        z.x += (dx / dist) * z.speed * dt;
-                        z.z += (dz / dist) * z.speed * dt;
-                    }
-                    if(dist < z.radius + 15 && z.attackCooldown <= 0) {
-                        if(player.vehicle) {
-                            player.vehicle.hp -= z.damage;
-                            if(player.vehicle.hp <= 0) {
-                                player.vehicle.active = false;
-                                player.vehicle = null;
-                                player.y = 0;
-                            }
-                        } else {
-                            if(player.damageCooldown <= 0) {
-                                const actualDamage = player.armor > 0 ? Math.floor(z.damage * 0.5) : z.damage;
-                                player.health -= actualDamage;
-                                if(player.armor > 0) player.armor--;
-                                player.damageCooldown = 0.5;
-                                document.getElementById('damage-vignette').style.opacity = '1';
-                                setTimeout(() => document.getElementById('damage-vignette').style.opacity = '0', 150);
-                            }
-                        }
-                        z.attackCooldown = 0.8;
-                    }
-                    if(z.attackCooldown > 0) z.attackCooldown -= dt;
-                    if(z.hitFlash > 0) z.hitFlash -= dt;
-                    z.x = Math.max(10, Math.min(590, z.x));
-                    z.z = Math.max(10, Math.min(590, z.z));
-                });
-                
-                if(player.damageCooldown > 0) player.damageCooldown -= dt;
-                
-                // 子弹更新
-                bullets.forEach(b => {
-                    b.x += b.dx * b.speed * dt;
-                    b.y += b.dy * b.speed * dt;
-                    b.z += b.dz * b.speed * dt;
-                    b.life -= dt;
-                    
-                    zombies.forEach(z => {
-                        if(b.life > 0 && Math.hypot(z.x - b.x, z.z - b.z) < z.radius && z.hp > 0) {
-                            z.hp -= b.damage;
-                            z.hitFlash = 0.2;
-                            b.life = 0;
-                            
-                            if(z.hp <= 0) {
-                                combo++;
-                                comboTimer = 3;
-                                money += z.dropMoney;
-                                
-                                // 连杀奖励
-                                if(combo >= 3) {
-                                    money += combo * 50;
-                                }
-                                
-                                // 爆炸僵尸
-                                if(z.type === 'exploder') {
-                                    zombies.forEach(z2 => {
-                                        const dist2 = Math.hypot(z2.x - z.x, z2.z - z.z);
-                                        if(dist2 < 80) {
-                                            z2.hp -= 50;
-                                            z2.hitFlash = 0.3;
-                                        }
-                                    });
-                                }
-                                
-                                const killMsg = document.createElement('div');
-                                killMsg.className = 'kill-msg';
-                                killMsg.textContent = `💀 ${z.type} 僵尸 +${z.dropMoney}💰`;
-                                document.getElementById('kill-feed').appendChild(killMsg);
-                                setTimeout(() => killMsg.remove(), 2500);
-                                
-                                // 连杀提示
-                                if(combo >= 3) {
-                                    const comboDisplay = document.getElementById('combo-display');
-                                    comboDisplay.textContent = `🔥 ${combo}连杀！`;
-                                    comboDisplay.style.opacity = '1';
-                                    setTimeout(() => comboDisplay.style.opacity = '0', 1000);
-                                }
-                            }
-                        }
-                    });
-                    
-                    vehicles.forEach(v => {
-                        if(b.life > 0 && v.active && v !== player.vehicle && Math.hypot(v.x - b.x, v.z - b.z) < 35) {
-                            v.hp -= b.damage;
-                            b.life = 0;
-                            if(v.hp <= 0) {
-                                v.active = false;
-                                money += 500;
-                            }
-                        }
-                    });
-                });
-                
-                bullets = bullets.filter(b => b.life > 0);
-                zombies = zombies.filter(z => z.hp > 0);
-                
-                if(zombies.length === 0) {
-                    wave++;
-                    money += 500 + wave * 100;
-                    spawnWave();
-                }
-                
-                // HUD更新
-                document.getElementById('health').textContent = Math.floor(player.health);
-                document.getElementById('zombies').textContent = zombies.length;
-                document.getElementById('money').textContent = money;
-                document.getElementById('ammo').textContent = `${player.ammo}/${player.maxAmmo}`;
-                document.getElementById('combo').textContent = combo;
-                
-                if(player.health <= 0) {
-                    gameStarted = false;
-                    alert(`💀 游戏结束！\n💰 获得金钱: ${money}\n🏆 最高连杀: ${combo}\n🌊 到达波数: ${wave}`);
-                    location.reload();
-                }
+        });
+
+        // --- 輔助網格 (可選, 這裡不啟用) ---
+        // const gridHelper = new THREE.GridHelper(80, 20, 0x888888, 0x444444);
+        // scene.add(gridHelper);
+
+        // --- 動畫循環 ---
+        let clock = new THREE.Clock();
+
+        function animate() {
+            const delta = clock.getDelta();
+            const elapsedTime = performance.now() * 0.0001;
+
+            // 雲朵飄動
+            clouds.forEach((cloud, index) => {
+                cloud.position.x += Math.sin(elapsedTime + index) * 0.001;
+                cloud.position.z += Math.cos(elapsedTime * 0.7 + index) * 0.001;
+            });
+
+            // 控制更新 (pointer lock 模式下自動更新)
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // --- 窗口大小調整 ---
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 鍵盤監聽 (移動) ---
+        const keyState = {
+            w: false, a: false, s: false, d: false,
+            shift: false, space: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyW': keyState.w = true; e.preventDefault(); break;
+                case 'KeyA': keyState.a = true; e.preventDefault(); break;
+                case 'KeyS': keyState.s = true; e.preventDefault(); break;
+                case 'KeyD': keyState.d = true; e.preventDefault(); break;
+                case 'ShiftLeft': keyState.shift = true; e.preventDefault(); break;
+                case 'Space': keyState.space = true; e.preventDefault(); break;
             }
-            
-            // 输入处理
-            document.getElementById('start-btn').addEventListener('click', () => {
-                gameStarted = true;
-                document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('hud').style.display = 'flex';
-                document.getElementById('weapon-slots').style.display = 'flex';
-                canvas.requestPointerLock();
-                spawnWave();
-            });
-            
-            canvas.addEventListener('click', () => {
-                if(gameStarted && !isPointerLocked) canvas.requestPointerLock();
-            });
-            
-            document.addEventListener('pointerlockchange', () => {
-                isPointerLocked = document.pointerLockElement === canvas;
-            });
-            
-            document.addEventListener('mousemove', (e) => {
-                if(isPointerLocked && gameStarted) {
-                    yaw -= e.movementX * 0.003;
-                    pitch -= e.movementY * 0.003;
-                    pitch = Math.max(-1.3, Math.min(1.3, pitch));
-                }
-            });
-            
-            document.addEventListener('mousedown', (e) => {
-                if(e.button === 0) mouseDown = true;
-            });
-            
-            document.addEventListener('mouseup', () => { mouseDown = false; });
-            
-            document.addEventListener('keydown', (e) => {
-                keys[e.key.toLowerCase()] = true;
-                if(e.key === ' ') e.preventDefault();
-            });
-            
-            document.addEventListener('keyup', (e) => {
-                keys[e.key.toLowerCase()] = false;
-            });
-            
-            document.querySelectorAll('.weapon-slot').forEach(slot => {
-                slot.addEventListener('click', () => {
-                    const weaponIndex = parseInt(slot.dataset.weapon);
-                    player.weaponIndex = weaponIndex;
-                    player.ammo = weapons[weaponIndex].ammoMax;
-                    player.maxAmmo = weapons[weaponIndex].ammoMax;
-                    player.reloading = false;
-                    document.getElementById('reload-bar').style.display = 'none';
-                    document.querySelectorAll('.weapon-slot').forEach(s => {
-                        s.classList.toggle('active', parseInt(s.dataset.weapon) === weaponIndex);
-                    });
-                });
-            });
-            
-            // 游戏循环
-            let lastTime = performance.now();
-            function gameLoop() {
-                const now = performance.now();
-                const dt = (now - lastTime) / 1000;
-                lastTime = now;
-                update(dt);
-                drawWorld();
-                requestAnimationFrame(gameLoop);
+        });
+        document.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW': keyState.w = false; e.preventDefault(); break;
+                case 'KeyA': keyState.a = false; e.preventDefault(); break;
+                case 'KeyS': keyState.s = false; e.preventDefault(); break;
+                case 'KeyD': keyState.d = false; e.preventDefault(); break;
+                case 'ShiftLeft': keyState.shift = false; e.preventDefault(); break;
+                case 'Space': keyState.space = false; e.preventDefault(); break;
             }
-            gameLoop();
-        })();
+        });
+
+        // 移動邏輯 (每幀更新)
+        function updateMovement() {
+            if (!controls.isLocked) return;
+            
+            const speed = keyState.shift ? 0.25 : 0.12;
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
+            
+            const right = new THREE.Vector3();
+            right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+
+            const moveX = (keyState.d ? 1 : 0) - (keyState.a ? 1 : 0);
+            const moveZ = (keyState.s ? 1 : 0) - (keyState.w ? 1 : 0);
+            
+            if (moveX !== 0 || moveZ !== 0) {
+                const forward = direction.clone().multiplyScalar(-moveZ);
+                const sideways = right.clone().multiplyScalar(moveX);
+                const total = forward.add(sideways).normalize().multiplyScalar(speed);
+                
+                camera.position.x += total.x;
+                camera.position.z += total.z;
+            }
+
+            // 跳躍 (簡易重力)
+            if (keyState.space && camera.position.y <= 1.5) {
+                camera.position.y += 0.3;
+            } else if (camera.position.y > 1.5) {
+                camera.position.y -= 0.03;
+            } else if (camera.position.y < 1.5) {
+                camera.position.y = 1.5;
+            }
+        }
+
+        // 在動畫循環中加入移動更新
+        setInterval(() => {
+            updateMovement();
+        }, 16); // 約 60fps
+
+        console.log('🎮 Minecraft 3D 世界已啟動！');
     </script>
 </body>
 </html>
