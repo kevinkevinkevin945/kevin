@@ -1,1051 +1,842 @@
-<!doctype html>
-<html lang="zh-Hant">
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zombie Frontier Offline</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081018;color:#fff;font-family:Arial,"Microsoft JhengHei",sans-serif}
-canvas{display:block;width:100%;height:100%;background:#87aebc;cursor:crosshair}
-#menu{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(#07131ddd,#02070bdd);z-index:10}
-.panel{width:min(720px,90vw);padding:30px;border:1px solid #ffffff30;border-radius:18px;background:#09151eee;box-shadow:0 25px 80px #000}
-h1{margin:0 0 10px;font-size:40px}
-button{padding:13px 25px;border:0;border-radius:9px;background:#399df0;color:#fff;font-weight:bold;font-size:17px;cursor:pointer}
-kbd{background:#17222a;border:1px solid #ffffff30;border-radius:4px;padding:2px 6px}
-.info{line-height:1.8;color:#d4e1e7}
-#hud{position:fixed;inset:0;pointer-events:none;display:none}
-.box{position:absolute;background:#071018cc;border:1px solid #ffffff28;border-radius:9px;padding:8px 11px}
-#stats{top:15px;left:15px;display:flex;gap:7px}
-#health{width:150px;height:10px;background:#263139;border-radius:10px;overflow:hidden;margin-top:5px}
-#health i{display:block;height:100%;width:100%;background:#40e879}
-#ammo{right:18px;bottom:20px;font-size:28px;font-weight:bold}
-#gun{right:18px;bottom:58px}
-#vehicle{right:18px;top:15px;display:none}
-#message{top:17px;left:50%;transform:translateX(-50%);font-weight:bold;text-shadow:0 2px 5px #000}
-#help{left:15px;bottom:15px;font-size:12px;line-height:1.5;color:#d6e5eb}
-#cross{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%)}
-#cross:before,#cross:after{content:"";position:absolute;background:#fff;box-shadow:0 0 4px #000}
-#cross:before{width:2px;height:22px;left:10px}
-#cross:after{height:2px;width:22px;top:10px}
-#scope{position:absolute;inset:0;display:none;background:radial-gradient(circle,transparent 0 30%,#000c 31% 100%)}
-#scope:before,#scope:after{content:"";position:absolute;background:#ffffff77}
-#scope:before{left:15%;right:15%;top:50%;height:1px}
-#scope:after{top:15%;bottom:15%;left:50%;width:1px}
-#map{right:15px;top:70px;width:150px;height:150px;border:1px solid #ffffff44;background:#122820cc}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 3D僵尸猎杀 · 超爽版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial Black', 'Segoe UI', sans-serif;
+            cursor: crosshair;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        #start-screen h1 {
+            font-size: 60px;
+            color: #ff0000;
+            text-shadow: 0 0 30px #ff0000, 0 0 60px #ff6600;
+            animation: pulse 1.5s infinite;
+            margin-bottom: 30px;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        #start-btn {
+            font-size: 30px;
+            padding: 20px 50px;
+            background: linear-gradient(45deg, #ff0000, #ff6600);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+            box-shadow: 0 0 40px rgba(255,0,0,0.6);
+        }
+        #start-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 60px rgba(255,0,0,0.9);
+        }
+        
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud-item {
+            background: rgba(0,0,0,0.8);
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: 2px solid #ff6600;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff6600;
+            backdrop-filter: blur(5px);
+        }
+        #money-display {
+            color: #ffd700;
+            border-color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+            animation: moneyGlow 2s infinite;
+        }
+        @keyframes moneyGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 40px rgba(255,215,0,0.9); }
+        }
+        
+        #weapon-slots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+        .weapon-slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #666;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .weapon-slot.active {
+            border-color: #ff6600;
+            background: rgba(255,102,0,0.3);
+            box-shadow: 0 0 20px #ff6600;
+            transform: scale(1.1);
+        }
+        .weapon-slot:hover {
+            border-color: #ffaa00;
+        }
+        
+        #reload-bar {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 10px;
+            background: #333;
+            border-radius: 10px;
+            display: none;
+            z-index: 20;
+            overflow: hidden;
+        }
+        #reload-progress {
+            height: 100%;
+            background: #ff6600;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        #combo-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 30px #ff0000;
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        #damage-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.6) 100%);
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        
+        #kill-feed {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            pointer-events: none;
+            z-index: 15;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .kill-msg {
+            color: #ffaa00;
+            font-size: 16px;
+            text-shadow: 0 0 10px #ff6600;
+            animation: slideIn 0.3s, fadeOut 2s 1.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+    </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="start-screen">
+        <h1>🧟 僵尸猎杀</h1>
+        <button id="start-btn">开始游戏</button>
+    </div>
+    
+    <div id="hud" style="display:none;">
+        <div class="hud-item">❤️ <span id="health">100</span></div>
+        <div class="hud-item">🧟 <span id="zombies">0</span></div>
+        <div class="hud-item" id="money-display">💰 <span id="money">0</span></div>
+        <div class="hud-item">🔫 <span id="ammo">30/30</span></div>
+        <div class="hud-item">🏆 连杀: <span id="combo">0</span></div>
+    </div>
+    
+    <div id="weapon-slots" style="display:none;">
+        <div class="weapon-slot" data-weapon="0">🔫</div>
+        <div class="weapon-slot" data-weapon="1">💥</div>
+        <div class="weapon-slot" data-weapon="2">🎯</div>
+        <div class="weapon-slot" data-weapon="3">⚡</div>
+        <div class="weapon-slot" data-weapon="4">🔥</div>
+    </div>
+    
+    <div id="reload-bar"><div id="reload-progress"></div></div>
+    <div id="combo-display"></div>
+    <div id="damage-vignette"></div>
+    <div id="kill-feed"></div>
 
-<div id="menu"><div class="panel">
-<h1>🧟 ZOMBIE FRONTIER OFFLINE</h1>
-<p>純 Canvas 3D 風格殭屍槍戰，不使用 Three.js、不使用 CDN、不需要網路。</p>
-<div class="info">
-<b>WASD</b> 移動　<b>Space</b> 跳躍／攀爬　<b>Shift</b> 加速<br>
-<b>左鍵</b> 射擊　<b>右鍵</b> 開鏡（不放大）　<b>R</b> 換彈<br>
-<b>1～9</b> 換槍　<b>E</b> 進出載具　<b>F</b> 載具攻擊<br>
-<b>Space / C</b> 飛行載具升降
-</div>
-<br><button id="start">開始遊戲</button>
-<p style="color:#9fb4bd;font-size:13px">此版本所有程式碼都在這一個 HTML 檔案內。</p>
-</div></div>
-
-<div id="hud">
-<div id="stats">
-<div class="box">生命<div id="health"><i></i></div></div>
-<div class="box">殭屍 <b id="zc">0</b></div>
-<div class="box">擊殺 <b id="kc">0</b></div>
-</div>
-<div id="vehicle" class="box">載具 HP：<b id="vhp">0</b></div>
-<div id="gun" class="box">AR-15</div>
-<div id="ammo" class="box">30 / 180</div>
-<div id="message" class="box"></div>
-<div id="cross"></div>
-<div id="scope"></div>
-<canvas id="map" width="150" height="150"></canvas>
-<div id="help" class="box">WASD 移動 · Space 跳躍/攀爬 · Shift 加速 · 左鍵射擊 · 右鍵開鏡 · R 換彈 · 1~9 換槍 · E 上下載具 · F 攻擊</div>
-</div>
-
-<script>
-"use strict";
-
-/*
-  ==============================================================
-  ZOMBIE FRONTIER OFFLINE
-  No Three.js.
-  No CDN.
-  No external images.
-  No external audio.
-  Works from file:// after saving this HTML.
-  ==============================================================
-*/
-
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
-const map=document.getElementById("map");
-const mctx=map.getContext("2d");
-
-let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,2);
-function resize(){
-  W=innerWidth;H=innerHeight;
-  canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);
-  canvas.style.width=W+"px";canvas.style.height=H+"px";
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-}
-addEventListener("resize",resize);resize();
-
-const keys={};
-const mouse={down:false,aim:false,x:0,y:0};
-let running=false,gameOver=false;
-let last=performance.now();
-let player={x:0,y:0,z:25,h:0,vy:0,yaw:0,pitch:0,hp:100};
-let kills=0;
-let weapon=2;
-let reload=0;
-let shotTimer=0;
-let msgTimer=0;
-let vehicle=null;
-
-const guns=[
- ["Pistol",12,120,28,.25],
- ["SMG",32,240,16,.075],
- ["AR-15",30,180,31,.095],
- ["AK-47",30,180,38,.12],
- ["Shotgun",8,64,18,.68],
- ["DMR",20,100,68,.42],
- ["Sniper",5,40,145,1.1],
- ["Burst Rifle",27,162,36,.25],
- ["LMG",60,300,29,.09]
-];
-const ammo=guns.map(g=>g[1]);
-
-const lakes=[
- {x:105,z:65,w:160,d:110},
- {x:-120,z:-105,w:130,d:85},
- {x:40,z:-170,w:95,d:45}
-];
-
-const buildings=[];
-const props=[];
-const zombies=[];
-const vehicles=[];
-const bullets=[];
-
-function rand(a,b){return a+Math.random()*(b-a)}
-function dist(x,z,a,b){return Math.hypot(x-a,z-b)}
-function waterAt(x,z){
- return lakes.some(a=>Math.abs(x-a.x)<a.w/2&&Math.abs(z-a.z)<a.d/2)
-}
-
-/* ---------- world generation ---------- */
-
-for(let x=-150;x<=150;x+=30){
- for(let z=-15;z<=135;z+=30){
-  if(x>20&&z>10&&Math.random()<.55)continue;
-  buildings.push({
-   x:x+rand(-5,5),z:z+rand(-5,5),
-   w:rand(18,27),d:rand(18,27),h:rand(10,48),
-   type:"building"
-  });
- }
-}
-for(let i=0;i<20;i++){
- buildings.push({
-  x:-135+(i%5)*34,z:-130+Math.floor(i/5)*34,
-  w:22,d:22,h:rand(30,75),type:"tower"
- });
-}
-for(let i=0;i<30;i++){
- props.push({x:-170+i*10,z:-50,w:1,d:9,h:3,type:"wall"});
-}
-for(let i=0;i<150;i++){
- let x=rand(-270,270),z=rand(-260,260);
- if(Math.abs(x)<180&&Math.abs(z)<180)continue;
- if(waterAt(x,z))continue;
- props.push({x,z,w:rand(1,4),d:rand(1,4),h:rand(2,7),type:"tree"});
-}
-for(let i=0;i<100;i++){
- let x=rand(-170,170),z=rand(-160,160);
- if(waterAt(x,z))continue;
- props.push({x,z,w:rand(2,5),d:rand(2,5),h:rand(1,3),type:"crate"});
-}
-
-for(let i=0;i<110;i++){
- let x=rand(-195,195),z=rand(-180,190);
- if(dist(x,z,0,25)<60){i--;continue}
- zombies.push({
-  x,z,y:0,hp:Math.random()<.2?190:100,
-  max:Math.random()<.2?190:100,
-  speed:Math.random()<.2?2.1:1.5,
-  attack:rand(0,1)
- });
-}
-
-function makeVehicle(type,x,z){
- let hp=type==="armored"?1500:type==="plane"?1300:type==="helicopter"?1100:type==="boat"?850:900;
- vehicles.push({type,x,z,y:type==="plane"||type==="helicopter"?8:0,rot:0,speed:0,hp,max:hp,cool:0});
-}
-makeVehicle("car",-12,42);
-makeVehicle("armored",34,-12);
-makeVehicle("car",-70,70);
-makeVehicle("boat",105,35);
-makeVehicle("boat",125,85);
-makeVehicle("helicopter",-82,12);
-makeVehicle("helicopter",70,120);
-makeVehicle("plane",30,-110);
-makeVehicle("plane",-45,-145);
-
-/* ---------- camera / projection ---------- */
-
-function worldToScreen(x,y,z){
- let dx=x-player.x,dz=z-player.z;
- let sy=Math.sin(-player.yaw),cy=Math.cos(-player.yaw);
- let cx=dx*cy-dz*sy;
- let cz=dx*sy+dz*cy;
- let horizon=player.h+1.6;
- let dy=y-horizon;
- if(cz>=-0.1)return null;
- let f=H/(2*Math.tan(Math.PI/180*36));
- return {
-  x:W/2+(cx/(-cz))*f,
-  y:H/2-(dy/(-cz))*f,
-  depth:-cz
- };
-}
-
-function projectSize(size,depth){
- return Math.max(.2,size*H/(2*Math.tan(Math.PI/180*36))/depth);
-}
-
-/* ---------- drawing ---------- */
-
-function sky(){
- ctx.fillStyle="#89aebc";ctx.fillRect(0,0,W,H*.55);
- ctx.fillStyle="#657f67";ctx.fillRect(0,H*.55,W,H*.45);
-}
-function drawGround(){
- ctx.fillStyle="#4e7651";ctx.fillRect(0,H*.55,W,H*.45);
- for(let i=0;i<35;i++){
-  let z=player.z+15+i*10;
-  let p=worldToScreen(player.x-150,0,z);
-  if(p)ctx.fillStyle="#557b54",ctx.fillRect(0,p.y,W,2);
- }
-}
-function drawLake(a){
- let p=worldToScreen(a.x,0,a.z);
- if(!p)return;
- let s=projectSize(a.w,p.depth);
- let sy=projectSize(a.d,p.depth);
- ctx.fillStyle="#147c9e";
- ctx.fillRect(p.x-s/2,p.y-sy/2,s,sy);
- ctx.strokeStyle="#65b9cc";ctx.globalAlpha=.35;
- for(let i=0;i<8;i++){
-  ctx.beginPath();ctx.moveTo(p.x-s/2,p.y-sy/2+i*sy/8);
-  ctx.lineTo(p.x+s/2,p.y-sy/2+i*sy/8);ctx.stroke();
- }
- ctx.globalAlpha=1;
-}
-function drawBuilding(b){
- let p=worldToScreen(b.x,b.h,b.z);
- let q=worldToScreen(b.x,0,b.z);
- if(!p||!q)return;
- let w=projectSize(b.w,p.depth),h=q.y-p.y;
- ctx.fillStyle=b.type==="tower"?"#566574":"#697069";
- ctx.fillRect(p.x-w/2,p.y,w,h);
- ctx.fillStyle="#a8c3c7";
- let rows=Math.max(2,Math.floor(b.h/5)),cols=4;
- for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-  let wx=p.x-w/2+w*(c+.2)/cols;
-  let wy=p.y+h*(r+.15)/rows;
-  ctx.fillRect(wx,wy,Math.max(2,w/(cols*3)),Math.max(2,h/(rows*4)));
- }
-}
-function drawProp(o){
- let p=worldToScreen(o.x,o.h,o.z);
- let q=worldToScreen(o.x,0,o.z);
- if(!p||!q)return;
- let s=projectSize(Math.max(o.w,o.d),p.depth);
- if(o.type==="tree"){
-  ctx.fillStyle="#5a3c27";ctx.fillRect(p.x-s*.12,p.y,s*.24,q.y-p.y);
-  ctx.fillStyle="#2e633b";ctx.beginPath();ctx.arc(p.x,p.y+s*.25,s*.7,0,Math.PI*2);ctx.fill();
- }else{
-  ctx.fillStyle=o.type==="wall"?"#5b646a":"#8b6842";
-  ctx.fillRect(p.x-s/2,p.y,s,q.y-p.y);
- }
-}
-function drawVehicle(v){
- let p=worldToScreen(v.x,v.y+2,v.z);
- if(!p)return;
- let s=projectSize(v.type==="plane"?7:v.type==="boat"?5:4,p.depth);
- ctx.save();ctx.translate(p.x,p.y);
- ctx.rotate(v.rot);
- if(v.type==="boat"){
-  ctx.fillStyle="#195b7d";ctx.beginPath();ctx.ellipse(0,0,s*.8,s*.3,0,0,Math.PI*2);ctx.fill();
- }else if(v.type==="helicopter"){
-  ctx.fillStyle="#3d6045";ctx.fillRect(-s*.65,-s*.25,s*1.3,s*.5);
-  ctx.fillStyle="#202020";ctx.fillRect(-s, -s*.55,s*2,.08);
- }else if(v.type==="plane"){
-  ctx.fillStyle="#d2d5d8";ctx.fillRect(-s*.9,-s*.12,s*1.8,s*.24);
-  ctx.fillRect(-s*.2,-s*.75,s*.4,s*1.5);
- }else{
-  ctx.fillStyle=v.type==="armored"?"#3f4b52":"#b43737";
-  ctx.fillRect(-s*.65,-s*.38,s*1.3,s*.76);
-  ctx.fillStyle="#263c45";ctx.fillRect(-s*.4,-s*.6,s*.8,s*.35);
- }
- ctx.restore();
-}
-function drawZombie(z){
- let p=worldToScreen(z.x,z.h+3,z.z);
- if(!p)return;
- let s=projectSize(1,p.depth);
- ctx.fillStyle=z.max>100?"#70454d":"#496346";
- ctx.fillRect(p.x-s*.55,p.y,s*1.1,s*1.9);
- ctx.fillStyle="#849b78";ctx.beginPath();ctx.arc(p.x,p.y-s*.1,s*.48,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#f33";
- ctx.fillRect(p.x-s*.18,p.y-s*.17,s*.1,s*.1);ctx.fillRect(p.x+s*.08,p.y-s*.17,s*.1,s*.1);
-}
-function drawCrosshair(){
- ctx.strokeStyle="#fff";ctx.lineWidth=2;
- ctx.beginPath();ctx.moveTo(W/2-12,H/2);ctx.lineTo(W/2-3,H/2);
- ctx.moveTo(W/2+3,H/2);ctx.lineTo(W/2+12,H/2);
- ctx.moveTo(W/2,H/2-12);ctx.lineTo(W/2,H/2-3);
- ctx.moveTo(W/2,H/2+3);ctx.lineTo(W/2,H/2+12);ctx.stroke();
-}
-function drawGun(){
- if(vehicle)return;
- ctx.save();
- ctx.translate(W-170,H-110);
- ctx.rotate(-.05);
- ctx.fillStyle="#1c2024";ctx.fillRect(0,30,115,28);
- ctx.fillStyle="#343a40";ctx.fillRect(95,35,75,14);
- ctx.fillStyle="#111";ctx.fillRect(25,55,28,55);
- ctx.fillStyle="#555";ctx.fillRect(10,30,30,8);
- ctx.restore();
-}
-function drawMap(){
- mctx.fillStyle="#173128";mctx.fillRect(0,0,150,150);
- mctx.fillStyle="#16799d";
- for(const a of lakes)mctx.fillRect(75+a.x*.25-a.w*.125,75+a.z*.25-a.d*.125,a.w*.25,a.d*.25);
- mctx.fillStyle="#4ff";
- for(const v of vehicles)mctx.fillRect(75+v.x*.25,75+v.z*.25,3,3);
- mctx.fillStyle="#f44";
- for(const z of zombies)mctx.fillRect(75+z.x*.25,75+z.z*.25,2,2);
- mctx.fillStyle="#fff";mctx.fillRect(73,73,4,4);
-}
-
-/* ---------- gameplay ---------- */
-
-function say(t){document.getElementById("message").textContent=t;msgTimer=1.4}
-function shoot(){
- let g=guns[weapon];
- if(reload>0||shotTimer>0)return;
- if(ammo[weapon]<=0){say("彈匣空了");reloadGun();return}
- ammo[weapon]--;shotTimer=g[4];
- let nearest=null,best=999;
- for(const z of zombies){
-  let dx=z.x-player.x,dz=z.z-player.z,d=Math.hypot(dx,dz);
-  if(d>120)continue;
-  let angle=Math.atan2(dx,-dz)-player.yaw;
-  angle=Math.atan2(Math.sin(angle),Math.cos(angle));
-  if(Math.abs(angle)<.12&&d<best){best=d;nearest=z}
- }
- if(nearest){
-  let dmg=g[3];
-  if(g[0]==="Shotgun")dmg*=Math.floor(rand(2,5));
-  nearest.hp-=dmg;
-  if(nearest.hp<=0){kills++;say("擊殺 +1")}
- }
-}
-function reloadGun(){
- let g=guns[weapon];
- if(reload>0||ammo[weapon]>=g[1])return;
- if(g[2]<=0)return;
- reload=g[0]==="Shotgun"?1.5:1.1;say("換彈中…");
-}
-function updatePlayer(dt){
- if(vehicle){updateVehicle(dt);return}
- let mx=0,mz=0;
- if(keys.KeyW)mz-=1;if(keys.KeyS)mz+=1;if(keys.KeyA)mx-=1;if(keys.KeyD)mx+=1;
- let len=Math.hypot(mx,mz);
- if(len){
-  mx/=len;mz/=len;
-  let sp=8*(keys.ShiftLeft?1.5:1)*dt;
-  let sin=Math.sin(player.yaw),cos=Math.cos(player.yaw);
-  let dx=(mx*cos-mz*sin)*sp,dz=(mx*sin+mz*cos)*sp;
-  let nx=player.x+dx,nz=player.z+dz;
-  if(!waterAt(nx,nz)){player.x=nx;player.z=nz}
- }
- if(keys.Space&&player.h<=.01){player.vy=8.5}
- player.vy-=22*dt;player.h+=player.vy*dt;
- if(player.h<0){player.h=0;player.vy=0}
- /* simplified universal climbing: Space while next to a building raises player */
- if(keys.Space){
-  for(const b of buildings){
-   if(Math.abs(player.x-b.x)<b.w/2+2&&Math.abs(player.z-b.z)<b.d/2+2){
-    player.h=Math.min(b.h,player.h+5*dt);break;
-   }
-  }
- }
-}
-function updateVehicle(dt){
- const v=vehicle;
- if(keys.KeyW)v.speed+=28*dt;
- if(keys.KeyS)v.speed-=25*dt;
- v.speed*=Math.pow(.15,dt);
- if(keys.KeyA)v.rot+=1.6*dt;
- if(keys.KeyD)v.rot-=1.6*dt;
- if(v.type==="helicopter"||v.type==="plane"){
-  if(keys.Space)v.y+=22*dt;
-  if(keys.KeyC)v.y-=22*dt;
-  v.y=Math.max(2,Math.min(90,v.y));
- }else{
-  v.y=0;
-  if(v.type==="boat"&&!waterAt(v.x,v.z))v.speed*=.2;
- }
- v.x+=Math.sin(v.rot)*v.speed*dt;
- v.z-=Math.cos(v.rot)*v.speed*dt;
- player.x=v.x;player.z=v.z;player.h=v.y;
- v.cool=Math.max(0,v.cool-dt);
-}
-function nearestVehicle(){
- let b=null,d=9;
- for(const v of vehicles){
-  let q=dist(player.x,player.z,v.x,v.z);
-  if(q<d){d=q;b=v}
- }
- return b;
-}
-function toggleVehicle(){
- if(vehicle){
-  player.x=vehicle.x+3;player.z=vehicle.z+3;player.h=0;
-  vehicle.driver=false;vehicle=null;
-  document.getElementById("vehicle").style.display="none";
-  say("離開載具");return;
- }
- let v=nearestVehicle();
- if(v){vehicle=v;v.driver=true;say("進入 "+v.type)}
-}
-function vehicleAttack(){
- if(!vehicle||vehicle.cool>0)return;
- vehicle.cool=.6;
- for(const z of zombies){
-  let d=dist(vehicle.x,vehicle.z,z.x,z.z);
-  if(d<35)z.hp-=vehicle.type==="plane"?180:110;
- }
- say("載具武器開火");
-}
-function updateZombies(dt){
- for(let i=zombies.length-1;i>=0;i--){
-  const z=zombies[i];
-  if(z.hp<=0){zombies.splice(i,1);continue}
-  let tx=vehicle?vehicle.x:player.x,tz=vehicle?vehicle.z:player.z;
-  let dx=tx-z.x,dz=tz-z.z,d=Math.hypot(dx,dz);
-  if(d<100){
-   z.x+=dx/d*z.speed*dt;z.z+=dz/d*z.speed*dt;
-   if(d<3.5){
-    z.attack-=dt;
-    if(z.attack<=0){
-     z.attack=1;
-     if(vehicle)vehicle.hp-=z.max>100?15:8;
-     else player.hp-=z.max>100?14:8;
-    }
-   }
-  }
- }
-}
-function updateUI(){
- let g=guns[weapon];
- document.getElementById("health").firstElementChild.style.width=player.hp+"%";
- document.getElementById("zc").textContent=zombies.length;
- document.getElementById("kc").textContent=kills;
- document.getElementById("ammo").textContent=ammo[weapon]+" / "+g[2];
- document.getElementById("gun").textContent=g[0];
- document.getElementById("scope").style.display=mouse.aim&&!vehicle?"block":"none";
- if(vehicle){
-  document.getElementById("vehicle").style.display="block";
-  document.getElementById("vhp").textContent=Math.max(0,Math.round(vehicle.hp));
- }else document.getElementById("vehicle").style.display="none";
-}
-function render(){
- sky();drawGround();
- for(const a of lakes)drawLake(a);
- const objects=[];
- for(const b of buildings)objects.push([b.z,()=>drawBuilding(b)]);
- for(const p of props)objects.push([p.z,()=>drawProp(p)]);
- for(const v of vehicles)objects.push([v.z,()=>drawVehicle(v)]);
- for(const z of zombies)objects.push([z.z,()=>drawZombie(z)]);
- objects.sort((a,b)=>b[0]-a[0]);
- for(const o of objects)o[1]();
- drawGun();drawCrosshair();drawMap();
-}
-function end(){
- gameOver=true;
- document.getElementById("menu").style.display="grid";
- document.querySelector("#menu .panel").innerHTML="<h1>☠ 任務失敗</h1><p>擊殺："+kills+"</p><button onclick='location.reload()'>重新開始</button>";
-}
-function loop(now){
- let dt=Math.min((now-last)/1000,.04);last=now;
- if(running&&!gameOver){
-  shotTimer=Math.max(0,shotTimer-dt);
-  if(reload>0){
-   reload-=dt;
-   if(reload<=0){
-    let g=guns[weapon],need=Math.min(g[1]-ammo[weapon],g[2]);
-    ammo[weapon]+=need;g[2]-=need;
-   }
-  }
-  if(mouse.down)shoot();
-  updatePlayer(dt);updateZombies(dt);
-  for(const v of vehicles)if(v.hp<=0&&!v.dead){v.dead=true;if(vehicle===v)vehicle=null}
-  if(player.hp<=0)end();
-  if(msgTimer>0){msgTimer-=dt;if(msgTimer<=0)document.getElementById("message").textContent=""}
-  updateUI();
- }
- render();
- requestAnimationFrame(loop);
-}
-
-addEventListener("keydown",e=>{
- keys[e.code]=true;
- if(e.code==="Space")e.preventDefault();
- if(e.code==="KeyR")reloadGun();
- if(e.code==="KeyE")toggleVehicle();
- if(e.code==="KeyF")vehicleAttack();
- if(e.code.startsWith("Digit")){
-  let n=Number(e.code.slice(5))-1;
-  if(n>=0&&n<guns.length)weapon=n;
- }
-});
-addEventListener("keyup",e=>keys[e.code]=false);
-canvas.addEventListener("mousedown",e=>{
- if(!running)return;
- if(e.button===0)mouse.down=true;
- if(e.button===2)mouse.aim=true;
-});
-addEventListener("mouseup",e=>{
- if(e.button===0)mouse.down=false;
- if(e.button===2)mouse.aim=false;
-});
-addEventListener("contextmenu",e=>e.preventDefault());
-addEventListener("mousemove",e=>{
- if(!running)return;
- if(e.movementX){
-  player.yaw-=e.movementX*.0025;
-  player.pitch-=e.movementY*.0018;
-  player.pitch=Math.max(-1.2,Math.min(1.2,player.pitch));
- }
-});
-document.getElementById("start").onclick=()=>{
- running=true;
- document.getElementById("menu").style.display="none";
- document.getElementById("hud").style.display="block";
- say("任務開始：清理湖區城市");
- canvas.focus();
-};
-requestAnimationFrame(loop);
-
-/* Offline expansion notes: all gameplay is intentionally procedural.
-   No network requests are made by this file. */
-</script>
+    <script>
+        (function(){
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            let W, H;
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+            
+            // 游戏状态
+            let gameStarted = false;
+            let money = 0;
+            let combo = 0;
+            let comboTimer = 0;
+            
+            // 玩家
+            const player = {
+                x: 300, y: 0, z: 300,
+                speed: 25,
+                health: 100,
+                maxHealth: 100,
+                vy: 0,
+                onGround: true,
+                weaponIndex: 0,
+                ammo: 30,
+                maxAmmo: 30,
+                reloading: false,
+                reloadTime: 0,
+                lastFireTime: 0,
+                damageCooldown: 0,
+                armor: 0
+            };
+            
+            // 武器
+            const weapons = [
+                { name: '步枪', icon: '🔫', damage: 30, fireRate: 0.08, ammoMax: 30, bulletSpeed: 700, reloadTime: 1.2, spread: 0.02, color: '#ffff00' },
+                { name: '霰弹枪', icon: '💥', damage: 50, fireRate: 0.7, ammoMax: 8, bulletSpeed: 500, reloadTime: 1.8, spread: 0.1, pellets: 8, color: '#ff8800' },
+                { name: '狙击枪', icon: '🎯', damage: 150, fireRate: 1.0, ammoMax: 5, bulletSpeed: 1000, reloadTime: 2.2, spread: 0.001, color: '#00ffff' },
+                { name: '冲锋枪', icon: '⚡', damage: 20, fireRate: 0.04, ammoMax: 40, bulletSpeed: 600, reloadTime: 1.0, spread: 0.05, color: '#00ff00' },
+                { name: '火焰枪', icon: '🔥', damage: 10, fireRate: 0.02, ammoMax: 50, bulletSpeed: 400, reloadTime: 1.5, spread: 0.15, fire: true, color: '#ff4400' }
+            ];
+            
+            // 载具
+            const vehicles = [];
+            class Vehicle {
+                constructor(type, x, z, color, name, hp, speed, weaponDamage) {
+                    this.type = type;
+                    this.x = x; this.z = z;
+                    this.y = type === 'plane' ? 50 : 0;
+                    this.hp = hp;
+                    this.maxHp = hp;
+                    this.speed = speed;
+                    this.color = color;
+                    this.name = name;
+                    this.active = true;
+                    this.attackCooldown = 0;
+                    this.weaponDamage = weaponDamage;
+                }
+            }
+            vehicles.push(new Vehicle('boat', 300, 250, '#8B4513', '🚤 巡逻艇', 300, 30, 40));
+            vehicles.push(new Vehicle('car', 500, 400, '#4169E1', '🚗 装甲车', 250, 35, 30));
+            vehicles.push(new Vehicle('plane', 550, 200, '#778899', '✈️ 战斗机', 400, 50, 50));
+            vehicles.push(new Vehicle('tank', 200, 500, '#556B2F', '🎖️ 坦克', 500, 25, 60));
+            
+            // 僵尸
+            let zombies = [];
+            class Zombie {
+                constructor(x, z, type) {
+                    this.x = x; this.z = z;
+                    this.y = 0;
+                    this.type = type || 'normal';
+                    if(type === 'fast') {
+                        this.hp = 40; this.speed = 10; this.damage = 10; this.radius = 14;
+                        this.color = '#7FFF00';
+                    } else if(type === 'tank') {
+                        this.hp = 200; this.speed = 3; this.damage = 30; this.radius = 30;
+                        this.color = '#8B0000';
+                    } else if(type === 'exploder') {
+                        this.hp = 80; this.speed = 6; this.damage = 50; this.radius = 20;
+                        this.color = '#FF4500';
+                    } else if(type === 'boss') {
+                        this.hp = 1000; this.speed = 4; this.damage = 50; this.radius = 50;
+                        this.color = '#FF00FF';
+                    } else {
+                        this.hp = 60; this.speed = 5; this.damage = 15; this.radius = 18;
+                        this.color = '#2E8B57';
+                    }
+                    this.maxHp = this.hp;
+                    this.attackCooldown = 0;
+                    this.hitFlash = 0;
+                    this.dropMoney = type === 'boss' ? 1000 : type === 'tank' ? 300 : type === 'exploder' ? 200 : 100;
+                }
+            }
+            
+            let wave = 1;
+            function spawnWave() {
+                zombies = [];
+                const count = 15 + wave * 8;
+                for(let i = 0; i < count; i++) {
+                    const x = 50 + Math.random() * 500;
+                    const z = 50 + Math.random() * 500;
+                    let type = 'normal';
+                    const r = Math.random();
+                    if(wave > 1 && r < 0.2) type = 'fast';
+                    if(wave > 2 && r < 0.4) type = 'tank';
+                    if(wave > 3 && r < 0.5) type = 'exploder';
+                    zombies.push(new Zombie(x, z, type));
+                }
+                if(wave % 3 === 0) {
+                    zombies.push(new Zombie(300, 300, 'boss'));
+                }
+            }
+            
+            // 子弹
+            let bullets = [];
+            class Bullet {
+                constructor(x, y, z, dx, dy, dz, damage, speed, color, fire = false) {
+                    this.x = x; this.y = y; this.z = z;
+                    this.dx = dx; this.dy = dy; this.dz = dz;
+                    this.damage = damage;
+                    this.speed = speed;
+                    this.life = 2.0;
+                    this.color = color;
+                    this.fire = fire;
+                }
+            }
+            
+            // 3D投影
+            let yaw = 0, pitch = 0;
+            let isPointerLocked = false;
+            let mouseDown = false;
+            const keys = {};
+            
+            function project3D(x, y, z) {
+                const dx = x - player.x;
+                const dy = y - (player.y + 15);
+                const dz = z - player.z;
+                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+                const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+                const tz = dz * cosY - dx * sinY;
+                const tx = dx * cosY + dz * sinY;
+                const ty = dy * cosP - tz * sinP;
+                const tz2 = dy * sinP + tz * cosP;
+                if(tz2 < 1) return null;
+                const scale = 600 / tz2;
+                return { x: W/2 + tx * scale, y: H/2 - ty * scale, scale: scale, depth: tz2 };
+            }
+            
+            function drawWorld() {
+                // 天空
+                const grad = ctx.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, '#1a0a2a');
+                grad.addColorStop(0.5, '#2a1a3a');
+                grad.addColorStop(0.8, '#4a3a2a');
+                grad.addColorStop(1, '#6a5a3a');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, W, H);
+                
+                // 地面
+                ctx.fillStyle = '#1a2a1a';
+                ctx.fillRect(0, H * 0.6, W, H * 0.4);
+                
+                // 地面网格
+                ctx.strokeStyle = 'rgba(255,100,0,0.1)';
+                ctx.lineWidth = 1;
+                for(let i = 0; i < 600; i += 25) {
+                    const p1 = project3D(i, 0, 0);
+                    const p2 = project3D(i, 0, 600);
+                    if(p1 && p2) {
+                        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                    }
+                    const p3 = project3D(0, 0, i);
+                    const p4 = project3D(600, 0, i);
+                    if(p3 && p4) {
+                        ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+                    }
+                }
+                
+                // 湖泊
+                const lake = project3D(300, 0, 300);
+                if(lake) {
+                    ctx.fillStyle = 'rgba(30,100,150,0.7)';
+                    ctx.beginPath();
+                    ctx.ellipse(lake.x, lake.y, 80 * lake.scale, 50 * lake.scale, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(50,130,180,0.5)';
+                    ctx.beginPath();
+                    ctx.ellipse(lake.x - 10, lake.y - 10, 50 * lake.scale, 30 * lake.scale, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 绘制载具
+                vehicles.forEach(v => {
+                    if(!v.active) return;
+                    const p = project3D(v.x, v.y, v.z);
+                    if(p) {
+                        const s = p.scale;
+                        ctx.fillStyle = v.color;
+                        if(v.type === 'boat') {
+                            ctx.fillRect(p.x - 40*s, p.y - 20*s, 80*s, 40*s);
+                            ctx.fillRect(p.x - 25*s, p.y - 30*s, 50*s, 15*s);
+                        } else if(v.type === 'car') {
+                            ctx.fillRect(p.x - 35*s, p.y - 25*s, 70*s, 45*s);
+                            ctx.fillRect(p.x - 20*s, p.y - 35*s, 40*s, 20*s);
+                        } else if(v.type === 'plane') {
+                            ctx.beginPath();
+                            ctx.moveTo(p.x - 45*s, p.y);
+                            ctx.lineTo(p.x + 50*s, p.y - 25*s);
+                            ctx.lineTo(p.x + 50*s, p.y + 25*s);
+                            ctx.closePath();
+                            ctx.fill();
+                        } else if(v.type === 'tank') {
+                            ctx.fillRect(p.x - 35*s, p.y - 25*s, 70*s, 45*s);
+                            ctx.fillRect(p.x - 15*s, p.y - 40*s, 30*s, 20*s);
+                            ctx.fillRect(p.x - 10*s, p.y - 50*s, 50*s, 15*s);
+                        }
+                        
+                        // 载具血量
+                        if(v.hp < v.maxHp) {
+                            ctx.fillStyle = '#ff0000';
+                            ctx.fillRect(p.x - 40*s, p.y - 60*s, 80*s, 8*s);
+                            ctx.fillStyle = '#00ff00';
+                            ctx.fillRect(p.x - 40*s, p.y - 60*s, 80*s * (v.hp / v.maxHp), 8*s);
+                        }
+                        
+                        // 载具名字
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `bold ${Math.max(12, 14*s)}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(v.name, p.x, p.y - 70*s);
+                    }
+                });
+                
+                // 绘制僵尸
+                zombies.forEach(z => {
+                    const p = project3D(z.x, z.y, z.z);
+                    if(p) {
+                        const s = p.scale;
+                        const flash = z.hitFlash > 0;
+                        ctx.fillStyle = flash ? '#ffffff' : z.color;
+                        const h = z.radius * 2 * s;
+                        ctx.fillRect(p.x - z.radius*s, p.y - 35*s, z.radius*2*s, 45*s);
+                        ctx.fillStyle = flash ? '#ffffff' : '#3a5a2a';
+                        ctx.fillRect(p.x - 12*s, p.y - 45*s, 24*s, 18*s);
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(p.x - 7*s, p.y - 38*s, 5*s, 5*s);
+                        ctx.fillRect(p.x + 2*s, p.y - 38*s, 5*s, 5*s);
+                        
+                        // 血量条
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(p.x - z.radius*s, p.y - 55*s, z.radius*2*s, 6*s);
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(p.x - z.radius*s, p.y - 55*s, z.radius*2*s * (z.hp / z.maxHp), 6*s);
+                        
+                        // Boss标记
+                        if(z.type === 'boss') {
+                            ctx.fillStyle = '#ff00ff';
+                            ctx.font = `bold ${20*s}px Arial`;
+                            ctx.fillText('👑 BOSS', p.x, p.y - 60*s);
+                        }
+                    }
+                });
+                
+                // 绘制子弹
+                bullets.forEach(b => {
+                    const p = project3D(b.x, b.y, b.z);
+                    if(p) {
+                        if(b.fire) {
+                            ctx.fillStyle = 'rgba(255,68,0,0.8)';
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.fillStyle = '#ffaa00';
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = b.color;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                });
+            }
+            
+            function update(dt) {
+                if(!gameStarted) return;
+                
+                // 连杀计时
+                if(comboTimer > 0) {
+                    comboTimer -= dt;
+                    if(comboTimer <= 0) combo = 0;
+                }
+                
+                // 移动
+                let moveX = 0, moveZ = 0;
+                if(keys['w']) moveZ -= 1;
+                if(keys['s']) moveZ += 1;
+                if(keys['a']) moveX -= 1;
+                if(keys['d']) moveX += 1;
+                const len = Math.hypot(moveX, moveZ);
+                if(len > 0) { moveX /= len; moveZ /= len; }
+                
+                const speed = player.vehicle ? player.vehicle.speed : player.speed;
+                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+                const wx = (moveX * cosY - moveZ * sinY) * speed;
+                const wz = (moveX * sinY + moveZ * cosY) * speed;
+                
+                player.x += wx * dt;
+                player.z += wz * dt;
+                player.x = Math.max(20, Math.min(580, player.x));
+                player.z = Math.max(20, Math.min(580, player.z));
+                
+                // 载具
+                if(player.vehicle) {
+                    player.vehicle.x = player.x;
+                    player.vehicle.z = player.z;
+                    if(player.vehicle.type === 'plane') player.y = 50;
+                    else player.y = 0;
+                } else {
+                    if(keys[' '] && player.onGround) {
+                        player.vy = 35;
+                        player.onGround = false;
+                    }
+                    player.vy -= 60 * dt;
+                    player.y += player.vy * dt;
+                    if(player.y <= 0) {
+                        player.y = 0;
+                        player.vy = 0;
+                        player.onGround = true;
+                    }
+                }
+                
+                // 载具交互
+                if(keys['e'] && !player.vehicle) {
+                    for(const v of vehicles) {
+                        if(v.active && Math.hypot(v.x - player.x, v.z - player.z) < 60) {
+                            player.vehicle = v;
+                            player.x = v.x;
+                            player.z = v.z;
+                            if(v.type === 'plane') player.y = 50;
+                            else player.y = 0;
+                            break;
+                        }
+                    }
+                } else if(keys['e'] && player.vehicle) {
+                    player.vehicle = null;
+                    player.y = 0;
+                }
+                
+                // 换弹
+                if(keys['r'] && !player.reloading && player.ammo < player.maxAmmo) {
+                    player.reloading = true;
+                    player.reloadTime = weapons[player.weaponIndex].reloadTime;
+                    document.getElementById('reload-bar').style.display = 'block';
+                }
+                if(player.reloading) {
+                    player.reloadTime -= dt;
+                    const progress = ((weapons[player.weaponIndex].reloadTime - player.reloadTime) / weapons[player.weaponIndex].reloadTime) * 100;
+                    document.getElementById('reload-progress').style.width = progress + '%';
+                    if(player.reloadTime <= 0) {
+                        player.ammo = player.maxAmmo;
+                        player.reloading = false;
+                        document.getElementById('reload-bar').style.display = 'none';
+                    }
+                }
+                
+                // 射击
+                if(mouseDown && !player.reloading && player.ammo > 0 && performance.now() - player.lastFireTime > weapons[player.weaponIndex].fireRate * 1000) {
+                    const weapon = weapons[player.weaponIndex];
+                    const dx = -Math.sin(yaw) * Math.cos(pitch);
+                    const dy = Math.sin(pitch);
+                    const dz = -Math.cos(yaw) * Math.cos(pitch);
+                    const muzzleY = player.vehicle ? player.y + 35 : player.y + 25;
+                    
+                    if(weapon.pellets) {
+                        for(let i = 0; i < weapon.pellets; i++) {
+                            const spreadX = (Math.random() - 0.5) * weapon.spread;
+                            const spreadY = (Math.random() - 0.5) * weapon.spread;
+                            bullets.push(new Bullet(player.x, muzzleY, player.z, dx + spreadX, dy + spreadY, dz + spreadX, weapon.damage / weapon.pellets, weapon.bulletSpeed, weapon.color, weapon.fire));
+                        }
+                    } else {
+                        bullets.push(new Bullet(player.x, muzzleY, player.z, dx, dy, dz, weapon.damage, weapon.bulletSpeed, weapon.color, weapon.fire));
+                    }
+                    
+                    player.ammo--;
+                    player.lastFireTime = performance.now();
+                    pitch += 0.005;
+                }
+                
+                // 载具武器
+                if(player.vehicle && mouseDown && player.vehicle.attackCooldown <= 0) {
+                    const dx = -Math.sin(yaw) * Math.cos(pitch);
+                    const dy = Math.sin(pitch);
+                    const dz = -Math.cos(yaw) * Math.cos(pitch);
+                    bullets.push(new Bullet(player.x, player.y + 35, player.z, dx, dy, dz, player.vehicle.weaponDamage, 800, '#ff0000'));
+                    player.vehicle.attackCooldown = 0.1;
+                }
+                if(player.vehicle && player.vehicle.attackCooldown > 0) {
+                    player.vehicle.attackCooldown -= dt;
+                }
+                
+                // 换枪
+                for(let i = 0; i < weapons.length; i++) {
+                    if(keys[String(i + 1)]) {
+                        player.weaponIndex = i;
+                        player.ammo = weapons[i].ammoMax;
+                        player.maxAmmo = weapons[i].ammoMax;
+                        player.reloading = false;
+                        document.getElementById('reload-bar').style.display = 'none';
+                        document.querySelectorAll('.weapon-slot').forEach(slot => {
+                            slot.classList.toggle('active', parseInt(slot.dataset.weapon) === i);
+                        });
+                    }
+                }
+                
+                // 僵尸AI
+                zombies.forEach(z => {
+                    const dx = player.x - z.x;
+                    const dz = player.z - z.z;
+                    const dist = Math.hypot(dx, dz);
+                    if(dist > 20 && dist < 800) {
+                        z.x += (dx / dist) * z.speed * dt;
+                        z.z += (dz / dist) * z.speed * dt;
+                    }
+                    if(dist < z.radius + 15 && z.attackCooldown <= 0) {
+                        if(player.vehicle) {
+                            player.vehicle.hp -= z.damage;
+                            if(player.vehicle.hp <= 0) {
+                                player.vehicle.active = false;
+                                player.vehicle = null;
+                                player.y = 0;
+                            }
+                        } else {
+                            if(player.damageCooldown <= 0) {
+                                const actualDamage = player.armor > 0 ? Math.floor(z.damage * 0.5) : z.damage;
+                                player.health -= actualDamage;
+                                if(player.armor > 0) player.armor--;
+                                player.damageCooldown = 0.5;
+                                document.getElementById('damage-vignette').style.opacity = '1';
+                                setTimeout(() => document.getElementById('damage-vignette').style.opacity = '0', 150);
+                            }
+                        }
+                        z.attackCooldown = 0.8;
+                    }
+                    if(z.attackCooldown > 0) z.attackCooldown -= dt;
+                    if(z.hitFlash > 0) z.hitFlash -= dt;
+                    z.x = Math.max(10, Math.min(590, z.x));
+                    z.z = Math.max(10, Math.min(590, z.z));
+                });
+                
+                if(player.damageCooldown > 0) player.damageCooldown -= dt;
+                
+                // 子弹更新
+                bullets.forEach(b => {
+                    b.x += b.dx * b.speed * dt;
+                    b.y += b.dy * b.speed * dt;
+                    b.z += b.dz * b.speed * dt;
+                    b.life -= dt;
+                    
+                    zombies.forEach(z => {
+                        if(b.life > 0 && Math.hypot(z.x - b.x, z.z - b.z) < z.radius && z.hp > 0) {
+                            z.hp -= b.damage;
+                            z.hitFlash = 0.2;
+                            b.life = 0;
+                            
+                            if(z.hp <= 0) {
+                                combo++;
+                                comboTimer = 3;
+                                money += z.dropMoney;
+                                
+                                // 连杀奖励
+                                if(combo >= 3) {
+                                    money += combo * 50;
+                                }
+                                
+                                // 爆炸僵尸
+                                if(z.type === 'exploder') {
+                                    zombies.forEach(z2 => {
+                                        const dist2 = Math.hypot(z2.x - z.x, z2.z - z.z);
+                                        if(dist2 < 80) {
+                                            z2.hp -= 50;
+                                            z2.hitFlash = 0.3;
+                                        }
+                                    });
+                                }
+                                
+                                const killMsg = document.createElement('div');
+                                killMsg.className = 'kill-msg';
+                                killMsg.textContent = `💀 ${z.type} 僵尸 +${z.dropMoney}💰`;
+                                document.getElementById('kill-feed').appendChild(killMsg);
+                                setTimeout(() => killMsg.remove(), 2500);
+                                
+                                // 连杀提示
+                                if(combo >= 3) {
+                                    const comboDisplay = document.getElementById('combo-display');
+                                    comboDisplay.textContent = `🔥 ${combo}连杀！`;
+                                    comboDisplay.style.opacity = '1';
+                                    setTimeout(() => comboDisplay.style.opacity = '0', 1000);
+                                }
+                            }
+                        }
+                    });
+                    
+                    vehicles.forEach(v => {
+                        if(b.life > 0 && v.active && v !== player.vehicle && Math.hypot(v.x - b.x, v.z - b.z) < 35) {
+                            v.hp -= b.damage;
+                            b.life = 0;
+                            if(v.hp <= 0) {
+                                v.active = false;
+                                money += 500;
+                            }
+                        }
+                    });
+                });
+                
+                bullets = bullets.filter(b => b.life > 0);
+                zombies = zombies.filter(z => z.hp > 0);
+                
+                if(zombies.length === 0) {
+                    wave++;
+                    money += 500 + wave * 100;
+                    spawnWave();
+                }
+                
+                // HUD更新
+                document.getElementById('health').textContent = Math.floor(player.health);
+                document.getElementById('zombies').textContent = zombies.length;
+                document.getElementById('money').textContent = money;
+                document.getElementById('ammo').textContent = `${player.ammo}/${player.maxAmmo}`;
+                document.getElementById('combo').textContent = combo;
+                
+                if(player.health <= 0) {
+                    gameStarted = false;
+                    alert(`💀 游戏结束！\n💰 获得金钱: ${money}\n🏆 最高连杀: ${combo}\n🌊 到达波数: ${wave}`);
+                    location.reload();
+                }
+            }
+            
+            // 输入处理
+            document.getElementById('start-btn').addEventListener('click', () => {
+                gameStarted = true;
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('hud').style.display = 'flex';
+                document.getElementById('weapon-slots').style.display = 'flex';
+                canvas.requestPointerLock();
+                spawnWave();
+            });
+            
+            canvas.addEventListener('click', () => {
+                if(gameStarted && !isPointerLocked) canvas.requestPointerLock();
+            });
+            
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === canvas;
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if(isPointerLocked && gameStarted) {
+                    yaw -= e.movementX * 0.003;
+                    pitch -= e.movementY * 0.003;
+                    pitch = Math.max(-1.3, Math.min(1.3, pitch));
+                }
+            });
+            
+            document.addEventListener('mousedown', (e) => {
+                if(e.button === 0) mouseDown = true;
+            });
+            
+            document.addEventListener('mouseup', () => { mouseDown = false; });
+            
+            document.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+                if(e.key === ' ') e.preventDefault();
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                keys[e.key.toLowerCase()] = false;
+            });
+            
+            document.querySelectorAll('.weapon-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    const weaponIndex = parseInt(slot.dataset.weapon);
+                    player.weaponIndex = weaponIndex;
+                    player.ammo = weapons[weaponIndex].ammoMax;
+                    player.maxAmmo = weapons[weaponIndex].ammoMax;
+                    player.reloading = false;
+                    document.getElementById('reload-bar').style.display = 'none';
+                    document.querySelectorAll('.weapon-slot').forEach(s => {
+                        s.classList.toggle('active', parseInt(s.dataset.weapon) === weaponIndex);
+                    });
+                });
+            });
+            
+            // 游戏循环
+            let lastTime = performance.now();
+            function gameLoop() {
+                const now = performance.now();
+                const dt = (now - lastTime) / 1000;
+                lastTime = now;
+                update(dt);
+                drawWorld();
+                requestAnimationFrame(gameLoop);
+            }
+            gameLoop();
+        })();
+    </script>
 </body>
 </html>
-<!-- Offline expansion note 0001: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0002: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0003: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0004: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0005: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0006: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0007: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0008: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0009: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0010: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0011: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0012: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0013: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0014: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0015: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0016: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0017: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0018: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0019: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0020: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0021: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0022: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0023: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0024: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0025: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0026: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0027: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0028: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0029: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0030: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0031: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0032: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0033: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0034: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0035: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0036: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0037: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0038: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0039: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0040: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0041: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0042: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0043: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0044: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0045: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0046: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0047: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0048: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0049: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0050: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0051: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0052: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0053: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0054: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0055: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0056: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0057: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0058: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0059: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0060: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0061: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0062: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0063: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0064: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0065: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0066: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0067: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0068: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0069: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0070: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0071: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0072: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0073: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0074: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0075: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0076: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0077: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0078: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0079: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0080: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0081: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0082: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0083: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0084: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0085: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0086: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0087: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0088: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0089: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0090: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0091: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0092: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0093: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0094: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0095: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0096: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0097: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0098: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0099: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0100: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0101: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0102: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0103: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0104: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0105: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0106: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0107: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0108: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0109: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0110: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0111: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0112: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0113: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0114: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0115: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0116: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0117: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0118: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0119: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0120: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0121: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0122: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0123: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0124: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0125: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0126: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0127: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0128: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0129: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0130: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0131: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0132: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0133: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0134: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0135: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0136: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0137: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0138: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0139: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0140: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0141: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0142: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0143: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0144: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0145: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0146: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0147: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0148: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0149: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0150: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0151: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0152: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0153: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0154: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0155: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0156: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0157: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0158: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0159: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0160: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0161: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0162: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0163: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0164: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0165: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0166: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0167: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0168: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0169: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0170: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0171: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0172: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0173: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0174: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0175: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0176: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0177: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0178: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0179: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0180: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0181: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0182: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0183: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0184: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0185: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0186: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0187: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0188: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0189: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0190: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0191: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0192: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0193: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0194: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0195: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0196: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0197: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0198: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0199: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0200: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0201: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0202: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0203: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0204: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0205: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0206: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0207: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0208: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0209: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0210: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0211: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0212: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0213: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0214: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0215: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0216: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0217: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0218: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0219: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0220: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0221: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0222: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0223: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0224: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0225: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0226: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0227: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0228: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0229: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0230: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0231: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0232: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0233: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0234: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0235: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0236: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0237: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0238: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0239: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0240: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0241: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0242: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0243: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0244: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0245: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0246: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0247: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0248: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0249: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0250: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0251: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0252: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0253: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0254: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0255: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0256: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0257: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0258: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0259: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0260: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0261: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0262: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0263: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0264: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0265: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0266: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0267: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0268: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0269: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0270: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0271: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0272: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0273: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0274: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0275: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0276: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0277: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0278: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0279: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0280: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0281: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0282: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0283: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0284: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0285: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0286: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0287: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0288: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0289: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0290: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0291: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0292: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0293: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0294: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0295: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0296: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0297: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0298: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0299: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0300: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0301: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0302: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0303: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0304: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0305: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0306: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0307: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0308: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0309: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0310: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0311: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0312: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0313: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0314: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0315: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0316: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0317: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0318: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0319: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0320: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0321: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0322: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0323: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0324: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0325: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0326: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0327: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0328: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0329: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0330: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0331: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0332: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0333: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0334: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0335: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0336: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0337: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0338: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0339: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0340: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0341: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0342: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0343: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0344: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0345: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0346: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0347: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0348: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0349: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0350: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0351: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0352: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0353: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0354: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0355: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0356: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0357: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0358: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0359: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0360: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0361: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0362: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0363: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0364: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0365: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0366: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0367: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0368: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0369: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0370: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0371: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0372: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0373: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0374: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0375: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0376: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0377: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0378: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0379: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0380: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0381: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0382: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0383: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0384: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0385: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0386: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0387: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0388: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0389: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0390: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0391: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0392: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0393: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0394: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0395: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0396: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0397: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0398: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0399: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0400: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0401: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0402: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0403: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0404: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0405: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0406: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0407: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0408: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0409: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0410: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0411: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0412: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0413: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0414: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0415: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0416: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0417: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0418: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0419: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0420: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0421: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0422: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0423: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0424: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0425: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0426: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0427: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0428: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0429: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0430: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0431: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0432: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0433: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0434: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0435: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0436: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0437: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0438: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0439: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0440: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0441: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0442: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0443: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0444: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0445: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0446: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0447: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0448: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0449: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0450: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0451: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0452: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0453: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0454: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0455: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0456: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0457: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0458: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0459: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0460: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0461: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0462: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0463: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0464: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0465: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0466: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0467: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0468: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0469: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0470: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0471: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0472: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0473: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0474: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0475: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0476: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0477: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0478: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0479: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0480: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0481: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0482: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0483: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0484: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0485: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0486: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0487: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0488: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0489: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0490: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0491: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0492: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0493: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0494: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0495: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0496: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0497: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0498: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0499: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
-<!-- Offline expansion note 0500: future content slot for maps, missions, AI, vehicles, weapons and effects. -->
