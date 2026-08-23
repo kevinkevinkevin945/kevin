@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Minecraft · 实心方块 · 碰撞</title>
+    <title>3D Minecraft · 出生带宝箱</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; font-family: 'Courier New', monospace; background: #1a1a1a; }
@@ -229,6 +229,25 @@
             .item-cell canvas { width: 32px; height: 32px; }
             #item-selector h2 { font-size: 18px; }
         }
+        #chest-message {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            background: rgba(0,0,0,0.8);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 18px;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #chest-message.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -236,12 +255,13 @@
         ⛏️ 生成世界...
         <div class="progress" id="progress-text">0%</div>
     </div>
-    <div id="info">⚡ 实心方块 · 碰撞 · 挖掘消失</div>
+    <div id="info">🎁 出生点旁有宝箱 · 实心方块</div>
     <div id="crosshair">✚</div>
     <div id="controls-hint">
-        <span>🖱️</span> 左键挖掘 · 右键放置 · <span>WASD</span> 移动 · <span>Tab</span> 物品栏
+        <span>🖱️</span> 左键挖掘 · 右键放置/开箱 · <span>WASD</span> 移动 · <span>Tab</span> 物品栏
     </div>
     <div id="blocker" onclick="focusGame()"></div>
+    <div id="chest-message">📦 宝箱已开启！获得物品</div>
 
     <div id="inventory-label">🎒 背包</div>
     <div id="held-label">手持: 空</div>
@@ -275,7 +295,6 @@
         scene.fog = new THREE.Fog(0x87CEEB, 50, 80);
 
         const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
-        camera.position.set(12, 16, 12);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -311,8 +330,8 @@
         const hemi = new THREE.HemisphereLight(0x87CEEB, 0x3a7d44, 0.5);
         scene.add(hemi);
 
-        // --- 纹理生成器 (预生成所有纹理) ---
-        function createBlockTexture(baseColor, detailColor = null, border = true) {
+        // --- 纹理生成器 ---
+        function createBlockTexture(baseColor, detailColor = null, border = true, special = false) {
             const canvas = document.createElement('canvas');
             canvas.width = 32;
             canvas.height = 32;
@@ -334,6 +353,14 @@
                     ctx.fillStyle = detailColor;
                     ctx.fillRect(x, y, 2, 2);
                 }
+            }
+            // 特殊标志（箱子锁）
+            if (special) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔒', 16, 16);
             }
             ctx.strokeStyle = 'rgba(0,0,0,0.15)';
             ctx.lineWidth = 0.5;
@@ -363,16 +390,16 @@
             PLANKS: { name: '木板', color: '#deb887', detail: '#c4a47a' },
             BRICK: { name: '紅磚', color: '#b85a3a', detail: '#8d3a22' },
             SAND: { name: '沙地', color: '#f5e6b0', detail: '#d4c48a' },
+            CHEST: { name: '寶箱', color: '#8B4513', detail: '#A0522D' },
         };
 
-        // 预生成材质
         const materialCache = {};
         const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
 
-        function getBlockMaterial(typeKey) {
+        function getBlockMaterial(typeKey, special = false) {
             if (!materialCache[typeKey]) {
                 const block = BLOCK_TYPES[typeKey];
-                const tex = createBlockTexture(block.color, block.detail);
+                const tex = createBlockTexture(block.color, block.detail, true, special);
                 materialCache[typeKey] = new THREE.MeshStandardMaterial({
                     map: tex,
                     roughness: 0.85,
@@ -382,17 +409,30 @@
             return materialCache[typeKey];
         }
 
-        function createBlockMesh(typeKey, pos) {
-            const mat = getBlockMaterial(typeKey);
+        function createBlockMesh(typeKey, pos, special = false) {
+            const mat = getBlockMaterial(typeKey, special);
             const mesh = new THREE.Mesh(geometry, mat);
             mesh.position.copy(pos);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             mesh.userData = { blockType: typeKey, isBlock: true };
+            if (typeKey === 'CHEST') {
+                mesh.userData.isChest = true;
+                // 箱子物品列表
+                mesh.userData.chestItems = [
+                    { type: 'block', id: 'PLANKS', count: 16 },
+                    { type: 'block', id: 'BRICK', count: 8 },
+                    { type: 'block', id: 'STONE', count: 20 },
+                    { type: 'gun', id: 'PISTOL', count: 1 },
+                    { type: 'tool', id: 'PICKAXE', count: 1 },
+                    { type: 'block', id: 'DIRT', count: 24 },
+                    { type: 'block', id: 'SAND', count: 12 },
+                ];
+            }
             return mesh;
         }
 
-        // --- 世界生成 (分帧, 优化范围) ---
+        // --- 世界生成 (分帧) ---
         const worldObjects = [];
         const worldGroup = new THREE.Group();
         scene.add(worldGroup);
@@ -409,18 +449,21 @@
 
                 let x = -range;
                 let z = -range;
-                let phase = 0; // 0:地表, 1:泥土, 2:石头, 3:矿石, 4:树木
+                let phase = 0;
 
                 function generateNextChunk() {
                     let batch = 0;
                     const BATCH_SIZE = 300;
 
                     while (batch < BATCH_SIZE && x < range) {
-                        if (!(Math.abs(x) < 4 && Math.abs(z) < 4)) {
+                        // 跳过出生点附近 (避免挡住玩家)
+                        const isSpawn = (Math.abs(x) < 2 && Math.abs(z) < 2);
+                        if (!isSpawn) {
                             const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
                             const topY = Math.floor(noise + 3);
                             if (topY >= 0) {
                                 if (phase === 0) {
+                                    // 草地
                                     const pos = new THREE.Vector3(x, topY, z);
                                     const mesh = createBlockMesh('GRASS', pos);
                                     worldGroup.add(mesh);
@@ -447,13 +490,12 @@
                                         batch++;
                                     }
                                 } else if (phase === 3) {
-                                    // 矿石 (用金块颜色显示)
+                                    // 矿石 (用金块颜色)
                                     if (Math.random() < 0.03) {
                                         const depth = 2 + Math.floor(Math.random() * 6);
                                         const yPos = topY - depth;
                                         if (yPos >= -heightRange) {
                                             const pos = new THREE.Vector3(x, yPos, z);
-                                            // 用特殊材质表示矿石
                                             const oreMat = new THREE.MeshStandardMaterial({
                                                 map: createBlockTexture('#FFD700', '#DAA520'),
                                                 roughness: 0.7
@@ -470,6 +512,25 @@
                                     }
                                 }
                             }
+                        } else {
+                            // 出生点区域：只放置草地和泥土，为玩家留空间
+                            if (phase === 0) {
+                                const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
+                                const topY = Math.floor(noise + 3);
+                                if (topY >= 0) {
+                                    const pos = new THREE.Vector3(x, topY, z);
+                                    const mesh = createBlockMesh('GRASS', pos);
+                                    worldGroup.add(mesh);
+                                    worldObjects.push(mesh);
+                                    batch++;
+                                    // 泥土一层
+                                    const dirtPos = new THREE.Vector3(x, topY - 1, z);
+                                    const dirt = createBlockMesh('DIRT', dirtPos);
+                                    if (dirt) { worldGroup.add(dirt);
+                                        worldObjects.push(dirt);
+                                        batch++; }
+                                }
+                            }
                         }
 
                         z++;
@@ -481,6 +542,8 @@
                                 x = -range;
                                 z = -range;
                                 if (phase > 4) {
+                                    // 生成箱子
+                                    generateChest();
                                     generateTrees();
                                     resolve();
                                     return;
@@ -496,11 +559,25 @@
                     requestAnimationFrame(generateNextChunk);
                 }
 
+                function generateChest() {
+                    // 在出生点旁边 (2, 地表高度+1, 0) 放置箱子
+                    const cx = 2;
+                    const cz = 0;
+                    const noise = Math.sin(cx * 0.25) * Math.cos(cz * 0.2) * 1.5 + Math.sin(cx * 0.08 + cz * 0.12) * 0.8;
+                    const topY = Math.floor(noise + 3);
+                    if (topY >= 0) {
+                        const chestPos = new THREE.Vector3(cx, topY + 1, cz);
+                        const chest = createBlockMesh('CHEST', chestPos, true);
+                        worldGroup.add(chest);
+                        worldObjects.push(chest);
+                    }
+                }
+
                 function generateTrees() {
                     for (let i = 0; i < 30; i++) {
                         const x = (Math.random() - 0.5) * 40;
                         const z = (Math.random() - 0.5) * 40;
-                        if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+                        if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
                         const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
                         const topY = Math.floor(noise + 3);
                         if (topY < 1) continue;
@@ -537,6 +614,10 @@
                         top.position.set(p[0], 4.2, p[1]);
                         worldGroup.add(top);
                     }
+                    // 设置玩家出生在地面
+                    const spawnNoise = Math.sin(0)*Math.cos(0)*1.5 + Math.sin(0)*0.8;
+                    const spawnY = Math.floor(spawnNoise + 3) + 1.8;
+                    camera.position.set(0, spawnY, 0);
                     document.getElementById('loading').style.display = 'none';
                     generationComplete = true;
                     setTimeout(() => controls.lock(), 400);
@@ -548,26 +629,18 @@
 
         await generateWorld();
 
-        // --- 碰撞检测函数 ---
-        // 玩家尺寸 (碰撞箱)
+        // --- 碰撞检测 ---
         const playerWidth = 0.6;
         const playerHeight = 1.8;
         const halfWidth = playerWidth / 2;
 
-        // 检查一个位置是否与任何方块重叠 (AABB)
         function isBlocked(pos) {
-            // 玩家的AABB: [pos.x - halfWidth, pos.y, pos.z - halfWidth] 到 [pos.x + halfWidth, pos.y + playerHeight, pos.z + halfWidth]
             const px = pos.x;
             const py = pos.y;
             const pz = pos.z;
-
-            // 遍历所有方块 (优化: 可以只检查附近的，但为简单起见全遍历)
             for (const obj of worldObjects) {
                 const bPos = obj.position;
-                const bSize = 0.9;
-                const half = bSize / 2;
-                // 方块AABB: [bPos.x - half, bPos.y - half, bPos.z - half] 到 [bPos.x + half, bPos.y + half, bPos.z + half]
-                // 玩家AABB: [px - halfWidth, py, pz - halfWidth] 到 [px + halfWidth, py + playerHeight, pz + halfWidth]
+                const half = 0.45;
                 if (px + halfWidth > bPos.x - half && px - halfWidth < bPos.x + half &&
                     py + playerHeight > bPos.y - half && py < bPos.y + half &&
                     pz + halfWidth > bPos.z - half && pz - halfWidth < bPos.z + half) {
@@ -577,23 +650,11 @@
             return false;
         }
 
-        // 尝试移动，如果碰撞则回退
         function tryMove(newPos) {
-            // 分别检测X, Z方向 (防止卡墙)
             const testX = new THREE.Vector3(newPos.x, camera.position.y, camera.position.z);
             const testZ = new THREE.Vector3(camera.position.x, camera.position.y, newPos.z);
-            const testBoth = new THREE.Vector3(newPos.x, camera.position.y, newPos.z);
-
-            // 先尝试X方向
-            if (!isBlocked(testX)) {
-                camera.position.x = newPos.x;
-            }
-            // 再尝试Z方向
-            if (!isBlocked(testZ)) {
-                camera.position.z = newPos.z;
-            }
-            // 如果两个方向都失败，保持原位置
-            // 上下移动（跳跃/下落）单独处理
+            if (!isBlocked(testX)) camera.position.x = newPos.x;
+            if (!isBlocked(testZ)) camera.position.z = newPos.z;
         }
 
         // --- 物品系统 ---
@@ -608,6 +669,7 @@
 
         const ALL_ITEMS = [];
         for (const [key, data] of Object.entries(BLOCK_TYPES)) {
+            if (key === 'CHEST') continue;
             ALL_ITEMS.push({ id: key, type: 'block', data: data });
         }
         for (const [key, data] of Object.entries(GUN_TYPES)) {
@@ -688,7 +750,7 @@
             if (inventory.length === 0) {
                 const empty = document.createElement('div');
                 empty.style.cssText = 'color:rgba(255,255,255,0.3);padding:6px 14px;font-size:13px;';
-                empty.textContent = '🈳 挖掘或从物品栏获取';
+                empty.textContent = '🈳 挖掘或开启宝箱';
                 container.appendChild(empty);
             }
             updateHeld();
@@ -720,6 +782,37 @@
             } else {
                 document.getElementById('held-label').textContent = '手持: 空';
             }
+        }
+
+        // --- 箱子交互 ---
+        function openChest(chestObj) {
+            const items = chestObj.userData.chestItems || [];
+            if (items.length === 0) {
+                showMessage('📭 宝箱是空的');
+                return;
+            }
+            // 将物品加入背包
+            items.forEach(item => {
+                for (let i = 0; i < item.count; i++) {
+                    addItemToInventory(item.type, item.id);
+                }
+            });
+            // 清空宝箱
+            chestObj.userData.chestItems = [];
+            showMessage('📦 宝箱已开启！获得 ' + items.reduce((sum, it) => sum + it.count, 0) + ' 件物品');
+            // 改变箱子外观（可选） - 这里简单改颜色
+            chestObj.material.color.setHex(0x8B5A2B);
+        }
+
+        let messageTimeout = null;
+        function showMessage(text) {
+            const el = document.getElementById('chest-message');
+            el.textContent = text;
+            el.classList.add('show');
+            if (messageTimeout) clearTimeout(messageTimeout);
+            messageTimeout = setTimeout(() => {
+                el.classList.remove('show');
+            }, 3000);
         }
 
         // --- 物品选择器 ---
@@ -785,7 +878,7 @@
             if (e.key === 'Tab') { e.preventDefault(); toggleSelector(); }
         });
 
-        // --- 生物系统 (简化为装饰) ---
+        // --- 生物 (装饰) ---
         const entities = [];
         const MOB_TYPES = {
             COW: { name: '牛', color: 0x8B8B8B, health: 20, speed: 0.02, aggressive: false },
@@ -859,10 +952,14 @@
             if (!hit) return;
             const obj = hit.object;
             if (!obj.userData.isBlock) return;
+            // 箱子不可挖掘
+            if (obj.userData.isChest) {
+                showMessage('🔒 宝箱无法挖掘，请右键打开');
+                return;
+            }
             const type = obj.userData.blockType;
             if (type) {
                 addItemToInventory('block', type);
-                // 移除方块
                 scene.remove(obj);
                 const idx = worldObjects.indexOf(obj);
                 if (idx > -1) worldObjects.splice(idx, 1);
@@ -877,16 +974,16 @@
             if (!hit) return;
             const obj = hit.object;
             if (!obj.userData.isBlock) return;
+            // 不能放置在箱子上
+            if (obj.userData.isChest) return;
             const normal = hit.face.normal.clone();
             normal.transformDirection(obj.matrixWorld);
             const pos = obj.position.clone().add(normal.multiplyScalar(0.95));
-            // 检查是否与已有方块重叠
             const exists = worldObjects.some(o => o.position.distanceTo(pos) < 0.1 && o !== obj);
             if (exists) return;
-            // 检查玩家是否站在该位置 (防止方块卡在玩家身上)
             const playerPos = camera.position.clone();
             if (Math.abs(playerPos.x - pos.x) < 1.0 && Math.abs(playerPos.z - pos.z) < 1.0 && Math.abs(playerPos.y - pos.y) < 2.0) {
-                return; // 防止在玩家脚下或头顶放置
+                return;
             }
             if (!removeItemFromInventory('block', held.id)) return;
             const mesh = createBlockMesh(held.id, pos);
@@ -895,10 +992,22 @@
             updateUI();
         }
 
+        // 鼠标事件
         document.addEventListener('mousedown', (e) => {
             if (!controls.isLocked) return;
-            if (e.button === 0) digBlock();
-            else if (e.button === 2) placeBlock();
+            if (e.button === 0) {
+                // 左键：先检测是否点击箱子，如果是则打开箱子（但左键通常挖掘，我们让左键也能开箱？但更符合习惯是右键开箱，左键挖掘）
+                // 所以左键挖掘不变
+                digBlock();
+            } else if (e.button === 2) {
+                // 右键：先检测是否点击箱子
+                const hit = getIntersect();
+                if (hit && hit.object.userData.isChest) {
+                    openChest(hit.object);
+                } else {
+                    placeBlock();
+                }
+            }
         });
         document.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -950,7 +1059,6 @@
                 moveZ = total.z;
             }
 
-            // 尝试水平移动
             if (moveX !== 0 || moveZ !== 0) {
                 const newPos = camera.position.clone();
                 newPos.x += moveX;
@@ -958,24 +1066,18 @@
                 tryMove(newPos);
             }
 
-            // 垂直运动 (跳跃/重力)
             if (keys.space && camera.position.y <= 1.8) {
                 velocityY = jumpSpeed;
             }
             velocityY += gravity;
             const newY = camera.position.y + velocityY;
-            // 检测垂直碰撞
             const testPos = new THREE.Vector3(camera.position.x, newY, camera.position.z);
             if (!isBlocked(testPos)) {
                 camera.position.y = newY;
             } else {
-                if (velocityY < 0) {
-                    velocityY = 0; // 着地
-                } else {
-                    velocityY = 0; // 撞头
-                }
+                if (velocityY < 0) velocityY = 0;
+                else velocityY = 0;
             }
-            // 确保不落地底
             if (camera.position.y < 0.5) {
                 camera.position.y = 0.5;
                 velocityY = 0;
@@ -987,7 +1089,7 @@
 
         setInterval(updateMovement, 16);
 
-        // --- 生物AI (简单漫游) ---
+        // --- 生物AI ---
         function updateMobs() {
             const dt = 1/60;
             entities.forEach(mob => {
@@ -1010,7 +1112,6 @@
                         mob.lookAt(mob.position.clone().add(data.velocity));
                     }
                 }
-                // 地面跟随
                 const groundY = Math.floor(Math.sin(mob.position.x*0.25)*Math.cos(mob.position.z*0.2)*1.5 + Math.sin(mob.position.x*0.08+mob.position.z*0.12)*0.8 + 3);
                 mob.position.y = groundY + 0.5;
             });
@@ -1053,7 +1154,7 @@
 
         // 初始化UI
         updateUI();
-        console.log('✅ 实心方块与碰撞已启用，挖掘后消失');
+        console.log('✅ 出生点宝箱已放置，右键打开获得物品');
     </script>
 </body>
 </html>
