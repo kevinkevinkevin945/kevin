@@ -2,1159 +2,1101 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Minecraft · 出生带宝箱</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧟 3D PvE 僵尸枪战 - 完整版</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: 'Courier New', monospace; background: #1a1a1a; }
-        #info {
-            position: absolute; top: 16px; left: 16px; color: #fff;
-            background: rgba(0,0,0,0.7); padding: 6px 18px; border-radius: 30px;
-            font-size: 13px; backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.15);
-            pointer-events: none; z-index: 10; user-select: none;
-        }
-        #crosshair {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.6); font-size: 28px;
-            pointer-events: none; z-index: 6;
-            text-shadow: 0 0 6px rgba(0,0,0,0.6);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             user-select: none;
         }
-        #controls-hint {
-            position: absolute; bottom: 24px; left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.8);
-            background: rgba(0,0,0,0.6);
-            padding: 8px 20px; border-radius: 40px;
-            font-size: 13px; backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
-            pointer-events: none; z-index: 10;
-            white-space: nowrap;
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial Black', 'Segoe UI', sans-serif;
+            cursor: crosshair;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        #controls-hint span { color: #aaffaa; margin: 0 6px; }
-        @media (max-width:600px) {
-            #controls-hint { font-size: 10px; padding: 5px 12px; white-space: normal; width: 85%; text-align: center; bottom: 12px; }
-            #info { font-size: 10px; top: 10px; left: 10px; padding: 4px 12px; }
-        }
-        #blocker {
-            position: absolute; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.15); z-index: 5; cursor: pointer;
-        }
-        #loading {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff; background: rgba(0,0,0,0.85);
-            padding: 24px 48px; border-radius: 16px;
-            font-size: 26px; border: 1px solid #666;
-            z-index: 20; backdrop-filter: blur(6px);
-            pointer-events: none;
-            text-align: center;
-        }
-        #loading .progress {
-            font-size: 16px;
-            margin-top: 10px;
-            color: #aaa;
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
         }
 
-        /* 背包 UI */
-        #inventory-ui {
+        #start-screen {
             position: absolute;
-            bottom: 80px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        #start-screen h1 {
+            font-size: 70px;
+            color: #ff2200;
+            text-shadow: 0 0 40px #ff0000, 0 0 80px #ff4400;
+            animation: pulse 1.2s infinite;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+        }
+        #start-screen p {
+            color: #aaffaa;
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px #00ff00;
+            letter-spacing: 2px;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.06);
+            }
+        }
+        #start-btn {
+            font-size: 28px;
+            padding: 22px 60px;
+            background: linear-gradient(45deg, #ff0000, #cc3300, #ff6600);
+            color: #fff;
+            border: 3px solid #ffcc00;
+            border-radius: 60px;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 4px;
+            transition: all 0.3s;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
+            animation: btnPulse 2s infinite;
+        }
+        @keyframes btnPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
+            }
+            50% {
+                box-shadow: 0 0 80px rgba(255, 0, 0, 1);
+            }
+        }
+        #start-btn:hover {
+            transform: scale(1.08);
+        }
+
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hud-item {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 10px 18px;
+            border-radius: 25px;
+            border: 2px solid #ff6600;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ff6600;
+            backdrop-filter: blur(5px);
+            letter-spacing: 1px;
+        }
+        .hud-money {
+            border-color: #ffd700;
+            color: #ffd700;
+            text-shadow: 0 0 8px #ffd700;
+        }
+        .hud-health {
+            border-color: #ff3333;
+            color: #ff5555;
+            text-shadow: 0 0 8px #ff0000;
+        }
+
+        #weapon-bar {
+            position: absolute;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(20,20,30,0.85);
-            backdrop-filter: blur(8px);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 16px;
-            padding: 10px 16px;
             display: flex;
-            gap: 6px;
-            z-index: 15;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 92vw;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-            pointer-events: auto;
-        }
-        .inv-slot {
-            width: 48px; height: 48px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid rgba(255,255,255,0.15);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 10px; color: #fff;
-            cursor: pointer; position: relative;
-            transition: 0.1s; image-rendering: pixelated;
-        }
-        .inv-slot:hover { border-color: #ffcc44; background: rgba(255,255,255,0.08); }
-        .inv-slot.active {
-            border-color: #ffaa00;
-            background: rgba(255,170,0,0.25);
-            box-shadow: 0 0 16px rgba(255,170,0,0.2);
-        }
-        .inv-slot .count {
-            position: absolute; bottom: 1px; right: 4px;
-            font-size: 10px; color: #fff;
-            text-shadow: 0 0 4px #000;
-            background: rgba(0,0,0,0.6);
-            padding: 0 4px; border-radius: 4px;
-        }
-        .inv-slot canvas { width: 36px; height: 36px; image-rendering: pixelated; border-radius: 4px; }
-
-        #held-item {
-            position: absolute; bottom: 148px; left: 50%;
-            transform: translateX(-50%);
-            width: 48px; height: 48px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 12px;
-            border: 2px solid rgba(255,255,255,0.25);
-            display: flex; align-items: center; justify-content: center;
-            pointer-events: none; z-index: 12;
-            backdrop-filter: blur(4px);
-        }
-        #held-item canvas { width: 40px; height: 40px; image-rendering: pixelated; }
-        #held-label {
-            position: absolute; bottom: 200px; left: 50%;
-            transform: translateX(-50%);
-            color: #fff; font-size: 12px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 14px; border-radius: 20px;
-            pointer-events: none; z-index: 12;
-            white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
-        }
-        #inventory-label {
-            position: absolute; bottom: 132px; left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.4);
-            font-size: 10px; letter-spacing: 2px;
-            background: rgba(0,0,0,0.3);
-            padding: 2px 14px; border-radius: 20px;
-            z-index: 14; pointer-events: none;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        #coord-info {
-            position: absolute; bottom: 240px; right: 20px;
-            color: rgba(255,255,255,0.5); font-size: 12px;
-            background: rgba(0,0,0,0.4);
-            padding: 4px 12px; border-radius: 8px;
-            pointer-events: none; z-index: 12;
-            font-family: monospace;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        /* 物品栏 (选物栏) */
-        #item-selector {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            pointer-events: auto;
-        }
-        #item-selector.show { display: flex; }
-        #item-selector h2 {
-            color: #fff;
-            margin-bottom: 20px;
-            font-weight: normal;
-            letter-spacing: 4px;
-            text-shadow: 0 0 10px rgba(255,255,255,0.2);
-        }
-        #item-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 64px);
             gap: 8px;
-            background: rgba(0,0,0,0.4);
-            padding: 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            max-height: 70vh;
-            overflow-y: auto;
+            pointer-events: auto;
+            z-index: 20;
         }
-        .item-cell {
-            width: 64px; height: 64px;
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
+        .wpn-slot {
+            width: 55px;
+            height: 55px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #555;
+            border-radius: 12px;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
+            font-size: 26px;
             cursor: pointer;
-            transition: 0.15s;
-            color: #fff;
-            font-size: 10px;
-            text-align: center;
-            padding: 4px;
+            transition: all 0.2s;
+            position: relative;
         }
-        .item-cell:hover {
-            background: rgba(255,255,255,0.15);
+        .wpn-slot.active {
+            border-color: #ff6600;
+            background: rgba(255, 102, 0, 0.35);
+            box-shadow: 0 0 25px #ff6600;
+            transform: scale(1.12);
+        }
+        .wpn-slot:hover {
             border-color: #ffaa00;
             transform: scale(1.05);
         }
-        .item-cell canvas {
-            width: 40px;
-            height: 40px;
-            image-rendering: pixelated;
-        }
-        .item-cell .item-name {
-            margin-top: 2px;
-            font-size: 9px;
-            opacity: 0.8;
-        }
-        .close-selector {
+        .wpn-slot .key {
             position: absolute;
-            top: 20px;
-            right: 30px;
-            color: #fff;
-            font-size: 28px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.1);
-            padding: 4px 16px;
-            border-radius: 30px;
-            transition: 0.2s;
-            border: 1px solid rgba(255,255,255,0.2);
+            bottom: -18px;
+            font-size: 10px;
+            color: #aaa;
+            letter-spacing: 0;
         }
-        .close-selector:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        @media (max-width:600px) {
-            #item-grid { grid-template-columns: repeat(6, 54px); gap: 6px; padding: 12px; }
-            .item-cell { width: 54px; height: 54px; }
-            .item-cell canvas { width: 32px; height: 32px; }
-            #item-selector h2 { font-size: 18px; }
-        }
-        #chest-message {
+
+        #reload-bar {
             position: absolute;
-            top: 20%;
+            bottom: 90px;
             left: 50%;
             transform: translateX(-50%);
-            color: #fff;
-            background: rgba(0,0,0,0.8);
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 18px;
-            z-index: 50;
+            width: 180px;
+            height: 8px;
+            background: #222;
+            border-radius: 10px;
+            display: none;
+            z-index: 20;
+            overflow: hidden;
+            border: 1px solid #ff6600;
+        }
+        #reload-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6600, #ffcc00);
+            width: 0%;
+            transition: width 0.05s linear;
+        }
+
+        #combo-display {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff2200;
+            text-shadow: 0 0 40px #ff0000, 0 0 80px #ff4400;
             pointer-events: none;
+            z-index: 15;
             opacity: 0;
             transition: opacity 0.3s;
-            border: 1px solid rgba(255,255,255,0.2);
+            letter-spacing: 3px;
         }
-        #chest-message.show {
-            opacity: 1;
+
+        #damage-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 0, 0, 0.65) 100%);
+            opacity: 0;
+            transition: opacity 0.12s;
+        }
+
+        #kill-feed {
+            position: absolute;
+            top: 75px;
+            right: 15px;
+            pointer-events: none;
+            z-index: 15;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 300px;
+            overflow: hidden;
+        }
+        .kill-msg {
+            color: #ffbb00;
+            font-size: 14px;
+            text-shadow: 0 0 8px #ff6600;
+            animation: killSlide 0.25s ease-out, killFade 1.8s 1.5s forwards;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 4px 10px;
+            border-radius: 15px;
+            border-right: 3px solid #ff6600;
+        }
+        @keyframes killSlide {
+            from {
+                transform: translateX(120px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes killFade {
+            to {
+                opacity: 0;
+            }
+        }
+
+        #wave-announce {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            font-weight: bold;
+            color: #ffdd00;
+            text-shadow: 0 0 50px #ff8800;
+            pointer-events: none;
+            z-index: 25;
+            opacity: 0;
+            letter-spacing: 5px;
+        }
+
+        #shop {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            pointer-events: auto;
+            z-index: 18;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .shop-btn {
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 6px 14px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s;
+            letter-spacing: 1px;
+        }
+        .shop-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: scale(1.05);
+        }
+        .shop-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <div id="loading">
-        ⛏️ 生成世界...
-        <div class="progress" id="progress-text">0%</div>
-    </div>
-    <div id="info">🎁 出生点旁有宝箱 · 实心方块</div>
-    <div id="crosshair">✚</div>
-    <div id="controls-hint">
-        <span>🖱️</span> 左键挖掘 · 右键放置/开箱 · <span>WASD</span> 移动 · <span>Tab</span> 物品栏
-    </div>
-    <div id="blocker" onclick="focusGame()"></div>
-    <div id="chest-message">📦 宝箱已开启！获得物品</div>
+    <canvas id="gameCanvas"></canvas>
 
-    <div id="inventory-label">🎒 背包</div>
-    <div id="held-label">手持: 空</div>
-    <div id="held-item"><canvas id="heldCanvas" width="40" height="40"></canvas></div>
-    <div id="inventory-ui"></div>
-    <div id="coord-info">📍 0, 0, 0</div>
-
-    <!-- 物品选择器 -->
-    <div id="item-selector">
-        <div class="close-selector" onclick="toggleSelector()">✕</div>
-        <h2>📦 物品栏 (点击选择)</h2>
-        <div id="item-grid"></div>
+    <div id="start-screen">
+        <h1>🧟 僵尸末日</h1>
+        <p>PvE 生存射击 | 波次进攻 | 载具驾驶 | 金钱购买</p>
+        <button id="start-btn">🎮 开始游戏</button>
     </div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
-            }
-        }
-    </script>
+    <div id="hud" style="display:none;">
+        <div class="hud-item hud-health">❤️ <span id="hud-health">100</span></div>
+        <div class="hud-item">🧟 <span id="hud-zombies">0</span></div>
+        <div class="hud-item hud-money">💰 <span id="hud-money">0</span></div>
+        <div class="hud-item">🔫 <span id="hud-ammo">30/30</span></div>
+        <div class="hud-item">🌊 第<span id="hud-wave">1</span>波</div>
+        <div class="hud-item">🔥 连杀 <span id="hud-combo">0</span></div>
+    </div>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    <div id="weapon-bar" style="display:none;">
+        <div class="wpn-slot" data-w="0">🔫<span class="key">1</span></div>
+        <div class="wpn-slot" data-w="1">💥<span class="key">2</span></div>
+        <div class="wpn-slot" data-w="2">🎯<span class="key">3</span></div>
+        <div class="wpn-slot" data-w="3">⚡<span class="key">4</span></div>
+        <div class="wpn-slot" data-w="4">🔥<span class="key">5</span></div>
+    </div>
 
-        // --- 场景 ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 50, 80);
+    <div id="reload-bar"><div id="reload-progress"></div></div>
+    <div id="combo-display"></div>
+    <div id="damage-vignette"></div>
+    <div id="kill-feed"></div>
+    <div id="wave-announce"></div>
 
-        const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
+    <div id="shop" style="display:none;">
+        <button class="shop-btn" id="buy-health">❤️ 补血 $200</button>
+        <button class="shop-btn" id="buy-armor">🛡️ 护甲 $500</button>
+        <button class="shop-btn" id="buy-ammo">📦 弹药 $300</button>
+    </div>
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.body.appendChild(renderer.domElement);
-
-        // --- 指针锁定 ---
-        const controls = new PointerLockControls(camera, document.body);
-        const blocker = document.getElementById('blocker');
-        window.focusGame = () => controls.lock();
-        controls.addEventListener('lock', () => blocker.style.display = 'none');
-        controls.addEventListener('unlock', () => blocker.style.display = 'block');
-
-        // --- 灯光 ---
-        const ambient = new THREE.AmbientLight(0x404060, 0.6);
-        scene.add(ambient);
-        const sun = new THREE.DirectionalLight(0xffeedd, 1.1);
-        sun.position.set(40, 60, 30);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 1024;
-        sun.shadow.mapSize.height = 1024;
-        sun.shadow.camera.near = 0.5;
-        sun.shadow.camera.far = 100;
-        sun.shadow.camera.left = -50;
-        sun.shadow.camera.right = 50;
-        sun.shadow.camera.top = 50;
-        sun.shadow.camera.bottom = -50;
-        scene.add(sun);
-        const fill = new THREE.DirectionalLight(0xccddff, 0.4);
-        fill.position.set(-30, 20, -40);
-        scene.add(fill);
-        const hemi = new THREE.HemisphereLight(0x87CEEB, 0x3a7d44, 0.5);
-        scene.add(hemi);
-
-        // --- 纹理生成器 ---
-        function createBlockTexture(baseColor, detailColor = null, border = true, special = false) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32;
-            canvas.height = 32;
+    <script>
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = baseColor;
-            ctx.fillRect(0, 0, 32, 32);
-            if (border) {
-                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-                ctx.lineWidth = 1.8;
-                ctx.strokeRect(0.5, 0.5, 31, 31);
-                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-                ctx.lineWidth = 0.5;
-                ctx.strokeRect(1.5, 1.5, 29, 29);
+
+            let W, H;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
             }
-            if (detailColor) {
-                for (let i = 0; i < 40; i++) {
-                    const x = Math.floor(Math.random() * 28) + 2;
-                    const y = Math.floor(Math.random() * 28) + 2;
-                    ctx.fillStyle = detailColor;
-                    ctx.fillRect(x, y, 2, 2);
+            window.addEventListener('resize', resize);
+            resize();
+
+            // ==================== 游戏状态 ====================
+            let gameStarted = false;
+            let money = 0;
+            let combo = 0;
+            let comboTimer = 0;
+            let wave = 1;
+            let score = 0;
+            let totalKills = 0;
+            let headshots = 0;
+            let armor = 0;
+
+            // ==================== 玩家 ====================
+            const player = {
+                x: 300,
+                y: 0,
+                z: 300,
+                speed: 22,
+                health: 100,
+                maxHealth: 100,
+                vy: 0,
+                onGround: true,
+                vehicle: null,
+                weaponIndex: 0,
+                ammo: 30,
+                maxAmmo: 30,
+                reloading: false,
+                reloadTime: 0,
+                lastFireTime: 0,
+                damageCooldown: 0,
+                regenTimer: 0
+            };
+
+            // ==================== 武器 ====================
+            const weapons = [
+                { name: '步枪', icon: '🔫', damage: 32, fireRate: 0.09, ammoMax: 30, bulletSpeed: 750,
+                    reloadTime: 1.3, spread: 0.02, color: '#ffff00', auto: true },
+                { name: '霰弹枪', icon: '💥', damage: 55, fireRate: 0.75, ammoMax: 8, bulletSpeed: 550,
+                    reloadTime: 1.9, spread: 0.1, pellets: 8, color: '#ff8800', auto: false },
+                { name: '狙击枪', icon: '🎯', damage: 160, fireRate: 1.1, ammoMax: 5, bulletSpeed: 1100,
+                    reloadTime: 2.4, spread: 0.001, color: '#00ffff', auto: false },
+                { name: '冲锋枪', icon: '⚡', damage: 22, fireRate: 0.045, ammoMax: 40, bulletSpeed: 650,
+                    reloadTime: 1.1, spread: 0.05, color: '#00ff00', auto: true },
+                { name: '火焰枪', icon: '🔥', damage: 12, fireRate: 0.025, ammoMax: 50, bulletSpeed: 420,
+                    reloadTime: 1.6, spread: 0.13, fire: true, color: '#ff4400', auto: true }
+            ];
+
+            // ==================== 载具 ====================
+            const vehicles = [];
+            class Vehicle {
+                constructor(type, x, z, color, name, hp, speed, weaponDamage, y = 0) {
+                    this.type = type;
+                    this.x = x;
+                    this.z = z;
+                    this.y = y;
+                    this.hp = hp;
+                    this.maxHp = hp;
+                    this.speed = speed;
+                    this.color = color;
+                    this.name = name;
+                    this.active = true;
+                    this.attackCooldown = 0;
+                    this.weaponDamage = weaponDamage;
                 }
             }
-            // 特殊标志（箱子锁）
-            if (special) {
-                ctx.fillStyle = '#FFD700';
-                ctx.font = 'bold 20px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🔒', 16, 16);
+            vehicles.push(new Vehicle('boat', 300, 250, '#8B4513', '🚤 巡逻艇', 350, 28, 45));
+            vehicles.push(new Vehicle('car', 500, 400, '#4169E1', '🚗 装甲车', 280, 33, 35));
+            vehicles.push(new Vehicle('plane', 550, 200, '#778899', '✈️ 战斗机', 450, 48, 55, 45));
+            vehicles.push(new Vehicle('tank', 200, 500, '#556B2F', '🎖️ 坦克', 550, 22, 65));
+
+            // ==================== 僵尸 ====================
+            let zombies = [];
+            class Zombie {
+                constructor(x, z, type) {
+                    this.x = x;
+                    this.z = z;
+                    this.y = 0;
+                    this.type = type || 'normal';
+                    const types = {
+                        normal: { hp: 60, speed: 5, damage: 15, radius: 16, color: '#2E8B57', money: 100 },
+                        fast: { hp: 40, speed: 10, damage: 10, radius: 13, color: '#7FFF00', money: 150 },
+                        tank: { hp: 220, speed: 3, damage: 30, radius: 28, color: '#8B0000', money: 350 },
+                        exploder: { hp: 80, speed: 6, damage: 50, radius: 19, color: '#FF4500', money: 250 },
+                        boss: { hp: 1200, speed: 4, damage: 50, radius: 45, color: '#FF00FF', money: 1500 }
+                    };
+                    const t = types[this.type] || types.normal;
+                    this.hp = t.hp;
+                    this.maxHp = t.hp;
+                    this.speed = t.speed + Math.random() * 1.5;
+                    this.damage = t.damage;
+                    this.radius = t.radius;
+                    this.color = t.color;
+                    this.money = t.money;
+                    this.attackCooldown = 0;
+                    this.hitFlash = 0;
+                }
             }
-            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i <= 32; i += 8) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, 32);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(32, i);
-                ctx.stroke();
+
+            function spawnWave() {
+                zombies = [];
+                const count = Math.min(12 + wave * 7, 60);
+                for (let i = 0; i < count; i++) {
+                    const x = 30 + Math.random() * 540;
+                    const z = 30 + Math.random() * 540;
+                    let type = 'normal';
+                    const r = Math.random();
+                    if (wave > 1 && r < 0.18) type = 'fast';
+                    if (wave > 2 && r < 0.33) type = 'tank';
+                    if (wave > 3 && r < 0.45) type = 'exploder';
+                    zombies.push(new Zombie(x, z, type));
+                }
+                if (wave % 2 === 0) {
+                    zombies.push(new Zombie(300, 300, 'boss'));
+                }
+                // 波次公告
+                const waveAnnounce = document.getElementById('wave-announce');
+                waveAnnounce.textContent = `🌊 第 ${wave} 波来袭！`;
+                waveAnnounce.style.opacity = '1';
+                setTimeout(() => waveAnnounce.style.opacity = '0', 2000);
             }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
-            return tex;
-        }
 
-        // --- 预生成所有材质 (共享) ---
-        const BLOCK_TYPES = {
-            GRASS: { name: '草地', color: '#7cb342', detail: '#558b2f' },
-            DIRT: { name: '泥土', color: '#8d6e63', detail: '#6d4c41' },
-            STONE: { name: '石頭', color: '#9e9e9e', detail: '#757575' },
-            WOOD: { name: '木頭', color: '#8B5A2B', detail: '#6B4226' },
-            LEAVES: { name: '樹葉', color: '#2E7D32', detail: '#1B5E20' },
-            PLANKS: { name: '木板', color: '#deb887', detail: '#c4a47a' },
-            BRICK: { name: '紅磚', color: '#b85a3a', detail: '#8d3a22' },
-            SAND: { name: '沙地', color: '#f5e6b0', detail: '#d4c48a' },
-            CHEST: { name: '寶箱', color: '#8B4513', detail: '#A0522D' },
-        };
+            // ==================== 子弹 ====================
+            let bullets = [];
+            class Bullet {
+                constructor(x, y, z, dx, dy, dz, damage, speed, color, fire = false) {
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                    this.dx = dx;
+                    this.dy = dy;
+                    this.dz = dz;
+                    this.damage = damage;
+                    this.speed = speed;
+                    this.life = 2.5;
+                    this.color = color;
+                    this.fire = fire;
+                }
+            }
 
-        const materialCache = {};
-        const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+            // ==================== 粒子特效 ====================
+            let particles = [];
+            class Particle {
+                constructor(x, y, z, color, life = 0.5) {
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                    this.color = color;
+                    this.life = life;
+                    this.maxLife = life;
+                    this.vx = (Math.random() - 0.5) * 30;
+                    this.vy = Math.random() * 40 + 10;
+                    this.vz = (Math.random() - 0.5) * 30;
+                }
+            }
 
-        function getBlockMaterial(typeKey, special = false) {
-            if (!materialCache[typeKey]) {
-                const block = BLOCK_TYPES[typeKey];
-                const tex = createBlockTexture(block.color, block.detail, true, special);
-                materialCache[typeKey] = new THREE.MeshStandardMaterial({
-                    map: tex,
-                    roughness: 0.85,
-                    metalness: 0.05
+            function spawnParticles(x, y, z, color, count = 10) {
+                for (let i = 0; i < count; i++) {
+                    particles.push(new Particle(x, y, z, color));
+                }
+            }
+
+            // ==================== 3D投影 ====================
+            let yaw = 0,
+                pitch = 0;
+            let isPointerLocked = false;
+            let mouseDown = false;
+            const keys = {};
+
+            function project3D(x, y, z) {
+                const dx = x - player.x;
+                const dy = y - (player.y + 14);
+                const dz = z - player.z;
+                const cosY = Math.cos(yaw),
+                    sinY = Math.sin(yaw);
+                const cosP = Math.cos(pitch),
+                    sinP = Math.sin(pitch);
+                const tz = dz * cosY - dx * sinY;
+                const tx = dx * cosY + dz * sinY;
+                const ty = dy * cosP - tz * sinP;
+                const tz2 = dy * sinP + tz * cosP;
+                if (tz2 < 1) return null;
+                const scale = 550 / tz2;
+                return { x: W / 2 + tx * scale, y: H / 2 - ty * scale, scale: scale, depth: tz2 };
+            }
+
+            // ==================== 绘制 ====================
+            function drawWorld() {
+                // 天空
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+                skyGrad.addColorStop(0, '#0a0515');
+                skyGrad.addColorStop(0.3, '#1a0a30');
+                skyGrad.addColorStop(0.6, '#2a1a3a');
+                skyGrad.addColorStop(0.8, '#4a3020');
+                skyGrad.addColorStop(1, '#6a4a2a');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, W, H);
+
+                // 地面
+                const groundGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+                groundGrad.addColorStop(0, '#1a2a1a');
+                groundGrad.addColorStop(1, '#0a150a');
+                ctx.fillStyle = groundGrad;
+                ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+                // 地面网格
+                ctx.strokeStyle = 'rgba(255,120,0,0.08)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 600; i += 25) {
+                    const p1 = project3D(i, 0, 0);
+                    const p2 = project3D(i, 0, 600);
+                    if (p1 && p2) { ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke(); }
+                    const p3 = project3D(0, 0, i);
+                    const p4 = project3D(600, 0, i);
+                    if (p3 && p4) { ctx.beginPath();
+                        ctx.moveTo(p3.x, p3.y);
+                        ctx.lineTo(p4.x, p4.y);
+                        ctx.stroke(); }
+                }
+
+                // 湖泊
+                const lakeCenter = project3D(300, 0, 300);
+                if (lakeCenter) {
+                    ctx.fillStyle = 'rgba(20,80,120,0.75)';
+                    ctx.beginPath();
+                    ctx.ellipse(lakeCenter.x, lakeCenter.y, 90 * lakeCenter.scale, 55 * lakeCenter.scale, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(40,110,160,0.5)';
+                    ctx.beginPath();
+                    ctx.ellipse(lakeCenter.x - 8, lakeCenter.y - 6, 55 * lakeCenter.scale, 32 * lakeCenter.scale, 0, 0,
+                        Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 绘制载具
+                vehicles.forEach(v => {
+                    if (!v.active) return;
+                    const p = project3D(v.x, v.y, v.z);
+                    if (p) {
+                        const s = p.scale;
+                        ctx.fillStyle = v.color;
+                        if (v.type === 'boat') {
+                            ctx.fillRect(p.x - 38 * s, p.y - 18 * s, 76 * s, 36 * s);
+                            ctx.fillStyle = '#a08060';
+                            ctx.fillRect(p.x - 22 * s, p.y - 28 * s, 44 * s, 14 * s);
+                        } else if (v.type === 'car') {
+                            ctx.fillRect(p.x - 33 * s, p.y - 22 * s, 66 * s, 40 * s);
+                            ctx.fillStyle = '#333';
+                            ctx.fillRect(p.x - 18 * s, p.y - 32 * s, 36 * s, 16 * s);
+                        } else if (v.type === 'plane') {
+                            ctx.beginPath();
+                            ctx.moveTo(p.x - 42 * s, p.y);
+                            ctx.lineTo(p.x + 45 * s, p.y - 22 * s);
+                            ctx.lineTo(p.x + 45 * s, p.y + 22 * s);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.fillStyle = '#ccc';
+                            ctx.fillRect(p.x - 30 * s, p.y - 5 * s, 60 * s, 10 * s);
+                        } else if (v.type === 'tank') {
+                            ctx.fillRect(p.x - 32 * s, p.y - 22 * s, 64 * s, 40 * s);
+                            ctx.fillStyle = '#4a4a3a';
+                            ctx.fillRect(p.x - 12 * s, p.y - 35 * s, 24 * s, 16 * s);
+                            ctx.fillStyle = '#222';
+                            ctx.fillRect(p.x - 8 * s, p.y - 48 * s, 50 * s, 12 * s);
+                        }
+                        // 血条
+                        if (v.hp < v.maxHp) {
+                            ctx.fillStyle = '#ff3333';
+                            ctx.fillRect(p.x - 35 * s, p.y - 55 * s, 70 * s, 7 * s);
+                            ctx.fillStyle = '#33ff33';
+                            ctx.fillRect(p.x - 35 * s, p.y - 55 * s, 70 * s * (v.hp / v.maxHp), 7 * s);
+                        }
+                        // 名字
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `bold ${Math.max(10, 12*s)}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(v.name, p.x, p.y - 62 * s);
+                    }
+                });
+
+                // 绘制僵尸
+                zombies.forEach(z => {
+                    const p = project3D(z.x, z.y, z.z);
+                    if (p) {
+                        const s = p.scale;
+                        const flash = z.hitFlash > 0;
+                        const bodyColor = flash ? '#ffffff' : z.color;
+                        // 身体
+                        ctx.fillStyle = bodyColor;
+                        ctx.fillRect(p.x - z.radius * s, p.y - 32 * s, z.radius * 2 * s, 42 * s);
+                        // 头
+                        ctx.fillStyle = flash ? '#ffffff' : (z.type === 'boss' ? '#ff00ff' : '#3a5a2a');
+                        ctx.fillRect(p.x - 11 * s, p.y - 42 * s, 22 * s, 16 * s);
+                        // 眼睛
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(p.x - 6 * s, p.y - 37 * s, 4 * s, 4 * s);
+                        ctx.fillRect(p.x + 2 * s, p.y - 37 * s, 4 * s, 4 * s);
+                        // 血条
+                        ctx.fillStyle = '#ff2222';
+                        ctx.fillRect(p.x - z.radius * s, p.y - 50 * s, z.radius * 2 * s, 5 * s);
+                        ctx.fillStyle = '#22ff22';
+                        ctx.fillRect(p.x - z.radius * s, p.y - 50 * s, z.radius * 2 * s * (z.hp / z.maxHp), 5 * s);
+                        // Boss标记
+                        if (z.type === 'boss') {
+                            ctx.fillStyle = '#ff00ff';
+                            ctx.font = `bold ${18*s}px Arial`;
+                            ctx.fillText('👑 BOSS', p.x, p.y - 58 * s);
+                        }
+                    }
+                });
+
+                // 绘制子弹
+                bullets.forEach(b => {
+                    const p = project3D(b.x, b.y, b.z);
+                    if (p) {
+                        if (b.fire) {
+                            const grad = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 22);
+                            grad.addColorStop(0, 'rgba(255,200,0,0.9)');
+                            grad.addColorStop(0.5, 'rgba(255,100,0,0.6)');
+                            grad.addColorStop(1, 'rgba(255,50,0,0)');
+                            ctx.fillStyle = grad;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 22, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = b.color;
+                            ctx.shadowColor = b.color;
+                            ctx.shadowBlur = 10;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                });
+
+                // 绘制粒子
+                particles.forEach(pt => {
+                    const p = project3D(pt.x, pt.y, pt.z);
+                    if (p) {
+                        const alpha = pt.life / pt.maxLife;
+                        ctx.fillStyle = pt.color;
+                        ctx.globalAlpha = alpha;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 4 * alpha, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
                 });
             }
-            return materialCache[typeKey];
-        }
 
-        function createBlockMesh(typeKey, pos, special = false) {
-            const mat = getBlockMaterial(typeKey, special);
-            const mesh = new THREE.Mesh(geometry, mat);
-            mesh.position.copy(pos);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            mesh.userData = { blockType: typeKey, isBlock: true };
-            if (typeKey === 'CHEST') {
-                mesh.userData.isChest = true;
-                // 箱子物品列表
-                mesh.userData.chestItems = [
-                    { type: 'block', id: 'PLANKS', count: 16 },
-                    { type: 'block', id: 'BRICK', count: 8 },
-                    { type: 'block', id: 'STONE', count: 20 },
-                    { type: 'gun', id: 'PISTOL', count: 1 },
-                    { type: 'tool', id: 'PICKAXE', count: 1 },
-                    { type: 'block', id: 'DIRT', count: 24 },
-                    { type: 'block', id: 'SAND', count: 12 },
-                ];
-            }
-            return mesh;
-        }
+            // ==================== 更新 ====================
+            function update(dt) {
+                if (!gameStarted) return;
 
-        // --- 世界生成 (分帧) ---
-        const worldObjects = [];
-        const worldGroup = new THREE.Group();
-        scene.add(worldGroup);
+                // 连杀计时
+                if (comboTimer > 0) {
+                    comboTimer -= dt;
+                    if (comboTimer <= 0) combo = 0;
+                }
 
-        let generationComplete = false;
+                // 生命恢复
+                if (player.health < player.maxHealth) {
+                    player.regenTimer += dt;
+                    if (player.regenTimer > 5 && player.health > 0) {
+                        player.health = Math.min(player.maxHealth, player.health + 2);
+                        player.regenTimer = 0;
+                    }
+                }
 
-        async function generateWorld() {
-            return new Promise((resolve) => {
-                const range = 24;
-                const heightRange = 10;
-                const total = (range * 2) * (range * 2) * 5;
-                let count = 0;
-                const progressText = document.getElementById('progress-text');
+                // 移动
+                let moveX = 0,
+                    moveZ = 0;
+                if (keys['w']) moveZ -= 1;
+                if (keys['s']) moveZ += 1;
+                if (keys['a']) moveX -= 1;
+                if (keys['d']) moveX += 1;
+                const len = Math.hypot(moveX, moveZ);
+                if (len > 0) { moveX /= len;
+                    moveZ /= len; }
 
-                let x = -range;
-                let z = -range;
-                let phase = 0;
+                const speed = player.vehicle ? player.vehicle.speed : player.speed;
+                const cosY = Math.cos(yaw),
+                    sinY = Math.sin(yaw);
+                const wx = (moveX * cosY - moveZ * sinY) * speed;
+                const wz = (moveX * sinY + moveZ * cosY) * speed;
 
-                function generateNextChunk() {
-                    let batch = 0;
-                    const BATCH_SIZE = 300;
+                player.x += wx * dt;
+                player.z += wz * dt;
+                player.x = Math.max(20, Math.min(580, player.x));
+                player.z = Math.max(20, Math.min(580, player.z));
 
-                    while (batch < BATCH_SIZE && x < range) {
-                        // 跳过出生点附近 (避免挡住玩家)
-                        const isSpawn = (Math.abs(x) < 2 && Math.abs(z) < 2);
-                        if (!isSpawn) {
-                            const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
-                            const topY = Math.floor(noise + 3);
-                            if (topY >= 0) {
-                                if (phase === 0) {
-                                    // 草地
-                                    const pos = new THREE.Vector3(x, topY, z);
-                                    const mesh = createBlockMesh('GRASS', pos);
-                                    worldGroup.add(mesh);
-                                    worldObjects.push(mesh);
-                                    batch++;
-                                } else if (phase === 1) {
-                                    for (let d = 1; d <= 2; d++) {
-                                        const yPos = topY - d;
-                                        if (yPos < -2) continue;
-                                        const pos = new THREE.Vector3(x, yPos, z);
-                                        const mesh = createBlockMesh('DIRT', pos);
-                                        worldGroup.add(mesh);
-                                        worldObjects.push(mesh);
-                                        batch++;
-                                    }
-                                } else if (phase === 2) {
-                                    for (let d = 3; d < 6; d++) {
-                                        const yPos = topY - d;
-                                        if (yPos < -heightRange) continue;
-                                        const pos = new THREE.Vector3(x, yPos, z);
-                                        const mesh = createBlockMesh('STONE', pos);
-                                        worldGroup.add(mesh);
-                                        worldObjects.push(mesh);
-                                        batch++;
-                                    }
-                                } else if (phase === 3) {
-                                    // 矿石 (用金块颜色)
-                                    if (Math.random() < 0.03) {
-                                        const depth = 2 + Math.floor(Math.random() * 6);
-                                        const yPos = topY - depth;
-                                        if (yPos >= -heightRange) {
-                                            const pos = new THREE.Vector3(x, yPos, z);
-                                            const oreMat = new THREE.MeshStandardMaterial({
-                                                map: createBlockTexture('#FFD700', '#DAA520'),
-                                                roughness: 0.7
-                                            });
-                                            const mesh = new THREE.Mesh(geometry, oreMat);
-                                            mesh.position.copy(pos);
-                                            mesh.castShadow = true;
-                                            mesh.receiveShadow = true;
-                                            mesh.userData = { blockType: 'GOLD', isBlock: true };
-                                            worldGroup.add(mesh);
-                                            worldObjects.push(mesh);
-                                            batch++;
-                                        }
-                                    }
-                                }
+                // 载具位置
+                if (player.vehicle) {
+                    player.vehicle.x = player.x;
+                    player.vehicle.z = player.z;
+                    if (player.vehicle.type === 'plane') player.y = 45;
+                    else player.y = 0;
+                } else {
+                    // 跳跃
+                    if (keys[' '] && player.onGround) {
+                        player.vy = 32;
+                        player.onGround = false;
+                    }
+                    player.vy -= 55 * dt;
+                    player.y += player.vy * dt;
+                    if (player.y <= 0) {
+                        player.y = 0;
+                        player.vy = 0;
+                        player.onGround = true;
+                    }
+                }
+
+                // 载具交互 (E键)
+                if (keys['e'] && !player.vehicle) {
+                    for (const v of vehicles) {
+                        if (v.active && Math.hypot(v.x - player.x, v.z - player.z) < 55) {
+                            player.vehicle = v;
+                            player.x = v.x;
+                            player.z = v.z;
+                            if (v.type === 'plane') player.y = 45;
+                            else player.y = 0;
+                            break;
+                        }
+                    }
+                } else if (keys['e'] && player.vehicle) {
+                    player.vehicle = null;
+                    player.y = 0;
+                }
+
+                // 换弹
+                if (keys['r'] && !player.reloading && player.ammo < player.maxAmmo) {
+                    player.reloading = true;
+                    player.reloadTime = weapons[player.weaponIndex].reloadTime;
+                    document.getElementById('reload-bar').style.display = 'block';
+                }
+                if (player.reloading) {
+                    player.reloadTime -= dt;
+                    const progress = ((weapons[player.weaponIndex].reloadTime - player.reloadTime) / weapons[player
+                        .weaponIndex].reloadTime) * 100;
+                    document.getElementById('reload-progress').style.width = Math.min(100, progress) + '%';
+                    if (player.reloadTime <= 0) {
+                        player.ammo = player.maxAmmo;
+                        player.reloading = false;
+                        document.getElementById('reload-bar').style.display = 'none';
+                    }
+                }
+
+                // 射击
+                const weapon = weapons[player.weaponIndex];
+                if (mouseDown && !player.reloading && player.ammo > 0 &&
+                    performance.now() - player.lastFireTime > weapon.fireRate * 1000) {
+                    const dx = -Math.sin(yaw) * Math.cos(pitch);
+                    const dy = Math.sin(pitch);
+                    const dz = -Math.cos(yaw) * Math.cos(pitch);
+                    const muzzleY = player.vehicle ? player.y + 35 : player.y + 25;
+
+                    if (weapon.pellets) {
+                        for (let i = 0; i < weapon.pellets; i++) {
+                            const spreadX = (Math.random() - 0.5) * weapon.spread;
+                            const spreadY = (Math.random() - 0.5) * weapon.spread;
+                            bullets.push(new Bullet(player.x, muzzleY, player.z, dx + spreadX, dy + spreadY, dz +
+                                spreadX, weapon.damage / weapon.pellets, weapon.bulletSpeed, weapon.color, weapon
+                                .fire));
+                        }
+                    } else {
+                        bullets.push(new Bullet(player.x, muzzleY, player.z, dx, dy, dz, weapon.damage, weapon
+                            .bulletSpeed, weapon.color, weapon.fire));
+                    }
+
+                    player.ammo--;
+                    player.lastFireTime = performance.now();
+                    pitch += 0.004;
+                    // 枪口粒子
+                    spawnParticles(player.x + dx * 10, muzzleY + dy * 10, player.z + dz * 10, '#ffcc00', 3);
+                }
+
+                // 载具武器
+                if (player.vehicle && mouseDown && player.vehicle.attackCooldown <= 0) {
+                    const dx = -Math.sin(yaw) * Math.cos(pitch);
+                    const dy = Math.sin(pitch);
+                    const dz = -Math.cos(yaw) * Math.cos(pitch);
+                    bullets.push(new Bullet(player.x, player.y + 35, player.z, dx, dy, dz, player.vehicle.weaponDamage,
+                        850, '#ff0000'));
+                    player.vehicle.attackCooldown = 0.1;
+                    spawnParticles(player.x + dx * 15, player.y + 35, player.z + dz * 15, '#ff8800', 2);
+                }
+                if (player.vehicle && player.vehicle.attackCooldown > 0) player.vehicle.attackCooldown -= dt;
+
+                // 切换武器
+                for (let i = 0; i < weapons.length; i++) {
+                    if (keys[String(i + 1)]) {
+                        player.weaponIndex = i;
+                        player.ammo = weapons[i].ammoMax;
+                        player.maxAmmo = weapons[i].ammoMax;
+                        player.reloading = false;
+                        document.getElementById('reload-bar').style.display = 'none';
+                        updateWeaponSlots();
+                    }
+                }
+
+                // 僵尸AI
+                zombies.forEach(z => {
+                    const dx = player.x - z.x;
+                    const dz = player.z - z.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist > 20 && dist < 900) {
+                        z.x += (dx / dist) * z.speed * dt;
+                        z.z += (dz / dist) * z.speed * dt;
+                    }
+                    if (dist < z.radius + 12 && z.attackCooldown <= 0) {
+                        if (player.vehicle) {
+                            player.vehicle.hp -= z.damage;
+                            spawnParticles(player.x, player.y + 15, player.z, '#ff0000', 5);
+                            if (player.vehicle.hp <= 0) {
+                                player.vehicle.active = false;
+                                player.vehicle = null;
+                                player.y = 0;
+                                spawnParticles(player.x, player.y, player.z, '#ff6600', 20);
                             }
                         } else {
-                            // 出生点区域：只放置草地和泥土，为玩家留空间
-                            if (phase === 0) {
-                                const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
-                                const topY = Math.floor(noise + 3);
-                                if (topY >= 0) {
-                                    const pos = new THREE.Vector3(x, topY, z);
-                                    const mesh = createBlockMesh('GRASS', pos);
-                                    worldGroup.add(mesh);
-                                    worldObjects.push(mesh);
-                                    batch++;
-                                    // 泥土一层
-                                    const dirtPos = new THREE.Vector3(x, topY - 1, z);
-                                    const dirt = createBlockMesh('DIRT', dirtPos);
-                                    if (dirt) { worldGroup.add(dirt);
-                                        worldObjects.push(dirt);
-                                        batch++; }
-                                }
+                            if (player.damageCooldown <= 0) {
+                                const actualDamage = armor > 0 ? Math.floor(z.damage * 0.4) : z.damage;
+                                player.health -= actualDamage;
+                                if (armor > 0) armor--;
+                                player.damageCooldown = 0.5;
+                                document.getElementById('damage-vignette').style.opacity = '1';
+                                setTimeout(() => document.getElementById('damage-vignette').style.opacity = '0',
+                                150);
+                                spawnParticles(player.x, player.y + 15, player.z, '#ff0000', 8);
                             }
                         }
-
-                        z++;
-                        if (z >= range) {
-                            z = -range;
-                            x++;
-                            if (x >= range) {
-                                phase++;
-                                x = -range;
-                                z = -range;
-                                if (phase > 4) {
-                                    // 生成箱子
-                                    generateChest();
-                                    generateTrees();
-                                    resolve();
-                                    return;
-                                }
-                            }
-                        }
-                        count++;
-                        if (count % 100 === 0) {
-                            const pct = Math.min(100, Math.floor((count / total) * 100));
-                            progressText.textContent = pct + '%';
-                        }
+                        z.attackCooldown = 0.8;
                     }
-                    requestAnimationFrame(generateNextChunk);
-                }
-
-                function generateChest() {
-                    // 在出生点旁边 (2, 地表高度+1, 0) 放置箱子
-                    const cx = 2;
-                    const cz = 0;
-                    const noise = Math.sin(cx * 0.25) * Math.cos(cz * 0.2) * 1.5 + Math.sin(cx * 0.08 + cz * 0.12) * 0.8;
-                    const topY = Math.floor(noise + 3);
-                    if (topY >= 0) {
-                        const chestPos = new THREE.Vector3(cx, topY + 1, cz);
-                        const chest = createBlockMesh('CHEST', chestPos, true);
-                        worldGroup.add(chest);
-                        worldObjects.push(chest);
-                    }
-                }
-
-                function generateTrees() {
-                    for (let i = 0; i < 30; i++) {
-                        const x = (Math.random() - 0.5) * 40;
-                        const z = (Math.random() - 0.5) * 40;
-                        if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
-                        const noise = Math.sin(x * 0.25) * Math.cos(z * 0.2) * 1.5 + Math.sin(x * 0.08 + z * 0.12) * 0.8;
-                        const topY = Math.floor(noise + 3);
-                        if (topY < 1) continue;
-                        for (let j = 0; j < 3; j++) {
-                            const pos = new THREE.Vector3(x, topY + 1 + j, z);
-                            const mesh = createBlockMesh('WOOD', pos);
-                            worldGroup.add(mesh);
-                            worldObjects.push(mesh);
-                        }
-                        const leafOffsets = [
-                            [0, 4, 0], [1, 3, 0], [-1, 3, 0], [0, 3, 1], [0, 3, -1],
-                            [1, 4, 0], [-1, 4, 0], [0, 4, 1], [0, 4, -1],
-                            [1, 3, 1], [-1, 3, -1], [1, 3, -1], [-1, 3, 1]
-                        ];
-                        for (const off of leafOffsets) {
-                            const pos = new THREE.Vector3(x + off[0], topY + 1 + off[1], z + off[2]);
-                            const mesh = createBlockMesh('LEAVES', pos);
-                            worldGroup.add(mesh);
-                            worldObjects.push(mesh);
-                        }
-                    }
-                    // 边界光柱
-                    const bMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200, transparent: true, opacity: 0.15 });
-                    const boundaryPos = [
-                        [-26, 0, -26], [26, 0, -26], [-26, 0, 26], [26, 0, 26]
-                    ];
-                    for (const p of boundaryPos) {
-                        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), bMat);
-                        pillar.position.set(p[0], 2, p[1]);
-                        pillar.castShadow = true;
-                        worldGroup.add(pillar);
-                        const top = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6),
-                            new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff5500 }));
-                        top.position.set(p[0], 4.2, p[1]);
-                        worldGroup.add(top);
-                    }
-                    // 设置玩家出生在地面
-                    const spawnNoise = Math.sin(0)*Math.cos(0)*1.5 + Math.sin(0)*0.8;
-                    const spawnY = Math.floor(spawnNoise + 3) + 1.8;
-                    camera.position.set(0, spawnY, 0);
-                    document.getElementById('loading').style.display = 'none';
-                    generationComplete = true;
-                    setTimeout(() => controls.lock(), 400);
-                }
-
-                requestAnimationFrame(generateNextChunk);
-            });
-        }
-
-        await generateWorld();
-
-        // --- 碰撞检测 ---
-        const playerWidth = 0.6;
-        const playerHeight = 1.8;
-        const halfWidth = playerWidth / 2;
-
-        function isBlocked(pos) {
-            const px = pos.x;
-            const py = pos.y;
-            const pz = pos.z;
-            for (const obj of worldObjects) {
-                const bPos = obj.position;
-                const half = 0.45;
-                if (px + halfWidth > bPos.x - half && px - halfWidth < bPos.x + half &&
-                    py + playerHeight > bPos.y - half && py < bPos.y + half &&
-                    pz + halfWidth > bPos.z - half && pz - halfWidth < bPos.z + half) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function tryMove(newPos) {
-            const testX = new THREE.Vector3(newPos.x, camera.position.y, camera.position.z);
-            const testZ = new THREE.Vector3(camera.position.x, camera.position.y, newPos.z);
-            if (!isBlocked(testX)) camera.position.x = newPos.x;
-            if (!isBlocked(testZ)) camera.position.z = newPos.z;
-        }
-
-        // --- 物品系统 ---
-        const GUN_TYPES = {
-            PISTOL: { name: '手枪', damage: 20, fireRate: 200, range: 30, color: '#ffaa00', detail: '#cc8800' },
-            RIFLE: { name: '步枪', damage: 35, fireRate: 400, range: 60, color: '#44aa44', detail: '#228822' },
-        };
-        const TOOL_TYPES = {
-            PICKAXE: { name: '镐子', color: '#aaaaaa', detail: '#888888' },
-            SHOVEL: { name: '铲子', color: '#bbaa77', detail: '#997755' },
-        };
-
-        const ALL_ITEMS = [];
-        for (const [key, data] of Object.entries(BLOCK_TYPES)) {
-            if (key === 'CHEST') continue;
-            ALL_ITEMS.push({ id: key, type: 'block', data: data });
-        }
-        for (const [key, data] of Object.entries(GUN_TYPES)) {
-            ALL_ITEMS.push({ id: key, type: 'gun', data: data });
-        }
-        for (const [key, data] of Object.entries(TOOL_TYPES)) {
-            ALL_ITEMS.push({ id: key, type: 'tool', data: data });
-        }
-
-        let inventory = [];
-        let selectedSlot = 0;
-        const MAX_STACK = 64;
-
-        function addItemToInventory(type, id) {
-            const existing = inventory.find(i => i.type === type && i.id === id && i.count < MAX_STACK);
-            if (existing) { existing.count++; }
-            else { inventory.push({ type, id, count: 1 }); }
-            updateUI();
-        }
-
-        function removeItemFromInventory(type, id) {
-            const idx = inventory.findIndex(i => i.type === type && i.id === id);
-            if (idx === -1) return false;
-            const item = inventory[idx];
-            if (item.count > 1) { item.count--; }
-            else { inventory.splice(idx, 1); }
-            updateUI();
-            return true;
-        }
-
-        function getHeldItem() {
-            if (inventory.length === 0 || selectedSlot >= inventory.length) return null;
-            return inventory[selectedSlot];
-        }
-
-        function getItemInfo(type, id) {
-            if (type === 'block') return BLOCK_TYPES[id];
-            if (type === 'gun') return GUN_TYPES[id];
-            if (type === 'tool') return TOOL_TYPES[id];
-            return null;
-        }
-
-        function updateUI() {
-            const container = document.getElementById('inventory-ui');
-            container.innerHTML = '';
-            inventory.forEach((item, idx) => {
-                const slot = document.createElement('div');
-                slot.className = 'inv-slot' + (idx === selectedSlot ? ' active' : '');
-                const canvas = document.createElement('canvas');
-                canvas.width = 32; canvas.height = 32;
-                const ctx = canvas.getContext('2d');
-                const info = getItemInfo(item.type, item.id);
-                if (info) {
-                    ctx.fillStyle = info.color || '#888';
-                    ctx.fillRect(0, 0, 32, 32);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                    ctx.lineWidth = 1.5;
-                    ctx.strokeRect(0.5, 0.5, 31, 31);
-                    if (info.detail) {
-                        for (let i=0; i<20; i++) {
-                            const x = Math.floor(Math.random() * 28) + 2;
-                            const y = Math.floor(Math.random() * 28) + 2;
-                            ctx.fillStyle = info.detail;
-                            ctx.fillRect(x, y, 2, 2);
-                        }
-                    }
-                }
-                slot.appendChild(canvas);
-                if (item.count > 1) {
-                    const c = document.createElement('span');
-                    c.className = 'count';
-                    c.textContent = item.count;
-                    slot.appendChild(c);
-                }
-                slot.addEventListener('click', () => { selectedSlot = idx; updateUI(); updateHeld(); });
-                container.appendChild(slot);
-            });
-            if (inventory.length === 0) {
-                const empty = document.createElement('div');
-                empty.style.cssText = 'color:rgba(255,255,255,0.3);padding:6px 14px;font-size:13px;';
-                empty.textContent = '🈳 挖掘或开启宝箱';
-                container.appendChild(empty);
-            }
-            updateHeld();
-        }
-
-        function updateHeld() {
-            const heldCanvas = document.getElementById('heldCanvas');
-            const ctx = heldCanvas.getContext('2d');
-            ctx.clearRect(0, 0, 40, 40);
-            const item = getHeldItem();
-            if (item) {
-                const info = getItemInfo(item.type, item.id);
-                if (info) {
-                    ctx.fillStyle = info.color || '#888';
-                    ctx.fillRect(2, 2, 36, 36);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                    ctx.lineWidth = 1.5;
-                    ctx.strokeRect(2, 2, 36, 36);
-                    if (info.detail) {
-                        for (let i=0; i<20; i++) {
-                            const x = Math.floor(Math.random() * 30) + 5;
-                            const y = Math.floor(Math.random() * 30) + 5;
-                            ctx.fillStyle = info.detail;
-                            ctx.fillRect(x, y, 2, 2);
-                        }
-                    }
-                    document.getElementById('held-label').textContent = '手持: ' + info.name + (item.count > 1 ? ' x' + item.count : '');
-                }
-            } else {
-                document.getElementById('held-label').textContent = '手持: 空';
-            }
-        }
-
-        // --- 箱子交互 ---
-        function openChest(chestObj) {
-            const items = chestObj.userData.chestItems || [];
-            if (items.length === 0) {
-                showMessage('📭 宝箱是空的');
-                return;
-            }
-            // 将物品加入背包
-            items.forEach(item => {
-                for (let i = 0; i < item.count; i++) {
-                    addItemToInventory(item.type, item.id);
-                }
-            });
-            // 清空宝箱
-            chestObj.userData.chestItems = [];
-            showMessage('📦 宝箱已开启！获得 ' + items.reduce((sum, it) => sum + it.count, 0) + ' 件物品');
-            // 改变箱子外观（可选） - 这里简单改颜色
-            chestObj.material.color.setHex(0x8B5A2B);
-        }
-
-        let messageTimeout = null;
-        function showMessage(text) {
-            const el = document.getElementById('chest-message');
-            el.textContent = text;
-            el.classList.add('show');
-            if (messageTimeout) clearTimeout(messageTimeout);
-            messageTimeout = setTimeout(() => {
-                el.classList.remove('show');
-            }, 3000);
-        }
-
-        // --- 物品选择器 ---
-        let selectorOpen = false;
-        window.toggleSelector = function() {
-            selectorOpen = !selectorOpen;
-            const el = document.getElementById('item-selector');
-            if (selectorOpen) {
-                el.classList.add('show');
-                renderItemGrid();
-                if (controls.isLocked) controls.unlock();
-            } else {
-                el.classList.remove('show');
-                controls.lock();
-            }
-        };
-
-        function renderItemGrid() {
-            const grid = document.getElementById('item-grid');
-            grid.innerHTML = '';
-            ALL_ITEMS.forEach(item => {
-                const cell = document.createElement('div');
-                cell.className = 'item-cell';
-                const canvas = document.createElement('canvas');
-                canvas.width = 40; canvas.height = 40;
-                const ctx = canvas.getContext('2d');
-                const info = item.data;
-                ctx.fillStyle = info.color || '#888';
-                ctx.fillRect(0, 0, 40, 40);
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(0.5, 0.5, 39, 39);
-                if (info.detail) {
-                    for (let i=0; i<30; i++) {
-                        const x = Math.floor(Math.random() * 36) + 2;
-                        const y = Math.floor(Math.random() * 36) + 2;
-                        ctx.fillStyle = info.detail;
-                        ctx.fillRect(x, y, 2, 2);
-                    }
-                }
-                cell.appendChild(canvas);
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'item-name';
-                nameSpan.textContent = info.name || item.id;
-                cell.appendChild(nameSpan);
-                cell.addEventListener('click', () => {
-                    const existing = inventory.find(i => i.type === item.type && i.id === item.id);
-                    if (existing) {
-                        selectedSlot = inventory.indexOf(existing);
-                    } else {
-                        addItemToInventory(item.type, item.id);
-                        const newItem = inventory.find(i => i.type === item.type && i.id === item.id);
-                        if (newItem) selectedSlot = inventory.indexOf(newItem);
-                    }
-                    updateUI();
-                    toggleSelector();
+                    if (z.attackCooldown > 0) z.attackCooldown -= dt;
+                    if (z.hitFlash > 0) z.hitFlash -= dt;
+                    z.x = Math.max(10, Math.min(590, z.x));
+                    z.z = Math.max(10, Math.min(590, z.z));
                 });
-                grid.appendChild(cell);
-            });
-        }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') { e.preventDefault(); toggleSelector(); }
-        });
+                if (player.damageCooldown > 0) player.damageCooldown -= dt;
 
-        // --- 生物 (装饰) ---
-        const entities = [];
-        const MOB_TYPES = {
-            COW: { name: '牛', color: 0x8B8B8B, health: 20, speed: 0.02, aggressive: false },
-            PIG: { name: '猪', color: 0xFFB6C1, health: 15, speed: 0.025, aggressive: false },
-        };
+                // 子弹更新
+                bullets.forEach(b => {
+                    b.x += b.dx * b.speed * dt;
+                    b.y += b.dy * b.speed * dt;
+                    b.z += b.dz * b.speed * dt;
+                    b.life -= dt;
 
-        function createMob(type, pos) {
-            const data = MOB_TYPES[type];
-            if (!data) return null;
-            const group = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.6), bodyMat);
-            body.position.y = 0.4;
-            body.castShadow = true;
-            body.receiveShadow = true;
-            group.add(body);
-            const headMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.7 });
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMat);
-            head.position.y = 0.9;
-            head.castShadow = true;
-            head.receiveShadow = true;
-            group.add(head);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
-            for (let side of [-0.25, 0.25]) {
-                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.15), legMat);
-                leg.position.set(side, 0.15, 0);
-                leg.castShadow = true;
-                group.add(leg);
-            }
-            group.position.copy(pos);
-            group.userData = {
-                type, health: data.health, maxHealth: data.health,
-                speed: data.speed, aggressive: false,
-                wanderTimer: 0,
-                velocity: new THREE.Vector3((Math.random()-0.5)*0.02, 0, (Math.random()-0.5)*0.02)
-            };
-            scene.add(group);
-            entities.push(group);
-            return group;
-        }
+                    zombies.forEach(z => {
+                        if (b.life > 0 && z.hp > 0 && Math.hypot(z.x - b.x, z.z - b.z) < z.radius) {
+                            z.hp -= b.damage;
+                            z.hitFlash = 0.2;
+                            spawnParticles(b.x, b.y, b.z, b.fire ? '#ff6600' : '#ffcc00', 3);
+                            b.life = 0;
 
-        function spawnMobs() {
-            const types = ['COW', 'PIG'];
-            for (let i=0; i<12; i++) {
-                const type = types[Math.floor(Math.random() * types.length)];
-                const x = (Math.random() - 0.5) * 40;
-                const z = (Math.random() - 0.5) * 40;
-                if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
-                const noise = Math.sin(x*0.25)*Math.cos(z*0.2)*1.5 + Math.sin(x*0.08+z*0.12)*0.8;
-                const y = Math.floor(noise + 3) + 0.5;
-                if (y < 0.5) continue;
-                createMob(type, new THREE.Vector3(x, y, z));
-            }
-        }
-        spawnMobs();
+                            if (z.hp <= 0) {
+                                // 击杀
+                                combo++;
+                                comboTimer = 3;
+                                money += z.money;
+                                score += z.money;
+                                totalKills++;
 
-        // --- 挖掘与放置 ---
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
+                                // 爆头判定 (随机)
+                                if (Math.random() < 0.25) {
+                                    headshots++;
+                                    money += 50;
+                                    score += 50;
+                                }
 
-        function getIntersect() {
-            if (!controls.isLocked) return null;
-            mouse.set(0, 0);
-            raycaster.setFromCamera(mouse, camera);
-            const hits = raycaster.intersectObjects(worldObjects);
-            return hits.length > 0 ? hits[0] : null;
-        }
+                                // 连杀奖励
+                                if (combo >= 3) money += combo * 30;
 
-        function digBlock() {
-            const hit = getIntersect();
-            if (!hit) return;
-            const obj = hit.object;
-            if (!obj.userData.isBlock) return;
-            // 箱子不可挖掘
-            if (obj.userData.isChest) {
-                showMessage('🔒 宝箱无法挖掘，请右键打开');
-                return;
-            }
-            const type = obj.userData.blockType;
-            if (type) {
-                addItemToInventory('block', type);
-                scene.remove(obj);
-                const idx = worldObjects.indexOf(obj);
-                if (idx > -1) worldObjects.splice(idx, 1);
-                updateUI();
-            }
-        }
+                                // 爆炸僵尸
+                                if (z.type === 'exploder') {
+                                    spawnParticles(z.x, z.y + 15, z.z, '#ff4400', 25);
+                                    zombies.forEach(z2 => {
+                                        if (z2 !== z && Math.hypot(z2.x - z.x, z2.z - z.z) < 70) {
+                                            z2.hp -= 55;
+                                            z2.hitFlash = 0.3;
+                                        }
+                                    });
+                                }
 
-        function placeBlock() {
-            const held = getHeldItem();
-            if (!held || held.type !== 'block') return;
-            const hit = getIntersect();
-            if (!hit) return;
-            const obj = hit.object;
-            if (!obj.userData.isBlock) return;
-            // 不能放置在箱子上
-            if (obj.userData.isChest) return;
-            const normal = hit.face.normal.clone();
-            normal.transformDirection(obj.matrixWorld);
-            const pos = obj.position.clone().add(normal.multiplyScalar(0.95));
-            const exists = worldObjects.some(o => o.position.distanceTo(pos) < 0.1 && o !== obj);
-            if (exists) return;
-            const playerPos = camera.position.clone();
-            if (Math.abs(playerPos.x - pos.x) < 1.0 && Math.abs(playerPos.z - pos.z) < 1.0 && Math.abs(playerPos.y - pos.y) < 2.0) {
-                return;
-            }
-            if (!removeItemFromInventory('block', held.id)) return;
-            const mesh = createBlockMesh(held.id, pos);
-            worldGroup.add(mesh);
-            worldObjects.push(mesh);
-            updateUI();
-        }
+                                // 击杀消息
+                                const killMsg = document.createElement('div');
+                                killMsg.className = 'kill-msg';
+                                killMsg.textContent = `💀 ${z.type} +${z.money}💰`;
+                                document.getElementById('kill-feed').appendChild(killMsg);
+                                setTimeout(() => killMsg.remove(), 2500);
 
-        // 鼠标事件
-        document.addEventListener('mousedown', (e) => {
-            if (!controls.isLocked) return;
-            if (e.button === 0) {
-                // 左键：先检测是否点击箱子，如果是则打开箱子（但左键通常挖掘，我们让左键也能开箱？但更符合习惯是右键开箱，左键挖掘）
-                // 所以左键挖掘不变
-                digBlock();
-            } else if (e.button === 2) {
-                // 右键：先检测是否点击箱子
-                const hit = getIntersect();
-                if (hit && hit.object.userData.isChest) {
-                    openChest(hit.object);
-                } else {
-                    placeBlock();
+                                // 连杀提示
+                                if (combo >= 3) {
+                                    const cd = document.getElementById('combo-display');
+                                    cd.textContent = `🔥 ${combo}连杀！`;
+                                    cd.style.opacity = '1';
+                                    setTimeout(() => cd.style.opacity = '0', 1000);
+                                }
+                            }
+                        }
+                    });
+
+                    vehicles.forEach(v => {
+                        if (b.life > 0 && v.active && v !== player.vehicle && Math.hypot(v.x - b.x, v.z - b.z) <
+                            30) {
+                            v.hp -= b.damage;
+                            b.life = 0;
+                            if (v.hp <= 0) {
+                                v.active = false;
+                                money += 400;
+                                spawnParticles(v.x, v.y + 20, v.z, '#ff8800', 20);
+                            }
+                        }
+                    });
+                });
+
+                bullets = bullets.filter(b => b.life > 0);
+                zombies = zombies.filter(z => z.hp > 0);
+                particles = particles.filter(p => p.life > 0);
+                particles.forEach(p => {
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.z += p.vz * dt;
+                    p.vy -= 30 * dt;
+                    p.life -= dt;
+                    if (p.y < 0) { p.y = 0;
+                        p.life = 0; }
+                });
+
+                // 波次检查
+                if (zombies.length === 0 && gameStarted) {
+                    wave++;
+                    money += 500 + wave * 100;
+                    score += 500;
+                    spawnWave();
+                }
+
+                // HUD更新
+                document.getElementById('hud-health').textContent = Math.floor(player.health) + (armor > 0 ? `+${armor}` :
+                    '');
+                document.getElementById('hud-zombies').textContent = zombies.length;
+                document.getElementById('hud-money').textContent = money;
+                document.getElementById('hud-ammo').textContent = `${player.ammo}/${player.maxAmmo}`;
+                document.getElementById('hud-wave').textContent = wave;
+                document.getElementById('hud-combo').textContent = combo;
+
+                // 购买按钮状态
+                document.getElementById('buy-health').disabled = money < 200 || player.health >= player.maxHealth;
+                document.getElementById('buy-armor').disabled = money < 500 || armor >= 10;
+                document.getElementById('buy-ammo').disabled = money < 300 || player.ammo >= player.maxAmmo;
+
+                // 死亡
+                if (player.health <= 0) {
+                    gameStarted = false;
+                    alert(`💀 你死了！\n\n🏆 最终得分: ${score}\n💰 金钱: ${money}\n🔫 击杀: ${totalKills}\n🎯 爆头: ${headshots}\n🌊 到达波数: ${wave}`);
+                    location.reload();
                 }
             }
-        });
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        // --- 键盘移动 (带碰撞) ---
-        const keys = { w:false, a:false, s:false, d:false, shift:false, space:false };
-        document.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'w': case 'W': keys.w=true; e.preventDefault(); break;
-                case 'a': case 'A': keys.a=true; e.preventDefault(); break;
-                case 's': case 'S': keys.s=true; e.preventDefault(); break;
-                case 'd': case 'D': keys.d=true; e.preventDefault(); break;
-                case 'Shift': keys.shift=true; e.preventDefault(); break;
-                case ' ': keys.space=true; e.preventDefault(); break;
-            }
-        });
-        document.addEventListener('keyup', (e) => {
-            switch(e.key) {
-                case 'w': case 'W': keys.w=false; e.preventDefault(); break;
-                case 'a': case 'A': keys.a=false; e.preventDefault(); break;
-                case 's': case 'S': keys.s=false; e.preventDefault(); break;
-                case 'd': case 'D': keys.d=false; e.preventDefault(); break;
-                case 'Shift': keys.shift=false; e.preventDefault(); break;
-                case ' ': keys.space=false; e.preventDefault(); break;
-            }
-        });
-
-        let velocityY = 0;
-        const gravity = -0.02;
-        const jumpSpeed = 0.25;
-
-        function updateMovement() {
-            if (!controls.isLocked) return;
-            const speed = keys.shift ? 0.25 : 0.12;
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            dir.y = 0;
-            dir.normalize();
-            const right = new THREE.Vector3();
-            right.crossVectors(dir, new THREE.Vector3(0,1,0)).normalize();
-
-            const mx = (keys.d?1:0) - (keys.a?1:0);
-            const mz = (keys.s?1:0) - (keys.w?1:0);
-            let moveX = 0, moveZ = 0;
-            if (mx !== 0 || mz !== 0) {
-                const fwd = dir.clone().multiplyScalar(-mz);
-                const side = right.clone().multiplyScalar(mx);
-                const total = fwd.add(side).normalize().multiplyScalar(speed);
-                moveX = total.x;
-                moveZ = total.z;
+            function updateWeaponSlots() {
+                document.querySelectorAll('.wpn-slot').forEach(slot => {
+                    slot.classList.toggle('active', parseInt(slot.dataset.w) === player.weaponIndex);
+                });
             }
 
-            if (moveX !== 0 || moveZ !== 0) {
-                const newPos = camera.position.clone();
-                newPos.x += moveX;
-                newPos.z += moveZ;
-                tryMove(newPos);
-            }
-
-            if (keys.space && camera.position.y <= 1.8) {
-                velocityY = jumpSpeed;
-            }
-            velocityY += gravity;
-            const newY = camera.position.y + velocityY;
-            const testPos = new THREE.Vector3(camera.position.x, newY, camera.position.z);
-            if (!isBlocked(testPos)) {
-                camera.position.y = newY;
-            } else {
-                if (velocityY < 0) velocityY = 0;
-                else velocityY = 0;
-            }
-            if (camera.position.y < 0.5) {
-                camera.position.y = 0.5;
-                velocityY = 0;
-            }
-
-            document.getElementById('coord-info').textContent =
-                `📍 ${Math.round(camera.position.x)}, ${Math.round(camera.position.y)}, ${Math.round(camera.position.z)}`;
-        }
-
-        setInterval(updateMovement, 16);
-
-        // --- 生物AI ---
-        function updateMobs() {
-            const dt = 1/60;
-            entities.forEach(mob => {
-                const data = mob.userData;
-                data.wanderTimer -= dt;
-                if (data.wanderTimer <= 0) {
-                    data.wanderTimer = 2 + Math.random() * 5;
-                    const angle = Math.random() * Math.PI * 2;
-                    const spd = data.speed * 2;
-                    data.velocity.set(Math.cos(angle)*spd, 0, Math.sin(angle)*spd);
+            // ==================== 商店 ====================
+            document.getElementById('buy-health').addEventListener('click', () => {
+                if (money >= 200 && player.health < player.maxHealth) {
+                    money -= 200;
+                    player.health = Math.min(player.maxHealth, player.health + 50);
                 }
-                if (data.velocity) {
-                    mob.position.x += data.velocity.x * dt;
-                    mob.position.z += data.velocity.z * dt;
-                    if (Math.abs(mob.position.x) > 28 || Math.abs(mob.position.z) > 28) {
-                        data.velocity.x *= -1;
-                        data.velocity.z *= -1;
-                    }
-                    if (data.velocity.length() > 0.001) {
-                        mob.lookAt(mob.position.clone().add(data.velocity));
-                    }
+            });
+            document.getElementById('buy-armor').addEventListener('click', () => {
+                if (money >= 500 && armor < 10) {
+                    money -= 500;
+                    armor += 2;
                 }
-                const groundY = Math.floor(Math.sin(mob.position.x*0.25)*Math.cos(mob.position.z*0.2)*1.5 + Math.sin(mob.position.x*0.08+mob.position.z*0.12)*0.8 + 3);
-                mob.position.y = groundY + 0.5;
             });
-        }
+            document.getElementById('buy-ammo').addEventListener('click', () => {
+                if (money >= 300 && player.ammo < player.maxAmmo) {
+                    money -= 300;
+                    player.ammo = player.maxAmmo;
+                }
+            });
 
-        // --- 云朵 ---
-        const clouds = [];
-        for (let i=0; i<12; i++) {
-            const g = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color:0xffffff, transparent:true, opacity:0.4, roughness:0.1 });
-            const pos = [[0,0,0,1.8,0.4,1.2],[-1.2,0.2,0.2,1.4,0.3,0.9],[1.2,0.1,-0.2,1.4,0.3,0.9],[-0.6,0.3,-0.7,1.0,0.2,0.7],[0.7,0.2,0.8,1.0,0.2,0.7]];
-            for (const p of pos) {
-                const box = new THREE.Mesh(new THREE.BoxGeometry(p[3],p[4],p[5]), mat);
-                box.position.set(p[0],p[1],p[2]);
-                g.add(box);
+            // ==================== 输入 ====================
+            document.getElementById('start-btn').addEventListener('click', () => {
+                gameStarted = true;
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('hud').style.display = 'flex';
+                document.getElementById('weapon-bar').style.display = 'flex';
+                document.getElementById('shop').style.display = 'flex';
+                updateWeaponSlots();
+                canvas.requestPointerLock();
+                spawnWave();
+            });
+
+            canvas.addEventListener('click', () => {
+                if (gameStarted && !isPointerLocked) canvas.requestPointerLock();
+            });
+            document.addEventListener('pointerlockchange', () => { isPointerLocked = document.pointerLockElement ===
+                    canvas; });
+            document.addEventListener('mousemove', (e) => {
+                if (isPointerLocked && gameStarted) {
+                    yaw -= e.movementX * 0.003;
+                    pitch -= e.movementY * 0.003;
+                    pitch = Math.max(-1.3, Math.min(1.3, pitch));
+                }
+            });
+            document.addEventListener('mousedown', (e) => { if (e.button === 0) mouseDown = true; });
+            document.addEventListener('mouseup', () => { mouseDown = false; });
+            document.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+                if (e.key === ' ') e.preventDefault();
+            });
+            document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+            document.querySelectorAll('.wpn-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    const wi = parseInt(slot.dataset.w);
+                    player.weaponIndex = wi;
+                    player.ammo = weapons[wi].ammoMax;
+                    player.maxAmmo = weapons[wi].ammoMax;
+                    player.reloading = false;
+                    document.getElementById('reload-bar').style.display = 'none';
+                    updateWeaponSlots();
+                });
+            });
+
+            // ==================== 游戏循环 ====================
+            let lastTime = performance.now();
+
+            function gameLoop() {
+                const now = performance.now();
+                const dt = Math.min((now - lastTime) / 1000, 0.1);
+                lastTime = now;
+                update(dt);
+                drawWorld();
+                requestAnimationFrame(gameLoop);
             }
-            g.position.set((Math.random()-0.5)*100, 14+Math.random()*8, (Math.random()-0.5)*100);
-            scene.add(g);
-            clouds.push(g);
-        }
-
-        // --- 动画循环 ---
-        function animate() {
-            const time = performance.now() * 0.0001;
-            clouds.forEach((c, i) => {
-                c.position.x += Math.sin(time + i) * 0.002;
-                c.position.z += Math.cos(time*0.7 + i) * 0.002;
-            });
-            updateMobs();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // 初始化UI
-        updateUI();
-        console.log('✅ 出生点宝箱已放置，右键打开获得物品');
+            gameLoop();
+        })();
     </script>
 </body>
 </html>
