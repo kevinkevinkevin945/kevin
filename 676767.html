@@ -2,34 +2,51 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>3D Obby Parkour</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Ultimate 3D Obby Parkour</title>
+
 <style>
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    font-family:Arial,"Microsoft JhengHei",sans-serif;
+}
+
 *{
     box-sizing:border-box;
-    margin:0;
-    padding:0;
 }
 
-body{
-    overflow:hidden;
-    background:#111;
-    font-family:Arial;
-}
-
-canvas{
-    width:100vw;
-    height:100vh;
-    display:block;
-}
-
-#ui{
+#game{
     position:fixed;
-    top:15px;
-    left:15px;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    cursor:crosshair;
+}
+
+#hud{
+    position:fixed;
+    top:18px;
+    left:20px;
     color:white;
-    font-size:16px;
-    text-shadow:2px 2px 3px black;
+    z-index:10;
     pointer-events:none;
+    text-shadow:2px 2px 4px #000;
+}
+
+#hud h1{
+    margin:0 0 10px;
+    font-size:26px;
+}
+
+#hud div{
+    font-size:15px;
+    line-height:1.7;
 }
 
 #crosshair{
@@ -38,25 +55,117 @@ canvas{
     top:50%;
     transform:translate(-50%,-50%);
     color:white;
-    font-size:28px;
+    font-size:30px;
+    font-weight:bold;
+    z-index:10;
     pointer-events:none;
+    text-shadow:0 0 5px black;
 }
 
-#start{
+#message{
+    position:fixed;
+    top:18%;
+    left:50%;
+    transform:translateX(-50%);
+    color:white;
+    font-size:32px;
+    font-weight:bold;
+    text-align:center;
+    z-index:20;
+    pointer-events:none;
+    text-shadow:3px 3px 5px black;
+}
+
+#skillBox{
+    position:fixed;
+    bottom:25px;
+    left:50%;
+    transform:translateX(-50%);
+    width:260px;
+    height:22px;
+    border:3px solid white;
+    border-radius:20px;
+    overflow:hidden;
+    z-index:20;
+    pointer-events:none;
+    background:#222;
+}
+
+#skillFill{
+    width:100%;
+    height:100%;
+    background:linear-gradient(90deg,#00ccff,#66ffff);
+    transition:width .05s;
+}
+
+#skillText{
+    position:fixed;
+    bottom:50px;
+    left:50%;
+    transform:translateX(-50%);
+    color:white;
+    z-index:20;
+    font-size:14px;
+    pointer-events:none;
+    text-shadow:2px 2px 3px black;
+}
+
+#startScreen{
     position:fixed;
     inset:0;
+    z-index:100;
     display:flex;
     flex-direction:column;
-    align-items:center;
     justify-content:center;
-    background:#151515;
+    align-items:center;
     color:white;
+    text-align:center;
+    background:
+        linear-gradient(
+            135deg,
+            #008cff,
+            #26b9ff,
+            #0061b8
+        );
 }
 
-button{
-    font-size:25px;
-    padding:15px 40px;
-    margin-top:20px;
+#startScreen h1{
+    margin:0;
+    font-size:56px;
+    text-shadow:4px 4px 0 #004b8f;
+}
+
+#startScreen p{
+    font-size:19px;
+    margin:8px;
+}
+
+#startButton{
+    margin-top:25px;
+    padding:16px 50px;
+    border:none;
+    border-radius:12px;
+    font-size:23px;
+    font-weight:bold;
+    cursor:pointer;
+    background:white;
+}
+
+#startButton:hover{
+    transform:scale(1.05);
+}
+
+#pointerHint{
+    position:fixed;
+    bottom:25px;
+    left:50%;
+    transform:translateX(-50%);
+    color:#fff;
+    display:none;
+    z-index:50;
+    background:rgba(0,0,0,.65);
+    padding:12px 20px;
+    border-radius:10px;
     cursor:pointer;
 }
 </style>
@@ -64,51 +173,90 @@ button{
 
 <body>
 
-<canvas id="game"></canvas>
+<canvas id="game" tabindex="0"></canvas>
 
-<div id="ui">
-    <div>3D OBBY PARKOUR</div>
-    <div>WASD 移動 | SPACE 跳躍</div>
-    <div>F 衝擊波跳躍 | R 重生</div>
-    <br>
-    <div id="level">關卡：1</div>
-    <div id="checkpoint">檢查點：起點</div>
+<div id="hud">
+    <h1>ULTIMATE OBBY</h1>
+
+    <div>
+        關卡：<span id="level">1</span><br>
+        檢查點：<span id="checkpoint">START</span><br>
+        WASD：移動<br>
+        SPACE：跳躍<br>
+        F：衝擊跳躍<br>
+        R：重生
+    </div>
 </div>
 
 <div id="crosshair">+</div>
 
-<div id="start">
-    <h1>3D OBBY PARKOUR</h1>
-    <p>第一人稱跑酷</p>
-    <button id="startBtn">開始遊戲</button>
+<div id="message"></div>
+
+<div id="skillText">
+    F 衝擊跳躍
 </div>
 
-<script>
+<div id="skillBox">
+    <div id="skillFill"></div>
+</div>
 
-/* =========================
+<div id="pointerHint">
+    點擊畫面繼續控制視角
+</div>
+
+<div id="startScreen">
+
+    <h1>ULTIMATE 3D OBBY</h1>
+
+    <p>大型第一人稱跑酷</p>
+    <p>WASD 移動 ｜ SPACE 跳躍 ｜ F 衝擊跳躍</p>
+
+    <button id="startButton">
+        開始遊戲
+    </button>
+
+</div>
+
+
+<script>
+"use strict";
+
+/* =========================================================
    CANVAS
-========================= */
+========================================================= */
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+const levelUI = document.getElementById("level");
+const checkpointUI = document.getElementById("checkpoint");
+const messageUI = document.getElementById("message");
+const skillFill = document.getElementById("skillFill");
+const startScreen = document.getElementById("startScreen");
+const startButton = document.getElementById("startButton");
+const pointerHint = document.getElementById("pointerHint");
+
+
 function resize(){
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
 }
 
-addEventListener("resize",resize);
+window.addEventListener("resize", resize);
+
 resize();
 
 
-/* =========================
+/* =========================================================
    PLAYER
-========================= */
+========================================================= */
 
 const player = {
 
     x:0,
-    y:3,
+    y:4,
     z:0,
 
     vx:0,
@@ -119,315 +267,788 @@ const player = {
     pitch:0,
 
     radius:0.45,
+
     height:1.7,
 
     speed:8,
 
+    jumpPower:8.5,
+
     grounded:false,
 
-    checkpoint:{
-        x:0,
-        y:3,
-        z:0
-    },
+    checkpointX:0,
+    checkpointY:4,
+    checkpointZ:0,
 
-    shockCooldown:0
+    checkpointName:"START",
+
+    shockCooldown:0,
+
+    shockMax:1.2
 
 };
 
 
-/* =========================
+/* =========================================================
    INPUT
-========================= */
+========================================================= */
 
 const keys = {};
 
-addEventListener("keydown",e=>{
 
-    keys[e.code]=true;
+window.addEventListener("keydown", function(e){
 
-    if(e.code==="Space"){
+    keys[e.code] = true;
+
+    if(e.code === "Space"){
+
         e.preventDefault();
 
         if(player.grounded){
-            player.vy=8;
-            player.grounded=false;
+
+            player.vy = player.jumpPower;
+            player.grounded = false;
+
         }
+
     }
 
-    if(e.code==="KeyF"){
+
+    if(e.code === "KeyF"){
+
         shockJump();
+
     }
 
-    if(e.code==="KeyR"){
+
+    if(e.code === "KeyR"){
+
         respawn();
-    }
-
-});
-
-addEventListener("keyup",e=>{
-    keys[e.code]=false;
-});
-
-
-/* =========================
-   MOUSE
-========================= */
-
-canvas.addEventListener("click",()=>{
-    canvas.requestPointerLock();
-});
-
-document.addEventListener("mousemove",e=>{
-
-    if(document.pointerLockElement===canvas){
-
-        player.yaw+=e.movementX*0.0025;
-
-        player.pitch-=e.movementY*0.0025;
-
-        player.pitch=Math.max(
-            -1.3,
-            Math.min(1.3,player.pitch)
-        );
 
     }
 
 });
 
 
-/* =========================
-   PLATFORMS
-========================= */
+window.addEventListener("keyup", function(e){
 
-const platforms=[];
+    keys[e.code] = false;
 
-function platform(
+});
+
+
+/* =========================================================
+   POINTER LOCK
+========================================================= */
+
+function lockMouse(){
+
+    if(document.pointerLockElement !== canvas){
+
+        canvas.requestPointerLock();
+
+    }
+
+}
+
+
+startButton.addEventListener("click", function(){
+
+    startScreen.style.display = "none";
+
+    canvas.focus();
+
+    lockMouse();
+
+});
+
+
+canvas.addEventListener("mousedown", function(){
+
+    lockMouse();
+
+});
+
+
+pointerHint.addEventListener("click", function(){
+
+    lockMouse();
+
+});
+
+
+document.addEventListener("pointerlockchange", function(){
+
+    if(startScreen.style.display !== "none"){
+        return;
+    }
+
+    if(document.pointerLockElement === canvas){
+
+        pointerHint.style.display = "none";
+
+    }else{
+
+        pointerHint.style.display = "block";
+
+    }
+
+});
+
+
+document.addEventListener("mousemove", function(e){
+
+    if(document.pointerLockElement !== canvas){
+        return;
+    }
+
+    const sensitivity = 0.0025;
+
+    player.yaw += e.movementX * sensitivity;
+
+    player.pitch -= e.movementY * sensitivity;
+
+
+    const maxPitch = Math.PI / 2.3;
+
+    if(player.pitch > maxPitch){
+        player.pitch = maxPitch;
+    }
+
+    if(player.pitch < -maxPitch){
+        player.pitch = -maxPitch;
+    }
+
+});
+
+
+/* =========================================================
+   WORLD
+========================================================= */
+
+const blocks = [];
+
+const checkpoints = [];
+
+
+function addBlock(
     x,y,z,
     w,h,d,
-    color="#888"
+    color
 ){
 
-    platforms.push({
-        x,y,z,
-        w,h,d,
-        color
+    blocks.push({
+
+        x:x,
+        y:y,
+        z:z,
+
+        w:w,
+        h:h,
+        d:d,
+
+        color:color,
+
+        moving:false
+
     });
 
 }
 
 
-/* =========================
-   START AREA
-========================= */
+function addMovingBlock(
+    x,y,z,
+    w,h,d,
+    color,
+    axis,
+    distance,
+    speed
+){
 
-platform(
-    0,
-    0,
-    0,
-    12,
-    1,
-    12,
-    "#777"
+    blocks.push({
+
+        x:x,
+        y:y,
+        z:z,
+
+        w:w,
+        h:h,
+        d:d,
+
+        color:color,
+
+        moving:true,
+
+        axis:axis,
+
+        distance:distance,
+
+        speed:speed,
+
+        startX:x,
+        startY:y,
+        startZ:z,
+
+        time:0,
+
+        deltaX:0,
+        deltaY:0,
+        deltaZ:0
+
+    });
+
+}
+
+
+function addCheckpoint(
+    x,y,z,
+    name,
+    level
+){
+
+    checkpoints.push({
+
+        x:x,
+        y:y,
+        z:z,
+
+        name:name,
+
+        level:level,
+
+        active:false
+
+    });
+
+}
+
+
+/* =========================================================
+   START AREA
+========================================================= */
+
+addBlock(
+    0,-1,0,
+    20,2,20,
+    "#777777"
 );
 
 
-/* =========================
-   OBBY LEVEL
-========================= */
+/* =========================================================
+   LEVEL 1
+   COLOR JUMPS
+========================================================= */
 
-platform(0,1,12,5,1,5,"#ff5555");
-platform(4,2,20,4,1,4,"#ff9955");
-platform(-2,4,28,4,1,4,"#ffff55");
-platform(5,6,36,4,1,4,"#55ff55");
+addBlock(
+    0,1,15,
+    6,2,6,
+    "#ff5555"
+);
 
-platform(
+addBlock(
+    5,3,25,
+    5,2,5,
+    "#ff8844"
+);
+
+addBlock(
+    -3,5,36,
+    5,2,5,
+    "#ffee33"
+);
+
+addBlock(
+    4,7,47,
+    5,2,5,
+    "#44dd66"
+);
+
+addBlock(
+    -4,9,58,
+    6,2,6,
+    "#4488ff"
+);
+
+addCheckpoint(
+    -4,11,58,
+    "彩色跳躍區",
+    1
+);
+
+
+/* =========================================================
+   LEVEL 2
+   FLOATING ROAD
+========================================================= */
+
+for(let i=0;i<12;i++){
+
+    const side =
+        i % 2 === 0 ? -6 : 6;
+
+    addBlock(
+
+        side,
+
+        11 + i * 1.2,
+
+        70 + i * 8,
+
+        5,
+
+        2,
+
+        5,
+
+        `hsl(${i * 28},85%,60%)`
+
+    );
+
+}
+
+addCheckpoint(
+    6,
+    27,
+    158,
+    "天空平台",
+    2
+);
+
+
+/* =========================================================
+   LEVEL 3
+   MOVING PLATFORMS
+========================================================= */
+
+addBlock(
+    0,27,170,
+    8,2,8,
+    "#ff77aa"
+);
+
+
+addMovingBlock(
+
+    0,30,190,
+
+    7,2,7,
+
+    "#bb55ff",
+
+    "x",
+
+    12,
+
+    1.5
+
+);
+
+
+addMovingBlock(
+
+    8,34,215,
+
+    7,2,7,
+
+    "#44ccff",
+
+    "z",
+
+    12,
+
+    1.2
+
+);
+
+
+addMovingBlock(
+
+    -8,38,240,
+
+    7,2,7,
+
+    "#ffaa33",
+
+    "x",
+
+    10,
+
+    1.8
+
+);
+
+
+addBlock(
+    0,42,265,
+    10,2,10,
+    "#44dd88"
+);
+
+addCheckpoint(
     0,
-    8,
-    45,
-    6,
-    1,
-    6,
+    44,
+    265,
+    "移動平台區",
+    3
+);
+
+
+/* =========================================================
+   LEVEL 4
+   HIGH JUMPS
+========================================================= */
+
+addBlock(
+    10,46,280,
+    6,2,6,
+    "#ff5555"
+);
+
+addBlock(
+    -8,51,295,
+    6,2,6,
+    "#ffaa22"
+);
+
+addBlock(
+    8,57,310,
+    6,2,6,
+    "#ffff33"
+);
+
+addBlock(
+    -7,64,325,
+    7,2,7,
+    "#55ff88"
+);
+
+addBlock(
+    5,72,342,
+    8,2,8,
     "#55aaff"
 );
 
+addCheckpoint(
+    5,
+    74,
+    342,
+    "高空跳躍區",
+    4
+);
 
-/* =========================
-   FLOATING PLATFORMS
-========================= */
 
-for(let i=0;i<10;i++){
+/* =========================================================
+   LEVEL 5
+   FINAL STAIRS
+========================================================= */
 
-    platform(
+for(let i=0;i<16;i++){
 
-        Math.sin(i*1.7)*7,
+    const side =
+        i % 2 === 0 ? -5 : 5;
 
-        3+i*1.5,
+    addBlock(
 
-        55+i*7,
+        side,
 
-        3,
+        76 + i * 2.5,
 
-        1,
+        360 + i * 8,
 
-        3,
+        6,
 
-        `hsl(${i*35},80%,60%)`
+        2,
+
+        6,
+
+        `hsl(${180 + i * 12},80%,60%)`
 
     );
 
 }
 
 
-/* =========================
-   CHECKPOINTS
-========================= */
+/* =========================================================
+   FINAL
+========================================================= */
 
-const checkpoints=[
-
-    {
-        x:0,
-        y:2,
-        z:45
-    },
-
-    {
-        x:0,
-        y:16,
-        z:110
-    }
-
-];
-
-
-/* =========================
-   FINISH
-========================= */
-
-const finish={
-
-    x:0,
-    y:20,
-    z:130,
-
-    w:8,
-    h:8,
-    d:2
-
-};
-
-platform(
-
-    0,
-    18,
-    130,
-
-    10,
-    1,
-    10,
-
-    "#00ff88"
-
+addBlock(
+    0,118,500,
+    24,2,24,
+    "#00dd88"
 );
 
 
-/* =========================
-   SHOCKWAVE
-========================= */
+addCheckpoint(
+    0,
+    120,
+    500,
+    "終點",
+    5
+);
 
-const waves=[];
 
-function shockJump(){
+/* =========================================================
+   MESSAGE
+========================================================= */
 
-    if(player.shockCooldown>0)return;
+let messageTime = 0;
 
-    player.shockCooldown=1.2;
 
-    /* 強力向上跳躍 */
+function showMessage(text,time=2){
 
-    player.vy=14;
+    messageUI.textContent = text;
 
-    waves.push({
-
-        x:player.x,
-
-        y:player.y-player.height,
-
-        z:player.z,
-
-        radius:0,
-
-        life:1
-
-    });
+    messageTime = time;
 
 }
 
 
-/* =========================
+/* =========================================================
    RESPAWN
-========================= */
+========================================================= */
 
 function respawn(){
 
-    player.x=player.checkpoint.x;
+    player.x = player.checkpointX;
+    player.y = player.checkpointY;
+    player.z = player.checkpointZ;
 
-    player.y=player.checkpoint.y;
+    player.vx = 0;
+    player.vy = 0;
+    player.vz = 0;
 
-    player.z=player.checkpoint.z;
-
-    player.vx=0;
-
-    player.vy=0;
-
-    player.vz=0;
+    showMessage("回到檢查點");
 
 }
 
 
-/* =========================
+/* =========================================================
+   F SHOCK JUMP
+========================================================= */
+
+function shockJump(){
+
+    if(player.shockCooldown > 0){
+        return;
+    }
+
+
+    player.shockCooldown = player.shockMax;
+
+
+    if(player.grounded){
+
+        player.vy = 14;
+
+        player.grounded = false;
+
+    }else{
+
+        player.vy += 4;
+
+    }
+
+
+    const forwardX =
+        Math.sin(player.yaw);
+
+    const forwardZ =
+        Math.cos(player.yaw);
+
+
+    player.vx += forwardX * 6;
+
+    player.vz += forwardZ * 6;
+
+
+    showMessage("⚡ 衝擊跳躍！",0.5);
+
+}
+
+
+/* =========================================================
+   MOVING BLOCKS
+========================================================= */
+
+function updateBlocks(dt){
+
+    for(const b of blocks){
+
+        if(!b.moving){
+            continue;
+        }
+
+
+        const oldX = b.x;
+        const oldY = b.y;
+        const oldZ = b.z;
+
+
+        b.time += dt;
+
+
+        const movement =
+            Math.sin(
+                b.time * b.speed
+            ) * b.distance;
+
+
+        if(b.axis === "x"){
+
+            b.x =
+                b.startX + movement;
+
+        }
+
+
+        if(b.axis === "y"){
+
+            b.y =
+                b.startY + movement;
+
+        }
+
+
+        if(b.axis === "z"){
+
+            b.z =
+                b.startZ + movement;
+
+        }
+
+
+        b.deltaX = b.x - oldX;
+        b.deltaY = b.y - oldY;
+        b.deltaZ = b.z - oldZ;
+
+    }
+
+}
+
+
+/* =========================================================
    COLLISION
-========================= */
+========================================================= */
 
-function collidePlatform(p){
+function horizontalOverlap(playerX,playerZ,b){
 
-    const px=player.x;
-    const py=player.y-player.height;
-    const pz=player.z;
+    const minX = b.x - b.w / 2;
+    const maxX = b.x + b.w / 2;
 
-    const insideX=
+    const minZ = b.z - b.d / 2;
+    const maxZ = b.z + b.d / 2;
 
-        px>p.x-p.w/2-player.radius &&
 
-        px<p.x+p.w/2+player.radius;
+    return (
 
-    const insideZ=
+        playerX + player.radius > minX &&
 
-        pz>p.z-p.d/2-player.radius &&
+        playerX - player.radius < maxX &&
 
-        pz<p.z+p.d/2+player.radius;
+        playerZ + player.radius > minZ &&
 
-    if(insideX && insideZ){
+        playerZ - player.radius < maxZ
 
-        const top=p.y+p.h/2;
+    );
+
+}
+
+
+function resolveHorizontalCollision(){
+
+    for(const b of blocks){
+
+        const minX = b.x - b.w / 2;
+        const maxX = b.x + b.w / 2;
+
+        const minZ = b.z - b.d / 2;
+        const maxZ = b.z + b.d / 2;
+
+        const bottom = b.y - b.h / 2;
+        const top = b.y + b.h / 2;
+
+        const feet =
+            player.y - player.height;
+
 
         if(
+            player.y < bottom ||
+            feet > top
+        ){
+            continue;
+        }
 
-            py<top+0.4 &&
 
-            py>top-1.2 &&
-
-            player.vy<=0
-
+        if(
+            player.x + player.radius > minX &&
+            player.x - player.radius < maxX &&
+            player.z + player.radius > minZ &&
+            player.z - player.radius < maxZ
         ){
 
-            player.y=
+            const left =
+                Math.abs(
+                    (player.x + player.radius) - minX
+                );
 
-                top+player.height;
+            const right =
+                Math.abs(
+                    maxX - (player.x - player.radius)
+                );
 
-            player.vy=0;
+            const front =
+                Math.abs(
+                    (player.z + player.radius) - minZ
+                );
 
-            player.grounded=true;
+            const back =
+                Math.abs(
+                    maxZ - (player.z - player.radius)
+                );
+
+
+            const smallest =
+                Math.min(
+                    left,
+                    right,
+                    front,
+                    back
+                );
+
+
+            if(smallest === left){
+
+                player.x =
+                    minX - player.radius;
+
+                player.vx = 0;
+
+            }
+            else if(smallest === right){
+
+                player.x =
+                    maxX + player.radius;
+
+                player.vx = 0;
+
+            }
+            else if(smallest === front){
+
+                player.z =
+                    minZ - player.radius;
+
+                player.vz = 0;
+
+            }
+            else{
+
+                player.z =
+                    maxZ + player.radius;
+
+                player.vz = 0;
+
+            }
 
         }
 
@@ -436,341 +1057,535 @@ function collidePlatform(p){
 }
 
 
-/* =========================
-   UPDATE
-========================= */
+function resolveVerticalCollision(oldFeet){
 
-let last=performance.now();
-
-function update(){
-
-    const now=performance.now();
-
-    const dt=Math.min(
-        (now-last)/1000,
-        0.05
-    );
-
-    last=now;
+    player.grounded = false;
 
 
-    /* =====================
-       MOVEMENT
-    ===================== */
-
-    let forward=0;
-    let side=0;
-
-    if(keys["KeyW"])forward+=1;
-    if(keys["KeyS"])forward-=1;
-
-    if(keys["KeyD"])side+=1;
-    if(keys["KeyA"])side-=1;
+    const feet =
+        player.y - player.height;
 
 
-    const length=Math.hypot(
-        forward,
-        side
-    );
+    for(const b of blocks){
 
-    if(length>0){
+        if(!horizontalOverlap(
+            player.x,
+            player.z,
+            b
+        )){
+            continue;
+        }
 
-        forward/=length;
 
-        side/=length;
+        const top =
+            b.y + b.h / 2;
+
+
+        const bottom =
+            b.y - b.h / 2;
+
+
+        /* 落在平台上 */
+
+        if(
+            player.vy <= 0 &&
+            oldFeet >= top &&
+            feet <= top
+        ){
+
+            player.y =
+                top + player.height;
+
+            player.vy = 0;
+
+            player.grounded = true;
+
+
+            /* 跟著移動平台 */
+
+            if(b.moving){
+
+                player.x += b.deltaX;
+                player.y += b.deltaY;
+                player.z += b.deltaZ;
+
+            }
+
+        }
+
+
+        /* 撞到平台底部 */
+
+        if(
+            player.vy > 0 &&
+            oldFeet <= bottom &&
+            feet >= bottom
+        ){
+
+            player.y =
+                bottom + player.height;
+
+            player.vy = 0;
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   PLAYER UPDATE
+========================================================= */
+
+function updatePlayer(dt){
+
+    let forward = 0;
+    let side = 0;
+
+
+    if(keys["KeyW"]){
+        forward += 1;
+    }
+
+    if(keys["KeyS"]){
+        forward -= 1;
+    }
+
+    if(keys["KeyA"]){
+        side -= 1;
+    }
+
+    if(keys["KeyD"]){
+        side += 1;
+    }
+
+
+    const length =
+        Math.hypot(forward,side);
+
+
+    if(length > 0){
+
+        forward /= length;
+        side /= length;
 
     }
 
 
-    const sin=Math.sin(player.yaw);
-    const cos=Math.cos(player.yaw);
+    /*
+       依照鏡頭方向移動
+    */
+
+    const forwardX =
+        Math.sin(player.yaw);
+
+    const forwardZ =
+        Math.cos(player.yaw);
 
 
-    const dx=
+    const rightX =
+        Math.cos(player.yaw);
 
-        sin*forward+
-        cos*side;
-
-    const dz=
-
-        cos*forward-
-        sin*side;
+    const rightZ =
+        -Math.sin(player.yaw);
 
 
-    player.vx=dx*player.speed;
-
-    player.vz=dz*player.speed;
-
-
-    player.x+=player.vx*dt;
-
-    player.z+=player.vz*dt;
+    const moveX =
+        forwardX * forward +
+        rightX * side;
 
 
-    /* =====================
-       GRAVITY
-    ===================== */
-
-    player.grounded=false;
-
-    player.vy-=22*dt;
-
-    player.y+=player.vy*dt;
+    const moveZ =
+        forwardZ * forward +
+        rightZ * side;
 
 
-    /* =====================
-       PLATFORM COLLISION
-    ===================== */
+    const acceleration =
+        35;
 
-    for(const p of platforms){
 
-        collidePlatform(p);
+    player.vx +=
+        moveX * acceleration * dt;
+
+    player.vz +=
+        moveZ * acceleration * dt;
+
+
+    /*
+       摩擦
+    */
+
+    const friction =
+        player.grounded ? 0.0005 : 0.05;
+
+
+    player.vx *=
+        Math.pow(friction,dt);
+
+    player.vz *=
+        Math.pow(friction,dt);
+
+
+    /*
+       速度限制
+    */
+
+    const horizontalSpeed =
+        Math.hypot(
+            player.vx,
+            player.vz
+        );
+
+
+    const maxSpeed =
+        player.grounded ? 8 : 10;
+
+
+    if(horizontalSpeed > maxSpeed){
+
+        player.vx =
+            player.vx /
+            horizontalSpeed *
+            maxSpeed;
+
+        player.vz =
+            player.vz /
+            horizontalSpeed *
+            maxSpeed;
 
     }
 
 
-    /* =====================
-       FALL
-    ===================== */
+    /*
+       水平移動
+    */
 
-    if(player.y<-30){
+    player.x +=
+        player.vx * dt;
+
+    resolveHorizontalCollision();
+
+
+    player.z +=
+        player.vz * dt;
+
+    resolveHorizontalCollision();
+
+
+    /*
+       垂直移動
+    */
+
+    const oldFeet =
+        player.y - player.height;
+
+
+    player.vy -=
+        24 * dt;
+
+
+    player.y +=
+        player.vy * dt;
+
+
+    resolveVerticalCollision(
+        oldFeet
+    );
+
+
+    /*
+       掉落
+    */
+
+    if(player.y < -50){
 
         respawn();
 
     }
 
 
-    /* =====================
-       CHECKPOINT
-    ===================== */
+    /*
+       技能冷卻
+    */
 
-    checkpoints.forEach((c,index)=>{
+    if(player.shockCooldown > 0){
 
-        const dist=Math.hypot(
+        player.shockCooldown -= dt;
 
-            player.x-c.x,
+        if(player.shockCooldown < 0){
 
-            player.z-c.z
-
-        );
-
-        if(dist<3){
-
-            player.checkpoint={
-
-                x:c.x,
-
-                y:c.y+3,
-
-                z:c.z
-
-            };
-
-            document.getElementById(
-                "checkpoint"
-            ).textContent=
-
-                "檢查點："+(index+1);
-
-        }
-
-    });
-
-
-    /* =====================
-       FINISH
-    ===================== */
-
-    const finishDist=Math.hypot(
-
-        player.x-finish.x,
-
-        player.z-finish.z
-
-    );
-
-    if(
-
-        finishDist<5 &&
-
-        player.y>15
-
-    ){
-
-        document.getElementById(
-            "level"
-        ).textContent=
-
-            "🎉 完成關卡！";
-
-    }
-
-
-    /* =====================
-       COOLDOWN
-    ===================== */
-
-    if(player.shockCooldown>0){
-
-        player.shockCooldown-=dt;
-
-    }
-
-
-    /* =====================
-       WAVE
-    ===================== */
-
-    for(let i=waves.length-1;i>=0;i--){
-
-        const w=waves[i];
-
-        w.radius+=18*dt;
-
-        w.life-=dt;
-
-        if(w.life<=0){
-
-            waves.splice(i,1);
+            player.shockCooldown = 0;
 
         }
 
     }
 
 
-    render();
+    const skillAmount =
+        1 -
+        player.shockCooldown /
+        player.shockMax;
 
-    requestAnimationFrame(update);
+
+    skillFill.style.width =
+        (skillAmount * 100) + "%";
+
+
+    /*
+       訊息
+    */
+
+    if(messageTime > 0){
+
+        messageTime -= dt;
+
+        if(messageTime <= 0){
+
+            messageUI.textContent = "";
+
+        }
+
+    }
 
 }
 
 
-/* =========================
-   3D PROJECTION
-========================= */
+/* =========================================================
+   CHECKPOINTS
+========================================================= */
+
+function updateCheckpoints(){
+
+    for(const c of checkpoints){
+
+        const distance =
+            Math.hypot(
+
+                player.x - c.x,
+
+                player.z - c.z
+
+            );
+
+
+        if(
+            distance < 5 &&
+            Math.abs(
+                player.y - c.y
+            ) < 8
+        ){
+
+            if(player.checkpointName !== c.name){
+
+                player.checkpointX =
+                    c.x;
+
+                player.checkpointY =
+                    c.y + 3;
+
+                player.checkpointZ =
+                    c.z;
+
+                player.checkpointName =
+                    c.name;
+
+
+                checkpointUI.textContent =
+                    c.name;
+
+                levelUI.textContent =
+                    c.level;
+
+
+                showMessage(
+                    "✓ 檢查點：" +
+                    c.name
+                );
+
+            }
+
+        }
+
+    }
+
+
+    const final =
+        checkpoints[
+            checkpoints.length - 1
+        ];
+
+
+    const finishDistance =
+        Math.hypot(
+
+            player.x - final.x,
+
+            player.z - final.z
+
+        );
+
+
+    if(
+        finishDistance < 9 &&
+        player.y > 115
+    ){
+
+        showMessage(
+            "🎉 恭喜完成 Ultimate Obby！",
+            3
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   3D CAMERA PROJECTION
+========================================================= */
 
 function project(x,y,z){
 
-    const dx=x-player.x;
+    /*
+       世界座標相對玩家
+    */
 
-    const dy=y-player.y;
+    const dx =
+        x - player.x;
 
-    const dz=z-player.z;
+    const dy =
+        y - player.y;
 
-
-    const sin=Math.sin(player.yaw);
-
-    const cos=Math.cos(player.yaw);
-
-
-    let cx=
-
-        dx*cos-
-        dz*sin;
-
-    let cz=
-
-        dx*sin+
-        dz*cos;
+    const dz =
+        z - player.z;
 
 
-    const pitchSin=Math.sin(
-        player.pitch
-    );
+    /*
+       YAW
 
-    const pitchCos=Math.cos(
-        player.pitch
-    );
+       修正版：
+       前方永遠是正確的鏡頭方向
+    */
 
+    const cosYaw =
+        Math.cos(player.yaw);
 
-    let cy=
-
-        dy*pitchCos-
-        cz*pitchSin;
-
-    cz=
-
-        dy*pitchSin+
-        cz*pitchCos;
+    const sinYaw =
+        Math.sin(player.yaw);
 
 
-    if(cz<=0.1)return null;
+    const cameraX =
+        dx * cosYaw -
+        dz * sinYaw;
 
 
-    const scale=
+    let cameraZ =
+        dx * sinYaw +
+        dz * cosYaw;
 
-        500/cz;
+
+    /*
+       PITCH
+    */
+
+    const cosPitch =
+        Math.cos(player.pitch);
+
+    const sinPitch =
+        Math.sin(player.pitch);
+
+
+    const cameraY =
+        dy * cosPitch -
+        cameraZ * sinPitch;
+
+
+    cameraZ =
+        dy * sinPitch +
+        cameraZ * cosPitch;
+
+
+    if(cameraZ <= 0.15){
+
+        return null;
+
+    }
+
+
+    const focal =
+        Math.min(
+            canvas.width,
+            canvas.height
+        ) * 0.9;
 
 
     return {
 
         x:
-
-            canvas.width/2+
-            cx*scale,
+            canvas.width / 2 +
+            cameraX / cameraZ * focal,
 
         y:
+            canvas.height / 2 -
+            cameraY / cameraZ * focal,
 
-            canvas.height/2-
-            cy*scale,
-
-        scale,
-
-        depth:cz
+        depth:cameraZ
 
     };
 
 }
 
 
-/* =========================
-   DRAW PLATFORM
-========================= */
+/* =========================================================
+   CUBE FACES
+========================================================= */
 
-function drawPlatform(p){
+function getCubeFaces(b){
 
-    const corners=[
+    const hw = b.w / 2;
+    const hh = b.h / 2;
+    const hd = b.d / 2;
 
-        [-1,-1,-1],
-        [ 1,-1,-1],
-        [ 1, 1,-1],
-        [-1, 1,-1],
 
-        [-1,-1, 1],
-        [ 1,-1, 1],
-        [ 1, 1, 1],
-        [-1, 1, 1]
+    const vertices = [
+
+        [-hw,-hh,-hd],
+        [ hw,-hh,-hd],
+        [ hw, hh,-hd],
+        [-hw, hh,-hd],
+
+        [-hw,-hh, hd],
+        [ hw,-hh, hd],
+        [ hw, hh, hd],
+        [-hw, hh, hd]
 
     ];
 
 
-    const points=[];
+    const points =
+        vertices.map(function(v){
+
+            return project(
+
+                b.x + v[0],
+
+                b.y + v[1],
+
+                b.z + v[2]
+
+            );
+
+        });
 
 
-    for(const c of corners){
-
-        const q=project(
-
-            p.x+c[0]*p.w/2,
-
-            p.y+c[1]*p.h/2,
-
-            p.z+c[2]*p.d/2
-
-        );
-
-        points.push(q);
-
-    }
-
-
-    const faces=[
+    const faceIndices = [
 
         [0,1,2,3],
         [4,5,6,7],
 
         [0,1,5,4],
-        [2,3,7,6],
+        [3,2,6,7],
 
         [1,2,6,5],
         [0,3,7,4]
@@ -778,34 +1593,311 @@ function drawPlatform(p){
     ];
 
 
-    for(const face of faces){
+    const faces = [];
 
-        const pts=
 
-            face.map(i=>points[i]);
+    for(const indices of faceIndices){
 
-        if(pts.some(p=>!p))continue;
+        const face =
+            indices.map(
+                i => points[i]
+            );
+
+
+        if(face.some(
+            p => p === null
+        )){
+            continue;
+        }
+
+
+        const depth =
+            face.reduce(
+                (sum,p) =>
+                    sum + p.depth,
+                0
+            ) / 4;
+
+
+        faces.push({
+
+            points:face,
+
+            depth:depth,
+
+            color:b.color
+
+        });
+
+    }
+
+
+    return faces;
+
+}
+
+
+/* =========================================================
+   COLOR SHADING
+========================================================= */
+
+function shadeColor(hex,amount){
+
+    let color = hex;
+
+    if(color.startsWith("#")){
+
+        color =
+            color.substring(1);
+
+    }
+
+
+    if(color.length !== 6){
+
+        return hex;
+
+    }
+
+
+    let r =
+        parseInt(
+            color.substring(0,2),
+            16
+        );
+
+    let g =
+        parseInt(
+            color.substring(2,4),
+            16
+        );
+
+    let b =
+        parseInt(
+            color.substring(4,6),
+            16
+        );
+
+
+    r =
+        Math.max(
+            0,
+            Math.min(
+                255,
+                Math.round(r * amount)
+            )
+        );
+
+    g =
+        Math.max(
+            0,
+            Math.min(
+                255,
+                Math.round(g * amount)
+            )
+        );
+
+    b =
+        Math.max(
+            0,
+            Math.min(
+                255,
+                Math.round(b * amount)
+            )
+        );
+
+
+    return `rgb(${r},${g},${b})`;
+
+}
+
+
+/* =========================================================
+   DRAW CHECKPOINT
+========================================================= */
+
+function drawCheckpoint(c){
+
+    const base =
+        project(
+            c.x,
+            c.y,
+            c.z
+        );
+
+
+    const top =
+        project(
+            c.x,
+            c.y + 5,
+            c.z
+        );
+
+
+    if(!base || !top){
+        return;
+    }
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        base.x,
+        base.y
+    );
+
+    ctx.lineTo(
+        top.x,
+        top.y
+    );
+
+
+    ctx.lineWidth = 5;
+
+    ctx.strokeStyle =
+        "#00ffff";
+
+    ctx.stroke();
+
+
+    ctx.lineWidth = 1;
+
+
+    ctx.fillStyle =
+        "#00ffff";
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        top.x,
+        top.y
+    );
+
+    ctx.lineTo(
+        top.x + 35,
+        top.y + 12
+    );
+
+    ctx.lineTo(
+        top.x,
+        top.y + 24
+    );
+
+    ctx.fill();
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render(){
+
+    /*
+       SKY
+    */
+
+    const sky =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            canvas.height
+        );
+
+
+    sky.addColorStop(
+        0,
+        "#248dff"
+    );
+
+    sky.addColorStop(
+        0.55,
+        "#aee7ff"
+    );
+
+    sky.addColorStop(
+        0.56,
+        "#61b957"
+    );
+
+    sky.addColorStop(
+        1,
+        "#276b36"
+    );
+
+
+    ctx.fillStyle = sky;
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+       收集所有面
+    */
+
+    const allFaces = [];
+
+
+    for(const b of blocks){
+
+        const faces =
+            getCubeFaces(b);
+
+
+        for(const face of faces){
+
+            allFaces.push(face);
+
+        }
+
+    }
+
+
+    /*
+       遠到近
+    */
+
+    allFaces.sort(
+        (a,b) =>
+            b.depth - a.depth
+    );
+
+
+    /*
+       畫面
+    */
+
+    for(const face of allFaces){
+
+        const p =
+            face.points;
 
 
         ctx.beginPath();
 
         ctx.moveTo(
-
-            pts[0].x,
-
-            pts[0].y
-
+            p[0].x,
+            p[0].y
         );
 
 
-        for(let i=1;i<pts.length;i++){
+        for(
+            let i=1;
+            i<p.length;
+            i++
+        ){
 
             ctx.lineTo(
-
-                pts[i].x,
-
-                pts[i].y
-
+                p[i].x,
+                p[i].y
             );
 
         }
@@ -813,211 +1905,39 @@ function drawPlatform(p){
 
         ctx.closePath();
 
-        ctx.fillStyle=p.color;
+
+        const brightness =
+            Math.max(
+                0.55,
+                Math.min(
+                    1.2,
+                    1.3 -
+                    face.depth / 250
+                )
+            );
+
+
+        ctx.fillStyle =
+            shadeColor(
+                face.color,
+                brightness
+            );
+
 
         ctx.fill();
 
-        ctx.strokeStyle="rgba(0,0,0,.5)";
+
+        ctx.strokeStyle =
+            "rgba(0,0,0,.25)";
 
         ctx.stroke();
 
     }
 
-}
 
-
-/* =========================
-   DRAW CHECKPOINT
-========================= */
-
-function drawCheckpoint(c){
-
-    const bottom=
-
-        project(
-
-            c.x,
-
-            c.y,
-
-            c.z
-
-        );
-
-
-    const top=
-
-        project(
-
-            c.x,
-
-            c.y+4,
-
-            c.z
-
-        );
-
-
-    if(!bottom||!top)return;
-
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-
-        bottom.x,
-
-        bottom.y
-
-    );
-
-    ctx.lineTo(
-
-        top.x,
-
-        top.y
-
-    );
-
-    ctx.lineWidth=6;
-
-    ctx.strokeStyle="#00ffff";
-
-    ctx.stroke();
-
-    ctx.lineWidth=1;
-
-}
-
-
-/* =========================
-   DRAW WAVE
-========================= */
-
-function drawWave(w){
-
-    const p=project(
-
-        w.x,
-
-        w.y,
-
-        w.z
-
-    );
-
-    if(!p)return;
-
-
-    const radius=
-
-        w.radius*p.scale;
-
-
-    ctx.beginPath();
-
-    ctx.arc(
-
-        p.x,
-
-        p.y,
-
-        radius,
-
-        0,
-
-        Math.PI*2
-
-    );
-
-    ctx.strokeStyle=
-
-        `rgba(255,255,255,${w.life})`;
-
-    ctx.lineWidth=4;
-
-    ctx.stroke();
-
-    ctx.lineWidth=1;
-
-}
-
-
-/* =========================
-   RENDER
-========================= */
-
-function render(){
-
-    /* SKY */
-
-    ctx.fillStyle="#59bfff";
-
-    ctx.fillRect(
-
-        0,
-
-        0,
-
-        canvas.width,
-
-        canvas.height
-
-    );
-
-
-    /* FLOOR */
-
-    ctx.fillStyle="#66aa55";
-
-    ctx.fillRect(
-
-        0,
-
-        canvas.height/2,
-
-        canvas.width,
-
-        canvas.height/2
-
-    );
-
-
-    /* SORT PLATFORMS */
-
-    const sorted=[...platforms];
-
-    sorted.sort((a,b)=>{
-
-        const da=Math.hypot(
-
-            a.x-player.x,
-
-            a.z-player.z
-
-        );
-
-        const db=Math.hypot(
-
-            b.x-player.x,
-
-            b.z-player.z
-
-        );
-
-        return db-da;
-
-    });
-
-
-    for(const p of sorted){
-
-        drawPlatform(p);
-
-    }
-
-
-    /* CHECKPOINTS */
+    /*
+       CHECKPOINT
+    */
 
     for(const c of checkpoints){
 
@@ -1026,70 +1946,89 @@ function render(){
     }
 
 
-    /* SHOCK WAVES */
+    /*
+       衝擊跳躍特效
+    */
 
-    for(const w of waves){
+    if(
+        player.shockCooldown >
+        player.shockMax - 0.15
+    ){
 
-        drawWave(w);
+        ctx.beginPath();
 
-    }
+        ctx.arc(
 
+            canvas.width / 2,
 
-    /* FINISH */
+            canvas.height / 2,
 
-    const fp=project(
+            100,
 
-        finish.x,
+            0,
 
-        finish.y+4,
-
-        finish.z
-
-    );
-
-    if(fp){
-
-        ctx.fillStyle="#00ff88";
-
-        ctx.font=
-
-            `${Math.max(16,fp.scale/2)}px Arial`;
-
-        ctx.textAlign="center";
-
-        ctx.fillText(
-
-            "FINISH",
-
-            fp.x,
-
-            fp.y
+            Math.PI * 2
 
         );
+
+
+        ctx.strokeStyle =
+            "rgba(100,240,255,.8)";
+
+        ctx.lineWidth = 5;
+
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
 
     }
 
 }
 
 
-/* =========================
-   START
-========================= */
+/* =========================================================
+   GAME LOOP
+========================================================= */
 
-document.getElementById(
-    "startBtn"
-).onclick=()=>{
-
-    document.getElementById(
-        "start"
-    ).style.display="none";
-
-    canvas.requestPointerLock();
-
-};
+let lastTime =
+    performance.now();
 
 
-update();
+function gameLoop(time){
+
+    let dt =
+        (time - lastTime) / 1000;
+
+
+    lastTime = time;
+
+
+    if(dt > 0.05){
+
+        dt = 0.05;
+
+    }
+
+
+    updateBlocks(dt);
+
+    updatePlayer(dt);
+
+    updateCheckpoints();
+
+    render();
+
+
+    requestAnimationFrame(
+        gameLoop
+    );
+
+}
+
+
+requestAnimationFrame(
+    gameLoop
+);
 
 </script>
 
