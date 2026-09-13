@@ -6,10 +6,9 @@
 <title>Obby 跑酷 · 第一人稱手榴彈</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#070b16;
-            font-family:system-ui,"Noto Sans TC",sans-serif;color:#e8eefc;cursor:default}
+            font-family:system-ui,"Noto Sans TC",sans-serif;color:#e8eefc}
   canvas{display:block}
 
-  /* 準星 */
   #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
              width:24px;height:24px;pointer-events:none;opacity:.85}
   #crosshair i{position:absolute;background:#7dd3fc;box-shadow:0 0 6px #38bdf8;border-radius:1px}
@@ -18,7 +17,6 @@
   #crosshair i:nth-child(3){top:50%;left:0;height:2px;width:9px;transform:translateY(-50%)}
   #crosshair i:nth-child(4){top:50%;right:0;height:2px;width:9px;transform:translateY(-50%)}
 
-  /* HUD */
   #hud{position:fixed;left:16px;bottom:16px;font-size:13px;line-height:1.8;
        color:#9fb3d1;text-shadow:0 1px 3px #000;pointer-events:none}
   #hud b{color:#7dd3fc}
@@ -29,12 +27,11 @@
         font-size:42px;font-weight:900;color:#4ade80;text-shadow:0 0 30px #22c55e;
         opacity:0;transition:opacity .4s;pointer-events:none}
 
-  /* 開始畫面 */
   #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
            background:radial-gradient(circle at 50% 40%,#131c33,#05070f 70%);
            cursor:pointer;z-index:10;text-align:center}
-  #overlay .card{max-width:520px;padding:36px 44px;border-radius:20px;
-                 background:rgba(20,28,48,.75);border:1px solid rgba(125,211,252,.25);
+  #overlay .card{max-width:540px;padding:36px 44px;border-radius:20px;
+                 background:rgba(20,28,48,.78);border:1px solid rgba(125,211,252,.25);
                  box-shadow:0 0 60px rgba(56,189,248,.15)}
   #overlay h1{margin:0 0 6px;font-size:30px;letter-spacing:2px;color:#e0f2fe}
   #overlay p{margin:10px 0;color:#93a7c4;font-size:14px;line-height:1.9}
@@ -64,39 +61,40 @@
   </div>
 </div>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
-  }
+<!-- 用「經典 script」載入，雙擊本機 html 也能跑，不會被 module CORS 擋住 -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+
+<script>
+(function () {
+'use strict';
+
+/* ============ 載入檢查 ============ */
+var overlay = document.getElementById('overlay');
+if (typeof THREE === 'undefined' || typeof CANNON === 'undefined') {
+  overlay.innerHTML =
+    '<div class="card"><h1 style="color:#fca5a5">引擎載入失敗</h1>' +
+    '<p>無法從 CDN 取得 Three.js / cannon.js。<br>' +
+    '請確認網路連線，或換一個網路環境後重新整理。</p></div>';
+  return;
 }
-</script>
 
-<script type="module">
-import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
+/* ============ 常數 ============ */
+var GRAVITY      = 22;
+var FUSE_TIME    = 1.8;
+var BLAST_RADIUS = 8;
+var BLAST_POWER  = 26;
+var RESPAWN_Y    = -30;
 
-/* ============================================================
-   常數
-   ============================================================ */
-const GRAVITY      = 22;    // 遊戲重力
-const FUSE_TIME    = 1.8;   // 手榴彈引信（秒）
-const BLAST_RADIUS = 8;     // 爆炸半徑
-const BLAST_POWER  = 26;    // 爆炸推力
-const RESPAWN_Y    = -30;   // 掉到此高度重生
-
-/* ============================================================
-   場景 / 渲染器
-   ============================================================ */
-const scene = new THREE.Scene();
+/* ============ 場景 / 渲染器 ============ */
+var scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070b16);
 scene.fog = new THREE.FogExp2(0x070b16, 0.011);
 
-const camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.05, 500);
+var camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.05, 500);
 camera.rotation.order = 'YXZ';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+var renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -106,10 +104,11 @@ document.body.appendChild(renderer.domElement);
 /* 燈光 */
 scene.add(new THREE.HemisphereLight(0x8fb6ff, 0x1a1030, 1.0));
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.7);
+var sun = new THREE.DirectionalLight(0xffffff, 1.7);
 sun.position.set(24, 46, 18);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
 sun.shadow.camera.left = -70;
 sun.shadow.camera.right = 70;
 sun.shadow.camera.top = 70;
@@ -119,46 +118,40 @@ sun.shadow.camera.far = 220;
 sun.shadow.bias = -0.0008;
 scene.add(sun);
 
-/* ============================================================
-   物理世界（cannon-es）
-   ============================================================ */
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -GRAVITY, 0) });
+/* ============ 物理世界 ============ */
+var world = new CANNON.World();
+world.gravity.set(0, -GRAVITY, 0);
 world.broadphase = new CANNON.SAPBroadphase(world);
 world.allowSleep = true;
 world.defaultContactMaterial.friction = 0.35;
 
-const matGround  = new CANNON.Material('ground');
-const matGrenade = new CANNON.Material('grenade');
-
+var matGround  = new CANNON.Material('ground');
+var matGrenade = new CANNON.Material('grenade');
 world.addContactMaterial(new CANNON.ContactMaterial(matGround, matGrenade, {
   friction: 0.35,
-  restitution: 0.45          // 手榴彈會彈跳
+  restitution: 0.45
 }));
 
-/* ============================================================
-   Obby 關卡（靜態方塊）
-   ============================================================ */
-const platforms = [];
+/* ============ Obby 關卡 ============ */
+var platforms = [];
 
 function addBox(x, y, z, w, h, d, color) {
-  const mesh = new THREE.Mesh(
+  var mesh = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.12 })
+    new THREE.MeshStandardMaterial({ color: color, roughness: 0.72, metalness: 0.12 })
   );
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
 
-  // 邊線，讓跳台更清楚
-  const edges = new THREE.LineSegments(
+  var edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(mesh.geometry),
     new THREE.LineBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.35 })
   );
   mesh.add(edges);
 
-  // 物理 body
-  const body = new CANNON.Body({
+  var body = new CANNON.Body({
     mass: 0,
     material: matGround,
     shape: new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2))
@@ -166,17 +159,17 @@ function addBox(x, y, z, w, h, d, color) {
   body.position.set(x, y, z);
   world.addBody(body);
 
-  platforms.push({
-    mesh, body,
+  var p = {
+    mesh: mesh, body: body,
     pos:  new THREE.Vector3(x, y, z),
     half: new THREE.Vector3(w / 2, h / 2, d / 2)
-  });
-  return platforms[platforms.length - 1];
+  };
+  platforms.push(p);
+  return p;
 }
 
-/* 關卡配置：[x, y, z, w, h, d, color] */
-const course = [
-  [ 0,  0.0,   0, 12, 1, 12, 0x2563eb],  // 起點
+var course = [
+  [ 0,  0.0,   0, 12, 1, 12, 0x2563eb],
   [ 0,  0.6,  -9, 3.5, 1, 3.5, 0x38bdf8],
   [ 4.5,1.4, -13, 3.5, 1, 3.5, 0x38bdf8],
   [ 1.5,2.2,-17.5,3.5, 1, 3.5, 0x38bdf8],
@@ -187,20 +180,19 @@ const course = [
   [ 6,  7.6, -40, 3.0, 1, 3.0, 0xa78bfa],
   [ 1,  9.0, -44, 3.0, 1, 3.0, 0xa78bfa],
   [-4, 10.2, -48, 3.0, 1, 3.0, 0xa78bfa],
-  [ 0, 11.5, -54, 10,  1, 10,  0x22c55e], // 終點
+  [ 0, 11.5, -54, 10,  1, 10,  0x22c55e]
 ];
-course.forEach(c => addBox(...c));
-const goalPlatform = platforms[platforms.length - 1];
+var i;
+for (i = 0; i < course.length; i++) addBox.apply(null, course[i]);
+var goalPlatform = platforms[platforms.length - 1];
 
-/* ============================================================
-   玩家（自訂 AABB 控制器）
-   ============================================================ */
-const SPAWN = new THREE.Vector3(0, 0.6, 3);
+/* ============ 玩家 ============ */
+var SPAWN = new THREE.Vector3(0, 0.6, 3);
 
-const player = {
+var player = {
   pos:      SPAWN.clone(),
-  vel:      new THREE.Vector3(),   // 輸入／重力速度
-  ext:      new THREE.Vector3(),   // 外力（爆炸擊退）
+  vel:      new THREE.Vector3(),
+  ext:      new THREE.Vector3(),
   yaw:      0,
   pitch:    0,
   radius:   0.4,
@@ -218,27 +210,25 @@ function respawn() {
   shake = 0.5;
 }
 
-/* 逐軸推出：解 AABB 與所有平台的重疊 */
 function resolve(axis) {
-  const r = player.radius, h = player.height;
+  var r = player.radius, h = player.height;
+  for (var i = 0; i < platforms.length; i++) {
+    var p = platforms[i];
+    var px = p.pos.x, py = p.pos.y, pz = p.pos.z;
+    var hx = p.half.x, hy = p.half.y, hz = p.half.z;
 
-  for (const p of platforms) {
-    const { x: px, y: py, z: pz } = p.pos;
-    const { x: hx, y: hy, z: hz } = p.half;
-
-    // 快速排除
     if (player.pos.x - r >= px + hx || player.pos.x + r <= px - hx) continue;
     if (player.pos.y      >= py + hy || player.pos.y + h >= py - hy) continue;
     if (player.pos.z - r >= pz + hz || player.pos.z + r <= pz - hz) continue;
 
     if (axis === 'y') {
-      const centerY = player.pos.y + h / 2;
-      if (centerY > py) {                 // 站在上面
+      var centerY = player.pos.y + h / 2;
+      if (centerY > py) {
         player.pos.y = py + hy;
         if (player.vel.y < 0) player.vel.y = 0;
         if (player.ext.y < 0) player.ext.y = 0;
         player.onGround = true;
-      } else {                            // 撞到頭
+      } else {
         player.pos.y = py - hy - h;
         if (player.vel.y > 0) player.vel.y = 0;
         if (player.ext.y > 0) player.ext.y = 0;
@@ -255,44 +245,43 @@ function resolve(axis) {
   }
 }
 
-/* ============================================================
-   手榴彈
-   ============================================================ */
-const grenades = [];
-let throwCooldown = 0;
+/* ============ 手榴彈 ============ */
+var grenades = [];
+var throwCooldown = 0;
+var fuseTimer = null;
+var fuseEl = document.getElementById('fuse');
 
-const grenadeGeo = new THREE.IcosahedronGeometry(0.13, 1);
-const grenadeMat = new THREE.MeshStandardMaterial({
+var grenadeGeo = new THREE.IcosahedronGeometry(0.13, 1);
+var grenadeMat = new THREE.MeshStandardMaterial({
   color: 0x3f4a2f, roughness: 0.85, metalness: 0.35,
   emissive: 0x112200, emissiveIntensity: 0.6
 });
-const coreGeo = new THREE.SphereGeometry(0.045, 10, 8);
+var coreGeo = new THREE.SphereGeometry(0.045, 10, 8);
 
 function throwGrenade() {
   if (throwCooldown > 0) return;
   throwCooldown = 0.4;
 
-  const dir = new THREE.Vector3();
+  var dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
 
-  const spawn = new THREE.Vector3();
-  camera.getWorldPosition(spawn);
-  spawn.addScaledVector(dir, 0.7);
+  var sp = new THREE.Vector3();
+  camera.getWorldPosition(sp);
+  sp.addScaledVector(dir, 0.7);
 
-  // --- 物理 body ---
-  const body = new CANNON.Body({
+  var body = new CANNON.Body({
     mass: 0.5,
     shape: new CANNON.Sphere(0.13),
-    material: matGrenade,
-    linearDamping: 0.006,
-    angularDamping: 0.12,
-    allowSleep: true,
-    sleepSpeedLimit: 0.35,
-    sleepTimeLimit: 1.2
+    material: matGrenade
   });
-  body.position.set(spawn.x, spawn.y, spawn.z);
+  body.linearDamping = 0.006;
+  body.angularDamping = 0.12;
+  body.allowSleep = true;
+  body.sleepSpeedLimit = 0.35;
+  body.sleepTimeLimit = 1.2;
+  body.position.set(sp.x, sp.y, sp.z);
 
-  const POWER = 22;
+  var POWER = 22;
   body.velocity.set(
     dir.x * POWER + player.vel.x + player.ext.x,
     dir.y * POWER + 1.5,
@@ -305,76 +294,69 @@ function throwGrenade() {
   );
   world.addBody(body);
 
-  // --- 視覺 ---
-  const mesh = new THREE.Mesh(grenadeGeo, grenadeMat);
-  const coreMat = new THREE.MeshBasicMaterial({ color: 0xff4422, transparent: true });
-  const core = new THREE.Mesh(coreGeo, coreMat);
+  var mesh = new THREE.Mesh(grenadeGeo, grenadeMat);
+  var coreMat = new THREE.MeshBasicMaterial({ color: 0xff4422, transparent: true });
+  var core = new THREE.Mesh(coreGeo, coreMat);
   core.position.set(0, 0.11, 0);
   mesh.add(core);
   mesh.castShadow = true;
   scene.add(mesh);
 
-  grenades.push({ body, mesh, core, timer: FUSE_TIME });
+  grenades.push({ body: body, mesh: mesh, core: core, timer: FUSE_TIME });
 
-  // 引信提示
   fuseEl.style.opacity = '1';
   clearTimeout(fuseTimer);
-  fuseTimer = setTimeout(() => { fuseEl.style.opacity = '0'; }, FUSE_TIME * 1000);
+  fuseTimer = setTimeout(function () { fuseEl.style.opacity = '0'; }, FUSE_TIME * 1000);
 }
 
-let fuseTimer = null;
-const fuseEl = document.getElementById('fuse');
-const goalEl = document.getElementById('goal');
-
-/* ============================================================
-   爆炸
-   ============================================================ */
-const explosions = [];
-let shake = 0;
+/* ============ 爆炸 ============ */
+var explosions = [];
+var shake = 0;
+var goalEl = document.getElementById('goal');
 
 function detonate(g) {
-  const pos = new THREE.Vector3(g.body.position.x, g.body.position.y, g.body.position.z);
+  var pos = new THREE.Vector3(g.body.position.x, g.body.position.y, g.body.position.z);
 
-  // 移除物理體 + 網格
   world.removeBody(g.body);
   scene.remove(g.mesh);
 
-  /* ---- 1. 對玩家擊退 ---- */
-  const pc = new THREE.Vector3(
+  /* 玩家擊退 */
+  var pc = new THREE.Vector3(
     player.pos.x,
     player.pos.y + player.height * 0.5,
     player.pos.z
   );
-  const delta = pc.clone().sub(pos);
-  const dist  = delta.length();
+  var delta = pc.clone().sub(pos);
+  var dist = delta.length();
 
   if (dist < BLAST_RADIUS) {
-    const falloff = 1 - dist / BLAST_RADIUS;
-    const dir = dist > 0.01 ? delta.normalize() : new THREE.Vector3(0, 1, 0);
-    dir.y = Math.max(dir.y, 0.35);   // 保證有上拋感
-    dir.normalize();
-
-    player.ext.addScaledVector(dir, BLAST_POWER * falloff);
+    var falloff = 1 - dist / BLAST_RADIUS;
+    var d = dist > 0.01 ? delta.normalize() : new THREE.Vector3(0, 1, 0);
+    d.y = Math.max(d.y, 0.35);
+    d.normalize();
+    player.ext.addScaledVector(d, BLAST_POWER * falloff);
     shake = Math.min(1.4, shake + 1.1 * falloff);
   }
 
-  /* ---- 2. 衝擊波推開其他手榴彈 ---- */
-  for (const other of grenades) {
-    if (other === g) continue;
-    const d = new THREE.Vector3(
-      other.body.position.x - pos.x,
-      other.body.position.y - pos.y,
-      other.body.position.z - pos.z
-    );
-    const dd = d.length();
+  /* 推開其他手榴彈（直接改速度，避開 API 差異） */
+  for (var i = 0; i < grenades.length; i++) {
+    var o = grenades[i];
+    if (o === g) continue;
+    var dx = o.body.position.x - pos.x;
+    var dy = o.body.position.y - pos.y;
+    var dz = o.body.position.z - pos.z;
+    var dd = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (dd < BLAST_RADIUS && dd > 0.001) {
-      d.normalize().multiplyScalar(BLAST_POWER * 0.35 * (1 - dd / BLAST_RADIUS));
-      other.body.applyImpulse(new CANNON.Vec3(d.x, d.y, d.z), new CANNON.Vec3(0, 0, 0));
+      var f = BLAST_POWER * 0.35 * (1 - dd / BLAST_RADIUS) / dd / o.body.mass;
+      o.body.velocity.x += dx * f;
+      o.body.velocity.y += dy * f;
+      o.body.velocity.z += dz * f;
+      o.body.wakeUp();
     }
   }
 
-  /* ---- 3. 視覺：閃光球 + 點光源 ---- */
-  const ball = new THREE.Mesh(
+  /* 視覺：閃光球 + 點光源 */
+  var ball = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 24, 16),
     new THREE.MeshBasicMaterial({
       color: 0xffb347, transparent: true, opacity: 0.95,
@@ -384,91 +366,96 @@ function detonate(g) {
   ball.position.copy(pos);
   scene.add(ball);
 
-  const light = new THREE.PointLight(0xff8a3d, 120, 30, 2);
+  var light = new THREE.PointLight(0xff8a3d, 120, 30, 2);
   light.position.copy(pos);
   scene.add(light);
 
-  explosions.push({ ball, light, t: 0, dur: 0.55 });
+  explosions.push({ ball: ball, light: light, t: 0, dur: 0.55 });
 }
 
-/* ============================================================
-   輸入
-   ============================================================ */
-const keys = {};
-let locked = false;
+/* ============ 輸入 ============ */
+var keys = {};
+var locked = false;
 
-const overlay = document.getElementById('overlay');
-
-renderer.domElement.addEventListener('click', () => {
-  renderer.domElement.requestPointerLock();
+renderer.domElement.addEventListener('click', function () {
+  if (renderer.domElement.requestPointerLock) {
+    renderer.domElement.requestPointerLock();
+  }
 });
 
-document.addEventListener('pointerlockchange', () => {
-  locked = document.pointerLockElement === renderer.domElement;
+document.addEventListener('pointerlockchange', function () {
+  locked = (document.pointerLockElement === renderer.domElement);
   overlay.style.display = locked ? 'none' : 'flex';
 });
 
-document.addEventListener('mousemove', e => {
+document.addEventListener('mousemove', function (e) {
   if (!locked) return;
   player.yaw   -= e.movementX * 0.0022;
   player.pitch -= e.movementY * 0.0022;
-  const lim = Math.PI / 2 - 0.05;
-  player.pitch = Math.max(-lim, Math.min(lim, player.pitch));
+  var lim = Math.PI / 2 - 0.05;
+  if (player.pitch >  lim) player.pitch =  lim;
+  if (player.pitch < -lim) player.pitch = -lim;
 });
 
-addEventListener('keydown', e => {
+addEventListener('keydown', function (e) {
   keys[e.code] = true;
   if (e.code === 'Space') e.preventDefault();
   if (e.code === 'KeyF' && !e.repeat) throwGrenade();
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('keyup', function (e) { keys[e.code] = false; });
 
-addEventListener('resize', () => {
+addEventListener('resize', function () {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ============================================================
-   主迴圈
-   ============================================================ */
-const clock = new THREE.Clock();
-let goalShown = false;
+/* ============ 工具 ============ */
+function damp(cur, target, lambda, dt) {
+  return cur + (target - cur) * (1 - Math.exp(-lambda * dt));
+}
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+/* ============ 主迴圈 ============ */
+var clock = new THREE.Clock();
+var goalShown = false;
 
 function update(dt) {
   throwCooldown = Math.max(0, throwCooldown - dt);
 
-  /* ---------- 玩家：輸入 ---------- */
-  const s = Math.sin(player.yaw), c = Math.cos(player.yaw);
-  const fwd   = new THREE.Vector3(-s, 0, -c);
-  const right = new THREE.Vector3( c, 0, -s);
+  /* --- 玩家輸入 --- */
+  var s = Math.sin(player.yaw), c = Math.cos(player.yaw);
+  var fx = -s, fz = -c;
+  var rx =  c, rz = -s;
 
-  const wish = new THREE.Vector3();
-  if (keys['KeyW'] || keys['ArrowUp'])    wish.add(fwd);
-  if (keys['KeyS'] || keys['ArrowDown'])  wish.sub(fwd);
-  if (keys['KeyD'] || keys['ArrowRight']) wish.add(right);
-  if (keys['KeyA'] || keys['ArrowLeft'])  wish.sub(right);
-  if (wish.lengthSq() > 0) wish.normalize();
+  var wx = 0, wz = 0;
+  if (keys['KeyW'] || keys['ArrowUp'])    { wx += fx; wz += fz; }
+  if (keys['KeyS'] || keys['ArrowDown'])  { wx -= fx; wz -= fz; }
+  if (keys['KeyD'] || keys['ArrowRight']) { wx += rx; wz += rz; }
+  if (keys['KeyA'] || keys['ArrowLeft'])  { wx -= rx; wz -= rz; }
 
-  const k = player.onGround ? 14 : 2.6;
-  player.vel.x = THREE.MathUtils.damp(player.vel.x, wish.x * player.speed, k, dt);
-  player.vel.z = THREE.MathUtils.damp(player.vel.z, wish.z * player.speed, k, dt);
+  var len = Math.sqrt(wx * wx + wz * wz);
+  if (len > 0) { wx /= len; wz /= len; }
 
-  /* ---------- 跳躍 ---------- */
+  var k = player.onGround ? 14 : 2.6;
+  player.vel.x = damp(player.vel.x, wx * player.speed, k, dt);
+  player.vel.z = damp(player.vel.z, wz * player.speed, k, dt);
+
+  /* --- 跳躍 --- */
   if (keys['Space'] && player.onGround) {
     player.vel.y = player.jumpSpeed;
     player.onGround = false;
   }
 
-  /* ---------- 重力 / 外力衰減 ---------- */
+  /* --- 重力 / 外力衰減 --- */
   player.vel.y -= GRAVITY * dt;
   if (player.vel.y < -60) player.vel.y = -60;
   player.ext.multiplyScalar(Math.exp(-2.6 * dt));
 
-  /* ---------- 移動 + 碰撞解算 ---------- */
-  const vx = (player.vel.x + player.ext.x) * dt;
-  const vz = (player.vel.z + player.ext.z) * dt;
-  const vy = (player.vel.y + player.ext.y) * dt;
+  /* --- 移動 + 碰撞 --- */
+  var vx = (player.vel.x + player.ext.x) * dt;
+  var vz = (player.vel.z + player.ext.z) * dt;
+  var vy = (player.vel.y + player.ext.y) * dt;
 
   player.onGround = false;
 
@@ -478,25 +465,24 @@ function update(dt) {
 
   if (player.pos.y < RESPAWN_Y) respawn();
 
-  /* ---------- 抵達終點 ---------- */
+  /* --- 終點判定 --- */
   if (!goalShown) {
-    const g = goalPlatform;
-    if (player.pos.y >= g.pos.y + g.half.y - 0.1 &&
-        Math.abs(player.pos.x - g.pos.x) < g.half.x &&
-        Math.abs(player.pos.z - g.pos.z) < g.half.z) {
+    var gp = goalPlatform;
+    if (player.pos.y >= gp.pos.y + gp.half.y - 0.1 &&
+        Math.abs(player.pos.x - gp.pos.x) < gp.half.x &&
+        Math.abs(player.pos.z - gp.pos.z) < gp.half.z) {
       goalShown = true;
       goalEl.style.opacity = '1';
-      setTimeout(() => { goalEl.style.opacity = '0'; goalShown = false; }, 2500);
+      setTimeout(function () { goalEl.style.opacity = '0'; goalShown = false; }, 2500);
     }
   }
 
-  /* ---------- 手榴彈引信 ---------- */
-  for (let i = grenades.length - 1; i >= 0; i--) {
-    const g = grenades[i];
+  /* --- 手榴彈引信 --- */
+  for (var i = grenades.length - 1; i >= 0; i--) {
+    var g = grenades[i];
     g.timer -= dt;
 
-    // 快爆炸時核心紅點閃爍
-    const blink = g.timer < 1.0
+    var blink = g.timer < 1.0
       ? (Math.sin(g.timer * 55) > 0 ? 1 : 0.15)
       : 0.9;
     g.core.material.opacity = blink;
@@ -508,37 +494,39 @@ function update(dt) {
     }
   }
 
-  /* ---------- 物理世界步進 ---------- */
-  world.step(1 / 60, dt, 3);
+  /* --- 物理步進 --- */
+  world.step(1 / 60, dt, 5);
 
-  // 同步手榴彈網格
-  for (const g of grenades) {
-    g.mesh.position.copy(g.body.position);
-    g.mesh.quaternion.copy(g.body.quaternion);
+  for (var j = 0; j < grenades.length; j++) {
+    var gg = grenades[j];
+    gg.mesh.position.set(gg.body.position.x, gg.body.position.y, gg.body.position.z);
+    gg.mesh.quaternion.set(
+      gg.body.quaternion.x, gg.body.quaternion.y,
+      gg.body.quaternion.z, gg.body.quaternion.w
+    );
   }
 
-  /* ---------- 爆炸視覺更新 ---------- */
-  for (let i = explosions.length - 1; i >= 0; i--) {
-    const ex = explosions[i];
+  /* --- 爆炸視覺 --- */
+  for (var m = explosions.length - 1; m >= 0; m--) {
+    var ex = explosions[m];
     ex.t += dt;
-    const p = ex.t / ex.dur;
+    var p = ex.t / ex.dur;
 
     if (p >= 1) {
       scene.remove(ex.ball);
       scene.remove(ex.light);
       ex.ball.geometry.dispose();
       ex.ball.material.dispose();
-      explosions.splice(i, 1);
+      explosions.splice(m, 1);
       continue;
     }
 
-    const scale = 1 + p * 9;
-    ex.ball.scale.setScalar(scale);
+    ex.ball.scale.setScalar(1 + p * 9);
     ex.ball.material.opacity = 0.95 * (1 - p) * (1 - p);
     ex.light.intensity = 120 * (1 - p) * (1 - p);
   }
 
-  /* ---------- 相機 ---------- */
+  /* --- 相機 --- */
   camera.position.set(
     player.pos.x,
     player.pos.y + player.eye,
@@ -561,12 +549,14 @@ function update(dt) {
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  var dt = Math.min(clock.getDelta(), 0.05);
   update(dt);
   renderer.render(scene, camera);
 }
 
 animate();
+
+})();
 </script>
 </body>
 </html>
