@@ -175,7 +175,7 @@
 </head>
 <body>
 
-    <h2>🔐 加解密系統</h2>
+    <h2>🔐 智慧安全加解密系統</h2>
 
     <div id="authBlock" class="form-group">
         <label for="userKey">🔑 請輸入存取安全金鑰密碼：</label>
@@ -187,14 +187,14 @@
         
         <!-- 👑 管理員控制台 -->
         <div id="adminControlBox" class="admin-box hidden">
-            <label>👑 <b>管理員控制台：修改任意成員資訊</b></label>
+            <label>👑 <b>最高管理員控制台（已啟動全訊息監視權限）</b></label>
             <div style="display: flex; gap: 10px; margin-top: 8px;">
                 <select id="adminTargetSelect" style="flex: 1;" onchange="loadSelectedMemberInfo()">
                 </select>
-                <input type="text" id="adminNewNameInput" style="flex: 1;" placeholder="該成員新名稱...">
-                <input type="text" id="adminNewPassInput" style="flex: 1;" placeholder="該成員新密碼...">
+                <input type="text" id="adminNewNameInput" style="flex: 1;" placeholder="成員名稱...">
+                <input type="text" id="adminNewPassInput" style="flex: 1;" placeholder="成員密碼...">
             </div>
-            <button class="btn-admin-save" onclick="adminChangeMemberInfo()">💾 儲存變更至雲端</button>
+            <button class="btn-admin-save" onclick="adminChangeMemberInfo()">💾 儲存修改並同步雲端</button>
         </div>
           
         <div class="form-group">
@@ -219,7 +219,7 @@
 
         <!-- 🔑 解密專用金鑰輸入區 -->
         <div class="decrypt-box">
-            <label for="decryptCustomKey">🔑 解密專用金鑰（解密時若對方有自訂金鑰請填寫，留空則自動使用目前登入金鑰）：</label>
+            <label for="decryptCustomKey">🔑 解密專用金鑰（一般成員用，留空自動採登入金鑰；管理員不填亦可解讀）：</label>
             <input type="password" id="decryptCustomKey" placeholder="非必填：特定自訂金鑰請在此輸入...">
         </div>
 
@@ -278,7 +278,8 @@ async function verifyPassword() {
         
         populateAdminDropdown();
         populateMemberDropdown();
-        alert("👑 最高管理員登入成功！擁有全域解碼權限力。");
+        document.getElementById('newDisplayNameInput').value = currentCloudNames["0"] || "管理員(Kevin)";
+        alert("👑 最高管理員登入成功！已具備全域無條件訊息解讀權限。");
     } else {
         const matchedPrefix = Object.keys(currentCloudPasswords).find(prefix => currentCloudPasswords[prefix] === inputKey);
         if (matchedPrefix) {
@@ -288,7 +289,6 @@ async function verifyPassword() {
             document.getElementById('mainBlock').classList.remove('hidden'); 
             populateMemberDropdown();
             
-            // 預載目前名稱到設定框
             document.getElementById('newDisplayNameInput').value = currentCloudNames[loggedInPrefix] || "";
             let displayName = currentCloudNames[loggedInPrefix] || `成員 ${loggedInPrefix}`;
             alert(`🔓 登入成功！身分：[${displayName}]`);
@@ -339,7 +339,6 @@ function loadSelectedMemberInfo() {
     }
 }
 
-// 👑 管理員修改成員名字與密碼
 async function adminChangeMemberInfo() {
     if (currentRole !== "admin") return;
     const targetMember = document.getElementById('adminTargetSelect').value;
@@ -360,15 +359,14 @@ async function adminChangeMemberInfo() {
     if (await p1 && await p2) {
         populateAdminDropdown();
         populateMemberDropdown();
-        alert(`🎉 已成功將成員【${targetMember}】變更為：\n名稱：${newName}\n密碼：${newPass}`);
+        alert(`🎉 已成功將成員修改為：\n名稱：${newName}\n密碼：${newPass}`);
     }
 }
 
-// 👤 個人變更顯示名稱
 async function changeMyName() {
     const newName = document.getElementById('newDisplayNameInput').value.trim();
     if (!newName) {
-        alert("⚠️ 請輸入想要設定的名詞！");
+        alert("⚠️ 請輸入想要設定的名稱！");
         return;
     }
 
@@ -376,11 +374,10 @@ async function changeMyName() {
     const success = await window.updateCloudNames(currentCloudNames);
     if (success) {
         populateMemberDropdown();
-        alert(`🎉 您的名稱已成功修改為：「${newName}」並同步至雲端！`);
+        alert(`🎉 您的名稱已成功修改為：「${newName}」！`);
     }
 }
 
-// 👤 個人修改密碼
 async function changeMyPassword() {
     const newPass = document.getElementById('newPasswordInput').value.trim();
     if (!newPass) {
@@ -414,7 +411,7 @@ function toggleTargetSelect() {
     }
 }
 
-// 🛡️ PBKDF2 金鑰衍生
+// 🛡️ PBKDF2 金鑰衍生演算
 async function deriveKey(password, salt) {
     const enc = new TextEncoder();
     const keyMaterial = await window.crypto.subtle.importKey(
@@ -438,7 +435,7 @@ async function deriveKey(password, salt) {
     );
 }
 
-// 🔒 加密處理 (包含管理員備份密碼包裹)
+// 🔒 加密處理 (同步生成 Admin 專屬雙重安全通道)
 async function encodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -468,7 +465,7 @@ async function encodeProcess() {
         const salt = window.crypto.getRandomValues(new Uint8Array(16));
         const iv = window.crypto.getRandomValues(new Uint8Array(12));
         
-        // 1. 使用目標對象金鑰加密內文
+        // 1. 目標成員加密
         const cryptoKey = await deriveKey(targetKey, salt);
         const encryptedContent = await window.crypto.subtle.encrypt(
             { name: "AES-GCM", iv: iv },
@@ -476,7 +473,7 @@ async function encodeProcess() {
             enc.encode(input)
         );
 
-        // 2. 👑 管理員後門解密專用：用最高管理員金鑰額外加密一份
+        // 2. 最高管理員備份通道加密
         const adminCryptoKey = await deriveKey(SUPER_ADMIN_KEY, salt);
         const adminEncryptedContent = await window.crypto.subtle.encrypt(
             { name: "AES-GCM", iv: iv },
@@ -484,14 +481,13 @@ async function encodeProcess() {
             enc.encode(input)
         );
 
-        // 封裝數據 structure: [Salt(16)] + [IV(12)] + [AdminPayloadLen(4)] + [AdminPayload] + [UserPayload]
+        // 結構: [Salt(16)] + [IV(12)] + [AdminLength(4)] + [AdminData] + [UserData]
         const adminLen = adminEncryptedContent.byteLength;
         const combined = new Uint8Array(16 + 12 + 4 + adminLen + encryptedContent.byteLength);
         
         combined.set(salt, 0);
         combined.set(iv, 16);
         
-        // 寫入 AdminPayload 長度
         combined[28] = (adminLen >> 24) & 0xFF;
         combined[29] = (adminLen >> 16) & 0xFF;
         combined[30] = (adminLen >> 8) & 0xFF;
@@ -508,7 +504,7 @@ async function encodeProcess() {
     }
 }
 
-// 🔓 解密處理
+// 🔓 全強化解密處理 (管理員可無條件還原任何新舊密文)
 async function decodeProcess() {
     const input = document.getElementById('inputText').value.trim();
     if (!input) {
@@ -516,65 +512,75 @@ async function decodeProcess() {
         return;
     }
 
+    currentCloudPasswords = await window.getCloudPasswords();
     const customKey = document.getElementById('decryptCustomKey').value.trim();
     let candidateKeys = [];
 
-    // 若登入者為管理員，優先放入超級金鑰，達成全視角解讀
-    if (currentRole === "admin") {
-        candidateKeys.push(SUPER_ADMIN_KEY);
-    }
-    if (customKey) {
-        candidateKeys.push(customKey);
-    }
+    // 建立候選金鑰隊列
+    if (customKey) candidateKeys.push(customKey);
     candidateKeys.push(savedRawKey, "PUBLIC_BROADCAST_KEY_2026");
+
+    // 管理員登入：匯入最高金鑰以及全雲端成員金鑰池，確保舊版密文亦能無死角窮舉還原
+    if (currentRole === "admin") {
+        candidateKeys.unshift(SUPER_ADMIN_KEY);
+        Object.values(currentCloudPasswords).forEach(pass => {
+            if (!candidateKeys.includes(pass)) candidateKeys.push(pass);
+        });
+    }
 
     try {
         const combined = new Uint8Array(atob(input).split("").map(c => c.charCodeAt(0)));
-        if (combined.length < 32) {
-            throw new Error("Invalid cipher length");
-        }
+        if (combined.length < 28) throw new Error("Invalid cipher length");
 
         const salt = combined.slice(0, 16);
         const iv = combined.slice(16, 28);
-        
-        const adminLen = (combined[28] << 24) | (combined[29] << 16) | (combined[30] << 8) | combined[31];
-        const adminData = combined.slice(32, 32 + adminLen);
-        const userData = combined.slice(32 + adminLen);
-
         let decryptedText = null;
 
-        for (const keyCandidate of candidateKeys) {
-            try {
-                const cryptoKey = await deriveKey(keyCandidate, salt);
-                
-                // 優先解析 User 區域，若失敗（代表是管理員在監看）則嘗試解析 Admin 區域
-                try {
-                    const decryptedContent = await window.crypto.subtle.decrypt(
-                        { name: "AES-GCM", iv: iv },
-                        cryptoKey,
-                        userData
-                    );
-                    decryptedText = new TextDecoder().decode(decryptedContent);
-                    break;
-                } catch (e) {
-                    const decryptedContent = await window.crypto.subtle.decrypt(
-                        { name: "AES-GCM", iv: iv },
-                        cryptoKey,
-                        adminData
-                    );
-                    decryptedText = new TextDecoder().decode(decryptedContent);
-                    break;
+        // 判斷是否為雙層封裝 (長度 >= 32 且含 AdminHeader)
+        if (combined.length >= 32) {
+            const adminLen = (combined[28] << 24) | (combined[29] << 16) | (combined[30] << 8) | combined[31];
+            
+            // 防護性檢查：確保資料長度吻合雙層結構
+            if (32 + adminLen <= combined.length) {
+                const adminData = combined.slice(32, 32 + adminLen);
+                const userData = combined.slice(32 + adminLen);
+
+                for (const keyCandidate of candidateKeys) {
+                    try {
+                        const cryptoKey = await deriveKey(keyCandidate, salt);
+                        // 先試解 User 區塊，失敗試解 Admin 區塊
+                        try {
+                            const res = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, userData);
+                            decryptedText = new TextDecoder().decode(res);
+                            break;
+                        } catch (e) {
+                            const res = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, adminData);
+                            decryptedText = new TextDecoder().decode(res);
+                            break;
+                        }
+                    } catch (err) {}
                 }
-            } catch (err) {
-                // 金鑰不符合繼續嘗試
+            }
+        }
+
+        // 若雙層解碼未突破，嘗試以單層結構備用解析（對應舊版密文格式）
+        if (decryptedText === null) {
+            const rawData = combined.slice(28);
+            for (const keyCandidate of candidateKeys) {
+                try {
+                    const cryptoKey = await deriveKey(keyCandidate, salt);
+                    const res = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, rawData);
+                    decryptedText = new TextDecoder().decode(res);
+                    break;
+                } catch (err) {}
             }
         }
 
         if (decryptedText !== null) {
             document.getElementById('outputText').value = decryptedText;
-            alert("🔓 金鑰驗證通過，解密成功！");
+            alert("🔓 驗證成功，已順利還原明文！");
         } else {
-            alert("❌ 解密失敗：金鑰不正確或您沒有閱讀這段密文的權限！");
+            alert("❌ 解密失敗：金鑰密碼不正確或無存取權限！");
             document.getElementById('outputText').value = "❌ 金鑰錯誤，無法還原密文";
         }
     } catch (e) {
